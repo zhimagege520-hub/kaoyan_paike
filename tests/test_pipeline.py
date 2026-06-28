@@ -35,6 +35,7 @@ from run_scheduling_pipeline import (
     write_missing_teacher_template,
     write_report,
 )
+from scripts.template_tables import template_sheet_table_pairs
 
 
 ORIGINAL_DATA_DIR = data_admin_server.DATA_DIR
@@ -538,6 +539,10 @@ class SchedulingPipelineTest(unittest.TestCase):
             self.assertNotIn("排课窗口ID", tables["schedule_windows"].rows[0])
             self.assertEqual(tables["time_slots"].rows[0]["is_usable"], "是")
             self.assertEqual(tables["business_product_mappings"].rows[0]["business_product_id"], "100")
+
+    def test_template_sheet_names_are_pipeline_source_aliases(self) -> None:
+        for sheet_name, table_name in template_sheet_table_pairs():
+            self.assertEqual(table_name, table_name_for(sheet_name), sheet_name)
 
     def test_legacy_business_product_map_file_loads_as_current_mapping_table(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

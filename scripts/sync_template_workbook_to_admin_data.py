@@ -24,38 +24,15 @@ from scripts.schedule_modes import (
     class_schedule_mode_display_name,
     normalize_class_schedule_mode,
 )
+from scripts.template_tables import TEMPLATE_SHEET_ALIASES, TEMPLATE_SHEETS
 
 
 DEFAULT_WORKBOOK = ROOT / "outputs" / "ai_scheduling_sop_20260625" / "AI排课基础数据模板.xlsx"
 DATA_DIR = ROOT / "data"
 
 
-SHEETS: Dict[str, str] = {
-    "01_年度排课窗口表": "schedule_windows",
-    "02_课节表": "time_slots",
-    "03_教学区表": "teaching_areas",
-    "04_教室表": "rooms",
-    "05_教师基础信息表": "teachers",
-    "06_教师不可排日期时段表": "teacher_unavailability",
-    "07_产品管理表": "products",
-    "08_产品课程课时表": "product_courses",
-    "09_产品窗口排课规则表": "product_schedule_rules",
-    "10_班级基础信息表": "classes",
-    "11_班级排课窗口表": "class_window_boundaries",
-    "12_班级老师安排表": "class_teacher_assignments",
-    "13_班级排课互斥关系表": "class_conflict_groups",
-    "14_锁定课表": "locked_scheduled_lessons",
-    "15_教学区通勤关系表": "teaching_area_links",
-    "16_全局停课日期表": "global_blackout_dates",
-    "17_历史已排课明细表": "historical_scheduled_lessons",
-    "18_ERP产品对应表": "business_product_mappings",
-    "19_ERP标准产品清单": "erp_standard_products",
-}
-
-SHEET_ALIASES = {
-    "11_班级排课窗口表": ["11_班级窗口边界表"],
-    "18_ERP产品对应表": ["18_业务产品映射表"],
-}
+SHEETS = TEMPLATE_SHEETS
+SHEET_ALIASES = TEMPLATE_SHEET_ALIASES
 
 LIST_FIELDS = {
     "season_window_ids",

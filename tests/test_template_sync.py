@@ -15,10 +15,13 @@ from scripts.sync_template_workbook_to_admin_data import (
     standard_output_rows,
     write_csv,
 )
+from scripts.template_tables import TEMPLATE_SHEET_ALIASES, TEMPLATE_SHEETS
 
 
 class TemplateSyncTest(unittest.TestCase):
     def test_template_sheet_keys_follow_admin_standard_table_order(self) -> None:
+        self.assertIs(TEMPLATE_SHEETS, SHEETS)
+        self.assertIs(TEMPLATE_SHEET_ALIASES, SHEET_ALIASES)
         self.assertEqual(list(data_admin_server.STANDARD_TABLE_FIELDNAMES), list(SHEETS.values()))
         self.assertEqual(len(SHEETS), len(set(SHEETS.values())))
         for canonical_sheet in SHEET_ALIASES:

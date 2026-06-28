@@ -15,6 +15,7 @@ import scheduler
 from business_class_import import BusinessDataError, convert_business_tables
 from generate_time_slots import generate_time_slots, parse_weekdays
 from scripts.csv_utils import clean_csv_rows, read_csv_with_fieldnames, write_csv_rows
+from scripts.template_tables import template_sheet_table_pairs
 
 
 TABLES = list(data_admin_server.STANDARD_TABLE_FIELDNAMES)
@@ -260,6 +261,8 @@ def normalize_table_name(value: str) -> str:
 
 for source_table_name in SOURCE_TABLES:
     TABLE_ALIASES.setdefault(normalize_table_name(source_table_name), source_table_name)
+for sheet_name, table_name in template_sheet_table_pairs():
+    TABLE_ALIASES.setdefault(normalize_table_name(sheet_name), table_name)
 
 
 def table_name_for(value: str) -> Optional[str]:
