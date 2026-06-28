@@ -7,7 +7,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
-import data_admin_server
 from business_class_import import (
     BUSINESS_EXAM_MONTH,
     BUSINESS_EXAM_SEASON,
@@ -24,6 +23,8 @@ from business_class_import import (
     teacher_employee_ids_from_business_rows,
 )
 from scripts.csv_utils import csv_rows_text, serialize_csv_value
+from scripts.field_utils import normalize_text
+from scripts.product_catalog import product_catalog as shared_product_catalog
 from scripts.table_schema import BUSINESS_PRODUCT_MAPPING_FIELDNAMES, TEACHER_ASSIGNMENT_FIELDNAMES
 
 
@@ -72,13 +73,13 @@ def selected_business_rows(rows: Iterable[Mapping[str, Any]]) -> Tuple[List[Mapp
 
 
 def product_catalog_rows(base_payload: Mapping[str, Any]) -> List[Dict[str, Any]]:
-    products = data_admin_server.product_catalog(
+    products = shared_product_catalog(
         list(base_payload.get("products", [])),
         list(base_payload.get("product_courses", [])),
     )
     course_counts: Dict[str, int] = {}
     for course in base_payload.get("product_courses", []):
-        product_id = data_admin_server.normalize_text(course.get("product_id"))
+        product_id = normalize_text(course.get("product_id"))
         if product_id:
             course_counts[product_id] = course_counts.get(product_id, 0) + 1
     rows: List[Dict[str, Any]] = []
@@ -101,13 +102,13 @@ def product_catalog_rows(base_payload: Mapping[str, Any]) -> List[Dict[str, Any]
 
 
 def candidate_products(product_name: str, product_rows: Sequence[Mapping[str, Any]]) -> str:
-    text = data_admin_server.normalize_text(product_name)
+    text = normalize_text(product_name)
     if not text:
         return ""
     scored: List[Tuple[int, str]] = []
     for row in product_rows:
-        product_id = data_admin_server.normalize_text(row.get("local_product_id") or row.get("canonical_product_id"))
-        name = data_admin_server.normalize_text(row.get("product_name"))
+        product_id = normalize_text(row.get("local_product_id") or row.get("canonical_product_id"))
+        name = normalize_text(row.get("product_name"))
         if not product_id:
             continue
         score = 0
@@ -232,7 +233,7 @@ def build_gap_rows(
     for row in product_map_rows:
         if row.get("product_system") == "计费体系":
             continue
-        if not data_admin_server.normalize_text(row.get("local_product_id")):
+        if not normalize_text(row.get("local_product_id")):
             gaps.append(
                 {
                     "gap_type": "产品映射待确认",

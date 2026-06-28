@@ -15,6 +15,7 @@ import scheduler
 from business_class_import import BusinessDataError, convert_business_tables
 from generate_time_slots import generate_time_slots, parse_weekdays
 from scripts.csv_utils import clean_csv_rows, read_csv_with_fieldnames, write_csv_rows
+from scripts.product_catalog import product_catalog as shared_product_catalog
 from scripts.template_tables import (
     BUSINESS_SOURCE_TABLES,
     build_table_aliases,
@@ -393,7 +394,7 @@ def expanded_rules_for_state(state: Dict[str, Any]) -> List[Dict[str, Any]]:
     referenced_product_ids = {
         cls["product_id"] for cls in state["classes"] if cls.get("product_id")
     }
-    catalog = data_admin_server.product_catalog(state["products"], state["product_courses"])
+    catalog = shared_product_catalog(state["products"], state["product_courses"])
     return data_admin_server.scheduler_rules(
         state["product_schedule_rules"],
         referenced_product_ids,
@@ -589,7 +590,7 @@ def write_report(
 def class_teacher_template_context(state: Optional[Dict[str, Any]]) -> Dict[str, Dict[str, str]]:
     if not state:
         return {}
-    product_meta = data_admin_server.product_catalog(state.get("products", []), state.get("product_courses", []))
+    product_meta = shared_product_catalog(state.get("products", []), state.get("product_courses", []))
     context: Dict[str, Dict[str, str]] = {}
     for cls in state.get("classes", []):
         class_id = str(cls.get("id") or "").strip()
@@ -667,7 +668,7 @@ def missing_teacher_rows_for_requirements(
     context = class_teacher_template_context(state)
     product_names = {
         product_id: str(meta.get("name") or "").strip()
-        for product_id, meta in data_admin_server.product_catalog(
+        for product_id, meta in shared_product_catalog(
             state.get("products", []),
             state.get("product_courses", []),
         ).items()

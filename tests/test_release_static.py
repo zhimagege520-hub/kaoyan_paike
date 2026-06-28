@@ -119,6 +119,20 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertNotIn("data_admin_server.BUSINESS_PRODUCT_MAPPING_FIELDNAMES", formal_template_source)
         self.assertNotIn("data_admin_server.TEACHER_ASSIGNMENT_FIELDNAMES", formal_template_source)
 
+    def test_product_catalog_logic_lives_outside_admin_server(self) -> None:
+        admin_source = (ROOT / "data_admin_server.py").read_text(encoding="utf-8")
+        pipeline_source = (ROOT / "run_scheduling_pipeline.py").read_text(encoding="utf-8")
+        formal_template_source = (ROOT / "formal_template.py").read_text(encoding="utf-8")
+
+        self.assertIn("from scripts.product_catalog import", admin_source)
+        self.assertIn("from scripts.product_catalog import", pipeline_source)
+        self.assertIn("from scripts.product_catalog import", formal_template_source)
+        self.assertNotIn("import data_admin_server", formal_template_source)
+        self.assertIsNone(re.search(r"(?m)^def product_catalog\(", admin_source))
+        self.assertIsNone(re.search(r"(?m)^def infer_project\(", admin_source))
+        self.assertIsNone(re.search(r"(?m)^def product_stage_order\(", admin_source))
+        self.assertNotIn("data_admin_server.product_catalog", pipeline_source)
+
     def test_cli_scripts_import_project_modules_with_bootstrap(self) -> None:
         project_import = re.compile(
             r"(?m)^\s*("

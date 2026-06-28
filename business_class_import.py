@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 import data_admin_server
+from scripts.product_catalog import product_catalog as shared_product_catalog
 from scripts.csv_utils import write_csv_rows
 
 
@@ -580,7 +581,7 @@ def subject_category(subject: str) -> str:
 
 
 def product_catalog(payload: Mapping[str, Any]) -> Dict[str, Dict[str, Any]]:
-    return data_admin_server.product_catalog(
+    return shared_product_catalog(
         list(payload.get("products", [])),
         list(payload.get("product_courses", [])),
     )
