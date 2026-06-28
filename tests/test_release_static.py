@@ -46,6 +46,7 @@ class ReleaseStaticTest(unittest.TestCase):
             ROOT / "scheduler.py",
             ROOT / "run_scheduling_pipeline.py",
             ROOT / "scripts" / "build_cloudflare_publish_bundle.py",
+            ROOT / "scripts" / "schedule_batch.py",
             ROOT / "scripts" / "schedule_data.py",
             ROOT / "scripts" / "schedule_class_windows.py",
             ROOT / "scripts" / "schedule_conflicts.py",

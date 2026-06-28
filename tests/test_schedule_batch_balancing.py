@@ -79,6 +79,7 @@ from scripts.schedule_week_balance import (
     shift_tail_week_quota_to_early,
 )
 from scripts.schedule_batch import (
+    load_locked_csv_assignments,
     task_stage_rank,
 )
 
@@ -282,6 +283,43 @@ def stage_assignment(task: scheduler.CourseBlock, slot: scheduler.TimeSlot) -> s
 
 
 class ScheduleBatchBalancingTest(unittest.TestCase):
+    def test_load_locked_csv_assignments_reads_bom_csv_with_shared_helper(self) -> None:
+        slot = scheduler.TimeSlot(
+            "2026-07-01-AM",
+            "2026-07-01",
+            "AM",
+            "上午",
+            1,
+            "08:00",
+            "12:00",
+            4,
+        )
+        schedule_input = scheduler.ScheduleInput(
+            time_slots=[slot],
+            rooms={"R1": scheduler.Room("R1")},
+            classes={},
+            conflict_groups={},
+            class_conflict_groups={},
+            locked_assignments=[],
+        )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "locked.csv"
+            path.write_text(
+                "\ufeffdate,period,start_time,end_time,duration_hours,class_id,class_name,subject,teacher_id,teacher_name,room_id,course_code,course_name\n"
+                "2026-07-01,am,08:00,12:00,4,C_LOCK,锁定班,英语,T1,张老师,R1,ENG101,英语课\n",
+                encoding="utf-8",
+            )
+            assignments = load_locked_csv_assignments([path], schedule_input)
+
+        self.assertEqual(len(assignments), 1)
+        assignment = assignments[0]
+        self.assertTrue(assignment.task.is_locked)
+        self.assertEqual(assignment.task.class_id, "C_LOCK")
+        self.assertEqual(assignment.task.course_code, "ENG101")
+        self.assertEqual(assignment.candidate.slots, (slot,))
+        self.assertEqual(assignment.candidate.teacher_name, "张老师")
+
     def test_first_lesson_candidate_requires_anchor_module_first(self) -> None:
         schedule_input = make_first_lesson_input()
         morning, afternoon = schedule_input.time_slots

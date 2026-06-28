@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import sys
 from collections import defaultdict
 from dataclasses import replace
@@ -15,6 +14,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import scheduler
+from scripts.csv_utils import read_csv_rows
 from scripts.schedule_class_windows import (
     bounds_for_constraints,
     load_class_window_constraints,
@@ -128,61 +128,60 @@ def load_locked_csv_assignments(
 
     assignments: List[scheduler.Assignment] = []
     for path in paths:
-        with path.open(newline="", encoding="utf-8-sig") as handle:
-            for index, row in enumerate(csv.DictReader(handle), start=1):
-                duration = int(float(row.get("duration_hours") or 0))
-                key = (
-                    row.get("date") or "",
-                    (row.get("period") or "").upper(),
-                    duration,
-                    row.get("start_time") or "",
-                    row.get("end_time") or "",
+        for index, row in enumerate(read_csv_rows(path), start=1):
+            duration = int(float(row.get("duration_hours") or 0))
+            key = (
+                row.get("date") or "",
+                (row.get("period") or "").upper(),
+                duration,
+                row.get("start_time") or "",
+                row.get("end_time") or "",
+            )
+            slot_block = blocks_by_key.get(key) or blocks_by_key.get((key[0], key[1], key[2], "", ""))
+            if not slot_block:
+                raise ValueError(f"锁定课表 {path} 第 {index} 行无法匹配课节: {key[0]} {key[1]}")
+            class_id = row.get("class_id") or f"LOCKED_CLASS_{index}"
+            teacher_id = row.get("teacher_id") or ""
+            teacher_name = row.get("teacher_name") or teacher_id
+            room_id = row.get("room_id") or ""
+            task = scheduler.CourseBlock(
+                task_id=f"LOCKED_CSV:{path.name}:{index}",
+                class_id=class_id,
+                class_name=row.get("class_name") or class_id,
+                product_id=None,
+                product_name=None,
+                class_size=None,
+                subject_category="",
+                subject=row.get("subject") or "已定课程",
+                quarter=row.get("quarter") or None,
+                stage=row.get("stage") or None,
+                course_module=row.get("course_module") or None,
+                course_group=row.get("course_group") or None,
+                teacher_id=teacher_id,
+                teacher_name=teacher_name,
+                block_hours=sum(slot.duration_hours for slot in slot_block),
+                room_ids={room_id} if room_id else None,
+                start_date=slot_block[0].date,
+                end_date=slot_block[-1].date,
+                allowed_periods={slot_block[0].period},
+                allowed_weekdays=None,
+                excluded_weekdays=None,
+                schedule_rules=(),
+                is_locked=True,
+                course_code=row.get("course_code") or "",
+                course_name=row.get("course_name") or "",
+            )
+            assignments.append(
+                scheduler.Assignment(
+                    task=task,
+                    candidate=scheduler.Candidate(
+                        slots=slot_block,
+                        teacher_id=teacher_id,
+                        teacher_name=teacher_name,
+                        room_id=room_id,
+                    ),
                 )
-                slot_block = blocks_by_key.get(key) or blocks_by_key.get((key[0], key[1], key[2], "", ""))
-                if not slot_block:
-                    raise ValueError(f"锁定课表 {path} 第 {index} 行无法匹配课节: {key[0]} {key[1]}")
-                class_id = row.get("class_id") or f"LOCKED_CLASS_{index}"
-                teacher_id = row.get("teacher_id") or ""
-                teacher_name = row.get("teacher_name") or teacher_id
-                room_id = row.get("room_id") or ""
-                task = scheduler.CourseBlock(
-                    task_id=f"LOCKED_CSV:{path.name}:{index}",
-                    class_id=class_id,
-                    class_name=row.get("class_name") or class_id,
-                    product_id=None,
-                    product_name=None,
-                    class_size=None,
-                    subject_category="",
-                    subject=row.get("subject") or "已定课程",
-                    quarter=row.get("quarter") or None,
-                    stage=row.get("stage") or None,
-                    course_module=row.get("course_module") or None,
-                    course_group=row.get("course_group") or None,
-                    teacher_id=teacher_id,
-                    teacher_name=teacher_name,
-                    block_hours=sum(slot.duration_hours for slot in slot_block),
-                    room_ids={room_id} if room_id else None,
-                    start_date=slot_block[0].date,
-                    end_date=slot_block[-1].date,
-                    allowed_periods={slot_block[0].period},
-                    allowed_weekdays=None,
-                    excluded_weekdays=None,
-                    schedule_rules=(),
-                    is_locked=True,
-                    course_code=row.get("course_code") or "",
-                    course_name=row.get("course_name") or "",
-                )
-                assignments.append(
-                    scheduler.Assignment(
-                        task=task,
-                        candidate=scheduler.Candidate(
-                            slots=slot_block,
-                            teacher_id=teacher_id,
-                            teacher_name=teacher_name,
-                            room_id=room_id,
-                        ),
-                    )
-                )
+            )
     return assignments
 
 
