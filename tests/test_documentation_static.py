@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import unittest
 from pathlib import Path
 
@@ -69,6 +70,8 @@ class DocumentationStaticTest(unittest.TestCase):
         self.assertNotIn("--source data --preflight", checklist)
         self.assertNotIn("372 条缺老师", checklist)
         self.assertIn("真实 `data/` 不进入 GitHub 发布包", checklist)
+        self.assertIsNone(re.search(r"当前\s*\d+\s*个测试", checklist))
+        self.assertIn("具体测试数量以本次命令输出为准", checklist)
 
     def test_class_base_docs_do_not_reintroduce_window_id_list_field(self) -> None:
         sop = (ROOT / "docs" / "ai-scheduling-sop.md").read_text(encoding="utf-8")
