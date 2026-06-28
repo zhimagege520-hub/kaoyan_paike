@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import os
 import re
@@ -21,6 +20,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import scheduler
+from scripts.csv_utils import read_csv_rows
 from scripts.schedule_class_windows import (
     ClassWindowConstraint,
     load_class_window_constraint_items,
@@ -555,13 +555,12 @@ def teacher_maps(data_dir: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
     for path in (data_dir / "teachers.csv", data_dir / "class_teacher_assignments.csv"):
         if not path.exists():
             continue
-        with path.open(newline="", encoding="utf-8-sig") as handle:
-            for row in csv.DictReader(handle):
-                teacher_id = clean(row.get("id") or row.get("employee_id") or row.get("teacher_id"))
-                teacher_name = clean(row.get("name") or row.get("teacher_name"))
-                if teacher_id and teacher_name:
-                    by_id.setdefault(teacher_id, teacher_name)
-                    by_name.setdefault(teacher_name, teacher_id)
+        for row in read_csv_rows(path):
+            teacher_id = clean(row.get("id") or row.get("employee_id") or row.get("teacher_id"))
+            teacher_name = clean(row.get("name") or row.get("teacher_name"))
+            if teacher_id and teacher_name:
+                by_id.setdefault(teacher_id, teacher_name)
+                by_name.setdefault(teacher_name, teacher_id)
     return by_id, by_name
 
 
@@ -571,14 +570,13 @@ def room_maps(data_dir: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
     path = data_dir / "rooms.csv"
     if not path.exists():
         return by_id, {}
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            room_id = clean(row.get("id"))
-            room_name = clean(row.get("name"))
-            if not room_id or not room_name:
-                continue
-            by_id[room_id] = room_name
-            by_name_candidates[room_name].append(room_id)
+    for row in read_csv_rows(path):
+        room_id = clean(row.get("id"))
+        room_name = clean(row.get("name"))
+        if not room_id or not room_name:
+            continue
+        by_id[room_id] = room_name
+        by_name_candidates[room_name].append(room_id)
     by_name = {
         room_name: ids[0]
         for room_name, ids in by_name_candidates.items()
@@ -609,13 +607,12 @@ def load_active_blackout_dates(data_dir: Path) -> Set[str]:
     if not path.exists():
         return set()
     dates: Set[str] = set()
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            if not parse_bool_value(row.get("is_active", True)):
-                continue
-            start = clean(row.get("start_date"))
-            end = clean(row.get("end_date")) or start
-            dates.update(date_range_values(start, end))
+    for row in read_csv_rows(path):
+        if not parse_bool_value(row.get("is_active", True)):
+            continue
+        start = clean(row.get("start_date"))
+        end = clean(row.get("end_date")) or start
+        dates.update(date_range_values(start, end))
     return dates
 
 
@@ -794,16 +791,15 @@ def suite_code_from_class_id(class_id: str) -> str:
 
 def suite_subject_classes(data_dir: Path) -> Dict[str, Dict[str, Dict[str, str]]]:
     result: Dict[str, Dict[str, Dict[str, str]]] = defaultdict(dict)
-    with (data_dir / "classes.csv").open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            suite_code = clean(row.get("suite_code")) or suite_code_from_class_id(clean(row.get("id")))
-            subject = normalize_subject(infer_class_subject(row))
-            if suite_code not in MAINTENANCE_SUITES or subject not in {"英语", "数学", "政治"}:
-                continue
-            result[suite_code][subject] = {
-                "id": clean(row.get("id")),
-                "name": clean(row.get("name")) or clean(row.get("id")),
-            }
+    for row in read_csv_rows(data_dir / "classes.csv"):
+        suite_code = clean(row.get("suite_code")) or suite_code_from_class_id(clean(row.get("id")))
+        subject = normalize_subject(infer_class_subject(row))
+        if suite_code not in MAINTENANCE_SUITES or subject not in {"英语", "数学", "政治"}:
+            continue
+        result[suite_code][subject] = {
+            "id": clean(row.get("id")),
+            "name": clean(row.get("name")) or clean(row.get("id")),
+        }
     return result
 
 
@@ -831,17 +827,16 @@ def wuyou_spring_autumn_class_ids(data_dir: Path) -> Set[str]:
     if not classes_path.exists():
         return set()
     result: Set[str] = set()
-    with classes_path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            if clean(row.get("subject_category")) != "公共课":
-                continue
-            if clean(row.get("sub_product")) not in WYQC_PRODUCTS:
-                continue
-            if clean(row.get("is_schedule_locked")) in {"是", "1", "true", "True", "yes", "Y", "y"}:
-                continue
-            class_id = clean(row.get("id"))
-            if class_id:
-                result.add(class_id)
+    for row in read_csv_rows(classes_path):
+        if clean(row.get("subject_category")) != "公共课":
+            continue
+        if clean(row.get("sub_product")) not in WYQC_PRODUCTS:
+            continue
+        if clean(row.get("is_schedule_locked")) in {"是", "1", "true", "True", "yes", "Y", "y"}:
+            continue
+        class_id = clean(row.get("id"))
+        if class_id:
+            result.add(class_id)
     return result
 
 
@@ -850,17 +845,16 @@ def full_year_public_class_ids(data_dir: Path) -> Set[str]:
     if not classes_path.exists():
         return set()
     result: Set[str] = set()
-    with classes_path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            if clean(row.get("subject_category")) != "公共课":
-                continue
-            if clean(row.get("sub_product")) != "全年营":
-                continue
-            if clean(row.get("is_schedule_locked")) in {"是", "1", "true", "True", "yes", "Y", "y"}:
-                continue
-            class_id = clean(row.get("id"))
-            if class_id:
-                result.add(class_id)
+    for row in read_csv_rows(classes_path):
+        if clean(row.get("subject_category")) != "公共课":
+            continue
+        if clean(row.get("sub_product")) != "全年营":
+            continue
+        if clean(row.get("is_schedule_locked")) in {"是", "1", "true", "True", "yes", "Y", "y"}:
+            continue
+        class_id = clean(row.get("id"))
+        if class_id:
+            result.add(class_id)
     return result
 
 
@@ -979,23 +973,22 @@ def product_course_code_lookup(data_dir: Path) -> Dict[Tuple[str, ...], str]:
     if not path.exists():
         return {}
     candidates: Dict[Tuple[str, ...], Set[str]] = defaultdict(set)
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            code = clean(row.get("course_code"))
-            if not code:
-                continue
-            course_name = clean(row.get("course_name"))
-            subject = clean(row.get("subject"))
-            stage = clean(row.get("stage"))
-            module = clean(row.get("course_module"))
-            group = clean(row.get("course_group"))
-            for key in (
-                ("name", course_name),
-                ("subject_stage_module_name", subject, stage, module, course_name),
-                ("subject_stage_module_group", subject, stage, module, group),
-            ):
-                if all(key[1:]):
-                    candidates[key].add(code)
+    for row in read_csv_rows(path):
+        code = clean(row.get("course_code"))
+        if not code:
+            continue
+        course_name = clean(row.get("course_name"))
+        subject = clean(row.get("subject"))
+        stage = clean(row.get("stage"))
+        module = clean(row.get("course_module"))
+        group = clean(row.get("course_group"))
+        for key in (
+            ("name", course_name),
+            ("subject_stage_module_name", subject, stage, module, course_name),
+            ("subject_stage_module_group", subject, stage, module, group),
+        ):
+            if all(key[1:]):
+                candidates[key].add(code)
     return {key: next(iter(codes)) for key, codes in candidates.items() if len(codes) == 1}
 
 
@@ -1308,39 +1301,38 @@ def load_locked_schedule_rows(data_dir: Path) -> List[dict]:
     class_metadata = load_class_metadata(data_dir)
     course_code_lookup = product_course_code_lookup(data_dir)
     rows: List[dict] = []
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            if clean(row.get("is_locked")) not in {"是", "1", "true", "True", "yes", "Y", "y"}:
-                continue
-            class_id = clean(row.get("class_id"))
-            lesson_date = clean(row.get("date"))
-            room_id = clean(row.get("room_id"))
-            if not class_id or not lesson_date or not room_id:
-                continue
-            class_meta = class_metadata.get(class_id, {})
-            normalized = {
-                    "date": lesson_date,
-                    "period": clean(row.get("period")) or period_for_time(clean(row.get("start_time"))),
-                    "start_time": clean(row.get("start_time")),
-                    "end_time": clean(row.get("end_time")),
-                    "class_id": class_id,
-                    "class_name": clean(row.get("class_name")) or class_meta.get("name") or class_id,
-                    "subject_category": clean(row.get("subject_category")) or class_meta.get("subject_category") or "专业课",
-                    "subject": normalize_subject(row.get("subject")) or class_meta.get("subject") or "已定课程",
-                    "stage": clean(row.get("stage")) or stage_for_display_date(lesson_date),
-                    "course_code": clean(row.get("course_code")),
-                    "course_name": clean(row.get("course_name")),
-                    "course_module": clean(row.get("course_module")),
-                    "course_group": clean(row.get("course_group")),
-                    "teacher_id": clean(row.get("teacher_id")),
-                    "teacher_name": clean(row.get("teacher_name")),
-                    "room_id": room_id,
-                    "room_name": clean(row.get("room_name")) or room_id,
-                    "duration_hours": int(float(row.get("duration_hours") or 0)),
-                }
-            if not normalized["course_code"]:
-                normalized["course_code"] = infer_course_code_from_lookup(normalized, course_code_lookup)
-            rows.append(normalized)
+    for row in read_csv_rows(path):
+        if clean(row.get("is_locked")) not in {"是", "1", "true", "True", "yes", "Y", "y"}:
+            continue
+        class_id = clean(row.get("class_id"))
+        lesson_date = clean(row.get("date"))
+        room_id = clean(row.get("room_id"))
+        if not class_id or not lesson_date or not room_id:
+            continue
+        class_meta = class_metadata.get(class_id, {})
+        normalized = {
+            "date": lesson_date,
+            "period": clean(row.get("period")) or period_for_time(clean(row.get("start_time"))),
+            "start_time": clean(row.get("start_time")),
+            "end_time": clean(row.get("end_time")),
+            "class_id": class_id,
+            "class_name": clean(row.get("class_name")) or class_meta.get("name") or class_id,
+            "subject_category": clean(row.get("subject_category")) or class_meta.get("subject_category") or "专业课",
+            "subject": normalize_subject(row.get("subject")) or class_meta.get("subject") or "已定课程",
+            "stage": clean(row.get("stage")) or stage_for_display_date(lesson_date),
+            "course_code": clean(row.get("course_code")),
+            "course_name": clean(row.get("course_name")),
+            "course_module": clean(row.get("course_module")),
+            "course_group": clean(row.get("course_group")),
+            "teacher_id": clean(row.get("teacher_id")),
+            "teacher_name": clean(row.get("teacher_name")),
+            "room_id": room_id,
+            "room_name": clean(row.get("room_name")) or room_id,
+            "duration_hours": int(float(row.get("duration_hours") or 0)),
+        }
+        if not normalized["course_code"]:
+            normalized["course_code"] = infer_course_code_from_lookup(normalized, course_code_lookup)
+        rows.append(normalized)
     return sorted(
         rows,
         key=lambda item: (
@@ -1437,16 +1429,14 @@ def load_existing_summer(path: Path) -> List[scheduler.Assignment]:
 
     source_paths = [path] if path.exists() else []
     for source_path in source_paths:
-        with source_path.open(newline="", encoding="utf-8-sig") as handle:
-            for row in csv.DictReader(handle):
-                append_row(row)
+        for row in read_csv_rows(source_path):
+            append_row(row)
     if not rows:
         for source_path in SUMMER_FALLBACK_CSVS:
             if not source_path.exists():
                 continue
-            with source_path.open(newline="", encoding="utf-8-sig") as handle:
-                for row in csv.DictReader(handle):
-                    append_row(row)
+            for row in read_csv_rows(source_path):
+                append_row(row)
     return assignments_from_rows(rows, "SUMMER")
 
 
@@ -1460,26 +1450,25 @@ def load_shared_assignment_notes(data_dir: Path = ROOT / "data") -> Dict[Tuple[s
     if not path.exists():
         _SHARED_ASSIGNMENT_CACHE[cache_key] = notes
         return notes
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            mode = assignment_schedule_mode(row)
-            inherit_from = assignment_reference_class_id(row)
-            if mode != "共享课表" and not inherit_from:
-                continue
-            class_id = clean(row.get("class_id"))
-            subject = clean(row.get("subject"))
-            phase = clean(row.get("stage"))
-            course_group = clean(row.get("course_group"))
-            if not class_id or not phase:
-                continue
-            note = f"合班到 {inherit_from}" if inherit_from else "共享课表"
-            for key in (
-                (class_id, subject, phase, course_group),
-                (class_id, subject, phase, ""),
-                (class_id, "", phase, course_group),
-                (class_id, "", phase, ""),
-            ):
-                notes.setdefault(key, note)
+    for row in read_csv_rows(path):
+        mode = assignment_schedule_mode(row)
+        inherit_from = assignment_reference_class_id(row)
+        if mode != "共享课表" and not inherit_from:
+            continue
+        class_id = clean(row.get("class_id"))
+        subject = clean(row.get("subject"))
+        phase = clean(row.get("stage"))
+        course_group = clean(row.get("course_group"))
+        if not class_id or not phase:
+            continue
+        note = f"合班到 {inherit_from}" if inherit_from else "共享课表"
+        for key in (
+            (class_id, subject, phase, course_group),
+            (class_id, subject, phase, ""),
+            (class_id, "", phase, course_group),
+            (class_id, "", phase, ""),
+        ):
+            notes.setdefault(key, note)
     _SHARED_ASSIGNMENT_CACHE.clear()
     _SHARED_ASSIGNMENT_CACHE[cache_key] = notes
     return notes
@@ -4325,20 +4314,19 @@ def load_class_teacher_assignment_lookup(data_dir: Path) -> Dict[Tuple[str, str,
     lookup: Dict[Tuple[str, str, str], Tuple[str, str]] = {}
     if not path.exists():
         return lookup
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            class_id = clean(row.get("class_id"))
-            stage = clean(row.get("stage"))
-            course_group = clean(row.get("course_group"))
-            teacher_id = clean(row.get("teacher_id"))
-            teacher_name = clean(row.get("teacher_name"))
-            if not class_id or not teacher_id and not teacher_name:
-                continue
-            lookup.setdefault((class_id, stage, course_group), (teacher_id, teacher_name))
-            if stage:
-                lookup.setdefault((class_id, stage, ""), (teacher_id, teacher_name))
-            if course_group:
-                lookup.setdefault((class_id, "", course_group), (teacher_id, teacher_name))
+    for row in read_csv_rows(path):
+        class_id = clean(row.get("class_id"))
+        stage = clean(row.get("stage"))
+        course_group = clean(row.get("course_group"))
+        teacher_id = clean(row.get("teacher_id"))
+        teacher_name = clean(row.get("teacher_name"))
+        if not class_id or not teacher_id and not teacher_name:
+            continue
+        lookup.setdefault((class_id, stage, course_group), (teacher_id, teacher_name))
+        if stage:
+            lookup.setdefault((class_id, stage, ""), (teacher_id, teacher_name))
+        if course_group:
+            lookup.setdefault((class_id, "", course_group), (teacher_id, teacher_name))
     return lookup
 
 
@@ -4432,71 +4420,70 @@ def build_2731_stage_priority_blocks(
         return blocks, ["2731 阶段优先重建: 缺少 product_courses.csv，无法按产品课时重建"]
 
     task_seq = 1
-    with product_path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            product_id = clean(row.get("product_id"))
-            if product_id not in product_to_classes:
+    for row in read_csv_rows(product_path):
+        product_id = clean(row.get("product_id"))
+        if product_id not in product_to_classes:
+            continue
+        subject = normalize_subject(row.get("subject"))
+        if subject not in SUMMER_PUBLIC_SUBJECTS:
+            continue
+        stage = clean(row.get("stage"))
+        if stage not in WYS_STAGE_PRIORITY_ORDER:
+            continue
+        course_module = clean(row.get("course_module"))
+        course_group = clean(row.get("course_group"))
+        try:
+            total_hours = int(float(clean(row.get("total_hours")) or 0))
+            block_hours = int(float(clean(row.get("block_hours")) or 4))
+        except ValueError:
+            warnings.append(f"2731 阶段优先重建: {product_id} {stage} {course_module} 课时不是数字，已跳过")
+            continue
+        if total_hours <= 0 or block_hours <= 0:
+            continue
+        block_count = max(1, (total_hours + block_hours - 1) // block_hours)
+        for class_id in sorted(product_to_classes[product_id]):
+            meta = class_metadata.get(class_id, {})
+            teacher_id, teacher_name = teacher_lookup.get((class_id, stage, course_group), ("", ""))
+            if not teacher_id and not teacher_name:
+                teacher_id, teacher_name = teacher_lookup.get((class_id, stage, ""), ("", ""))
+            if not teacher_id and not teacher_name:
+                teacher_id, teacher_name = teacher_lookup.get((class_id, "", course_group), ("", ""))
+            if not teacher_id and not teacher_name:
+                warnings.append(
+                    f"2731 阶段优先重建: {class_id} {stage} {course_group or course_module} 缺课程老师，已跳过"
+                )
                 continue
-            subject = normalize_subject(row.get("subject"))
-            if subject not in SUMMER_PUBLIC_SUBJECTS:
-                continue
-            stage = clean(row.get("stage"))
-            if stage not in WYS_STAGE_PRIORITY_ORDER:
-                continue
-            course_module = clean(row.get("course_module"))
-            course_group = clean(row.get("course_group"))
-            try:
-                total_hours = int(float(clean(row.get("total_hours")) or 0))
-                block_hours = int(float(clean(row.get("block_hours")) or 4))
-            except ValueError:
-                warnings.append(f"2731 阶段优先重建: {product_id} {stage} {course_module} 课时不是数字，已跳过")
-                continue
-            if total_hours <= 0 or block_hours <= 0:
-                continue
-            block_count = max(1, (total_hours + block_hours - 1) // block_hours)
-            for class_id in sorted(product_to_classes[product_id]):
-                meta = class_metadata.get(class_id, {})
-                teacher_id, teacher_name = teacher_lookup.get((class_id, stage, course_group), ("", ""))
-                if not teacher_id and not teacher_name:
-                    teacher_id, teacher_name = teacher_lookup.get((class_id, stage, ""), ("", ""))
-                if not teacher_id and not teacher_name:
-                    teacher_id, teacher_name = teacher_lookup.get((class_id, "", course_group), ("", ""))
-                if not teacher_id and not teacher_name:
-                    warnings.append(
-                        f"2731 阶段优先重建: {class_id} {stage} {course_group or course_module} 缺课程老师，已跳过"
-                    )
-                    continue
-                room_ids = split_arg_values([meta.get("preferred_room_ids", "")])
-                for index in range(block_count):
-                    task = scheduler.CourseBlock(
-                        task_id=f"2731_STAGE:{task_seq}",
-                        class_id=class_id,
-                        class_name=meta.get("name") or class_id,
-                        product_id=product_id,
-                        product_name=clean(row.get("product_name")) or meta.get("product_name"),
-                        class_size=None,
-                        subject_category=clean(row.get("subject_category")) or "公共课",
-                        subject=subject,
-                        quarter=clean(row.get("quarter")) or None,
-                        stage=stage,
-                        course_module=course_module or None,
-                        course_group=course_group or None,
-                        teacher_id=teacher_id,
-                        teacher_name=teacher_name,
-                        block_hours=block_hours,
-                        room_ids=room_ids or None,
-                        start_date=meta.get("start_date") or None,
-                        end_date=AUTUMN_END,
-                        allowed_periods={"AM", "PM"},
-                        allowed_weekdays=None,
-                        excluded_weekdays=None,
-                        schedule_rules=(),
-                        is_locked=False,
-                        course_code=clean(row.get("course_code")),
-                        course_name=clean(row.get("course_name")),
-                    )
-                    blocks[stage][subject].append(task)
-                    task_seq += 1
+            room_ids = split_arg_values([meta.get("preferred_room_ids", "")])
+            for index in range(block_count):
+                task = scheduler.CourseBlock(
+                    task_id=f"2731_STAGE:{task_seq}",
+                    class_id=class_id,
+                    class_name=meta.get("name") or class_id,
+                    product_id=product_id,
+                    product_name=clean(row.get("product_name")) or meta.get("product_name"),
+                    class_size=None,
+                    subject_category=clean(row.get("subject_category")) or "公共课",
+                    subject=subject,
+                    quarter=clean(row.get("quarter")) or None,
+                    stage=stage,
+                    course_module=course_module or None,
+                    course_group=course_group or None,
+                    teacher_id=teacher_id,
+                    teacher_name=teacher_name,
+                    block_hours=block_hours,
+                    room_ids=room_ids or None,
+                    start_date=meta.get("start_date") or None,
+                    end_date=AUTUMN_END,
+                    allowed_periods={"AM", "PM"},
+                    allowed_weekdays=None,
+                    excluded_weekdays=None,
+                    schedule_rules=(),
+                    is_locked=False,
+                    course_code=clean(row.get("course_code")),
+                    course_name=clean(row.get("course_name")),
+                )
+                blocks[stage][subject].append(task)
+                task_seq += 1
     return blocks, warnings
 
 
@@ -9985,32 +9972,31 @@ def load_existing_output_assignments_for_classes(
     selected_class_ids = set(class_ids)
     rows: List[dict] = []
     seen: Set[Tuple[str, str, str, str, str, str, str]] = set()
-    with OUTPUT_CSV.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            class_id = clean(row.get("class_id"))
-            date_value = clean(row.get("date"))
-            if class_id not in selected_class_ids:
-                continue
-            if not date_value or date_value < start_date or date_value > end_date:
-                continue
-            key = (
-                date_value,
-                clean(row.get("period")),
-                clean(row.get("start_time")),
-                clean(row.get("end_time")),
-                clean(row.get("duration_hours")),
-                class_id,
-                clean(row.get("subject")),
-                clean(row.get("quarter")),
-                clean(row.get("stage")),
-                clean(row.get("course_module")),
-                clean(row.get("teacher_id") or row.get("teacher_name")),
-                clean(row.get("room_id")),
-            )
-            if key in seen:
-                continue
-            seen.add(key)
-            rows.append(row)
+    for row in read_csv_rows(OUTPUT_CSV):
+        class_id = clean(row.get("class_id"))
+        date_value = clean(row.get("date"))
+        if class_id not in selected_class_ids:
+            continue
+        if not date_value or date_value < start_date or date_value > end_date:
+            continue
+        key = (
+            date_value,
+            clean(row.get("period")),
+            clean(row.get("start_time")),
+            clean(row.get("end_time")),
+            clean(row.get("duration_hours")),
+            class_id,
+            clean(row.get("subject")),
+            clean(row.get("quarter")),
+            clean(row.get("stage")),
+            clean(row.get("course_module")),
+            clean(row.get("teacher_id") or row.get("teacher_name")),
+            clean(row.get("room_id")),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append(row)
     prefix_seed = "_".join(sorted(selected_class_ids)) or "UNKNOWN"
     prefix_seed = re.sub(r"[^A-Za-z0-9_]+", "_", prefix_seed)[:80]
     return scheduler.sorted_assignments(assignments_from_rows(rows, f"REUSE:{prefix_seed}"))
@@ -11129,8 +11115,7 @@ def suite_code_for_class(class_id: str, class_metadata: Dict[str, Dict[str, str]
 
 
 def load_output_rows(path: Path) -> List[dict]:
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        return [dict(row) for row in csv.DictReader(handle)]
+    return read_csv_rows(path)
 
 
 def resolve_fast_scope(
