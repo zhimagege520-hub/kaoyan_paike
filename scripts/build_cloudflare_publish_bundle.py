@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import shutil
 import sys
 from pathlib import Path
@@ -12,9 +11,21 @@ from typing import List
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+from scripts.csv_utils import write_csv_rows
+
 DEFAULT_OUTPUT_DIR = ROOT / "outputs"
 DEFAULT_BUNDLE_DIR = DEFAULT_OUTPUT_DIR / "cloudflare_schedule_publish"
 WORKER_SOURCE = ROOT / "cloudflare_schedule_publish" / "_worker.js"
+COVERAGE_GAP_FIELDNAMES = [
+    "class_id",
+    "class_name",
+    "sub_product",
+    "subject",
+    "suite_code",
+    "expected_hours",
+    "scheduled_hours",
+    "gap_hours",
+]
 
 
 def copy_required(source: Path, target: Path) -> None:
@@ -22,6 +33,10 @@ def copy_required(source: Path, target: Path) -> None:
         raise FileNotFoundError(f"缺少发布源文件: {source}")
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source, target)
+
+
+def write_coverage_gap_summary(path: Path, rows: List[dict]) -> None:
+    write_csv_rows(path, COVERAGE_GAP_FIELDNAMES, rows, encoding="utf-8-sig")
 
 
 def validate_no_public_coverage_gaps(output_dir: Path) -> None:
@@ -62,22 +77,7 @@ def validate_no_public_coverage_gaps(output_dir: Path) -> None:
         return
 
     rows.sort(key=lambda row: (-float(row["gap_hours"]), str(row["sub_product"]), str(row["suite_code"]), str(row["class_id"])))
-    with summary_path.open("w", newline="", encoding="utf-8-sig") as handle:
-        writer = csv.DictWriter(
-            handle,
-            fieldnames=[
-                "class_id",
-                "class_name",
-                "sub_product",
-                "subject",
-                "suite_code",
-                "expected_hours",
-                "scheduled_hours",
-                "gap_hours",
-            ],
-        )
-        writer.writeheader()
-        writer.writerows(rows)
+    write_coverage_gap_summary(summary_path, rows)
     total_gap = sum(float(row["gap_hours"]) for row in rows)
     first = rows[0]
     raise RuntimeError(
