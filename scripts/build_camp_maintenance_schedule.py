@@ -44,8 +44,11 @@ from scripts.schedule_display import assignment_standard_lesson_count
 from scripts.schedule_modes import assignment_reference_class_id, assignment_schedule_mode
 from scripts.schedule_data import (
     infer_class_subject,
+    load_active_blackout_dates,
     load_class_metadata as raw_load_class_metadata,
+    load_room_maps as room_maps,
     load_room_names as raw_load_room_names,
+    load_teacher_maps as teacher_maps,
 )
 from scripts.schedule_first_lesson import (
     first_lesson_module_violations,
@@ -547,73 +550,6 @@ def normalize_subject(value: object) -> str:
     if subject.startswith("数学"):
         return "数学"
     return subject
-
-
-def teacher_maps(data_dir: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
-    by_id: Dict[str, str] = {}
-    by_name: Dict[str, str] = {}
-    for path in (data_dir / "teachers.csv", data_dir / "class_teacher_assignments.csv"):
-        if not path.exists():
-            continue
-        for row in read_csv_rows(path):
-            teacher_id = clean(row.get("id") or row.get("employee_id") or row.get("teacher_id"))
-            teacher_name = clean(row.get("name") or row.get("teacher_name"))
-            if teacher_id and teacher_name:
-                by_id.setdefault(teacher_id, teacher_name)
-                by_name.setdefault(teacher_name, teacher_id)
-    return by_id, by_name
-
-
-def room_maps(data_dir: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
-    by_id: Dict[str, str] = {}
-    by_name_candidates: Dict[str, List[str]] = defaultdict(list)
-    path = data_dir / "rooms.csv"
-    if not path.exists():
-        return by_id, {}
-    for row in read_csv_rows(path):
-        room_id = clean(row.get("id"))
-        room_name = clean(row.get("name"))
-        if not room_id or not room_name:
-            continue
-        by_id[room_id] = room_name
-        by_name_candidates[room_name].append(room_id)
-    by_name = {
-        room_name: ids[0]
-        for room_name, ids in by_name_candidates.items()
-        if len(ids) == 1
-    }
-    return by_id, by_name
-
-
-def parse_bool_value(value: object) -> bool:
-    text = str(value if value is not None else "").strip().lower()
-    return text in {"", "1", "true", "yes", "y", "是", "对"}
-
-
-def date_range_values(start: str, end: str) -> Set[str]:
-    if not start:
-        return set()
-    current = Date.fromisoformat(start)
-    last = Date.fromisoformat(end or start)
-    values: Set[str] = set()
-    while current <= last:
-        values.add(current.isoformat())
-        current += timedelta(days=1)
-    return values
-
-
-def load_active_blackout_dates(data_dir: Path) -> Set[str]:
-    path = data_dir / "global_blackout_dates.csv"
-    if not path.exists():
-        return set()
-    dates: Set[str] = set()
-    for row in read_csv_rows(path):
-        if not parse_bool_value(row.get("is_active", True)):
-            continue
-        start = clean(row.get("start_date"))
-        end = clean(row.get("end_date")) or start
-        dates.update(date_range_values(start, end))
-    return dates
 
 
 def without_blackout_dates(

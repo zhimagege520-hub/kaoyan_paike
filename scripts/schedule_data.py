@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+from datetime import date as Date, timedelta
+from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set, Tuple
 
 import scheduler
 from scripts.csv_utils import clean_cell, read_csv_rows
@@ -94,6 +96,27 @@ def load_room_name_to_id(path: Path) -> Dict[str, str]:
     return lookup
 
 
+def load_room_maps(path: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
+    rooms_path = _data_file(path, "rooms.csv")
+    if not rooms_path.exists():
+        return {}, {}
+    by_id: Dict[str, str] = {}
+    by_name_candidates: Dict[str, List[str]] = defaultdict(list)
+    for row in read_csv_rows(rooms_path):
+        room_id = clean_cell(row.get("id"))
+        room_name = clean_cell(row.get("name"))
+        if not room_id or not room_name:
+            continue
+        by_id[room_id] = room_name
+        by_name_candidates[room_name].append(room_id)
+    by_name = {
+        room_name: ids[0]
+        for room_name, ids in by_name_candidates.items()
+        if len(ids) == 1
+    }
+    return by_id, by_name
+
+
 def load_teacher_name_to_id(path: Path, require_six_digit: bool = True) -> Dict[str, str]:
     teachers_path = _data_file(path, "teachers.csv")
     if not teachers_path.exists():
@@ -108,6 +131,57 @@ def load_teacher_name_to_id(path: Path, require_six_digit: bool = True) -> Dict[
             continue
         lookup.setdefault(name, employee_id)
     return lookup
+
+
+def load_teacher_maps(path: Path) -> Tuple[Dict[str, str], Dict[str, str]]:
+    data_dir = path if path.is_dir() else path.parent
+    by_id: Dict[str, str] = {}
+    by_name: Dict[str, str] = {}
+    for file_name in ("teachers.csv", "class_teacher_assignments.csv"):
+        source = data_dir / file_name
+        if not source.exists():
+            continue
+        for row in read_csv_rows(source):
+            teacher_id = clean_cell(row.get("id") or row.get("employee_id") or row.get("teacher_id"))
+            teacher_name = clean_cell(row.get("name") or row.get("teacher_name"))
+            if teacher_id and teacher_name:
+                by_id.setdefault(teacher_id, teacher_name)
+                by_name.setdefault(teacher_name, teacher_id)
+    return by_id, by_name
+
+
+def date_range_values(start: str, end: str = "") -> Set[str]:
+    start = clean_cell(start)
+    end = clean_cell(end) or start
+    if not start:
+        return set()
+    current = Date.fromisoformat(start)
+    last = Date.fromisoformat(end)
+    values: Set[str] = set()
+    while current <= last:
+        values.add(current.isoformat())
+        current += timedelta(days=1)
+    return values
+
+
+def blackout_row_is_active(value: object) -> bool:
+    text = clean_cell(value).lower()
+    return text in {"", "1", "true", "yes", "y", "是", "对"}
+
+
+def load_active_blackout_dates(path: Path) -> Set[str]:
+    data_dir = path if path.is_dir() else path.parent
+    source = data_dir / "global_blackout_dates.csv"
+    if not source.exists():
+        return set()
+    dates: Set[str] = set()
+    for row in read_csv_rows(source):
+        if not blackout_row_is_active(row.get("is_active", True)):
+            continue
+        start = clean_cell(row.get("start_date"))
+        end = clean_cell(row.get("end_date")) or start
+        dates.update(date_range_values(start, end))
+    return dates
 
 
 SUBJECT_SUFFIXES = {
