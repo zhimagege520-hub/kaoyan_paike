@@ -199,42 +199,6 @@ def build_product_map_rows(
     return [grouped[key] for key in sorted(grouped)]
 
 
-def first_merge_code(value: Any) -> str:
-    codes = [item.strip() for item in str(value or "").replace("，", ",").split(",") if item.strip()]
-    return codes[0] if codes else ""
-
-
-def build_merge_rows(business_rows: Sequence[Mapping[str, Any]], historical_merge_rows: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
-    rows: List[Dict[str, Any]] = []
-    seen = set()
-    for row in business_rows:
-        detail = row_value(row, "合班详情")
-        class_id = row_value(row, "班级编码")
-        if not detail or not class_id:
-            continue
-        key = (class_id, first_merge_code(detail))
-        if key in seen:
-            continue
-        seen.add(key)
-        rows.append(
-            {
-                "source_class_id": class_id,
-                "scheduled_class_id": first_merge_code(detail),
-                "merge_type": "",
-                "subject": "",
-                "stage": "",
-                "course_module": "",
-                "course_group": "",
-                "start_date": "",
-                "end_date": "",
-                "notes": f"业务合班详情: {detail}；请填写 full 或 partial",
-            }
-        )
-    for row in historical_merge_rows:
-        rows.append(dict(row))
-    return rows
-
-
 def build_business_selection_rows(business_rows: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     for row in business_rows:

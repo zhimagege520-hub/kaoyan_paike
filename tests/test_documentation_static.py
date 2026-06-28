@@ -77,6 +77,16 @@ class DocumentationStaticTest(unittest.TestCase):
         self.assertIn("scripts/audit_schedule_quality.py", guide)
         self.assertIn("硬冲突和覆盖缺口必须处理", guide)
 
+    def test_share_and_template_do_not_reintroduce_merge_detail_table_language(self) -> None:
+        share = (ROOT / "share" / "ai-scheduling-project" / "index.html").read_text(encoding="utf-8")
+        template_source = (ROOT / "formal_template.py").read_text(encoding="utf-8")
+
+        self.assertIn("共享课表关系转成标准排课输入", share)
+        self.assertNotIn("合班" + "明细", share)
+        self.assertNotIn("build_" + "merge_" + "rows", template_source)
+        self.assertNotIn("first_" + "merge_" + "code", template_source)
+        self.assertNotIn("full" + " 或 " + "partial", template_source)
+
 
 if __name__ == "__main__":
     unittest.main()
