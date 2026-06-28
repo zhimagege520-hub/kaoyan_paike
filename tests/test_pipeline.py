@@ -2706,6 +2706,54 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(assignments[0].task.block_hours, 4)
         self.assertEqual(sum(slot.duration_hours for slot in assignments[0].candidate.slots), 4)
 
+    def test_parse_products_merges_top_level_and_inline_schedule_rules(self) -> None:
+        top_level_rules = scheduler.group_schedule_rules_by_product(
+            [
+                {
+                    "product_id": "P1",
+                    "season_window_id": "WINDOW_AUTUMN",
+                    "window_name": "秋季",
+                    "allowed_periods": ["AM"],
+                    "block_hours": 4,
+                }
+            ]
+        )
+        products = scheduler.parse_products(
+            [
+                {
+                    "id": "P1",
+                    "name": "秋季产品",
+                    "schedule_rules": [
+                        {
+                            "season_window_id": "WINDOW_AUTUMN",
+                            "window_name": "秋季",
+                            "course_group": "写作类",
+                            "allowed_periods": ["EVENING"],
+                            "block_hours": 2,
+                        }
+                    ],
+                    "requirements": [
+                        {
+                            "subject": "英语",
+                            "quarter": "秋季",
+                            "stage": "冲刺",
+                            "course_module": "写作",
+                            "course_group": "写作类",
+                            "total_hours": 4,
+                        }
+                    ],
+                }
+            ],
+            top_level_rules,
+        )
+
+        requirement = products["P1"].requirements[0]
+
+        self.assertEqual(requirement.block_hours, 2)
+        self.assertEqual([rule.block_hours for rule in requirement.schedule_rules], [2, 4])
+        self.assertEqual(requirement.schedule_rules[0].allowed_periods, {"EVENING"})
+        self.assertEqual(requirement.schedule_rules[1].allowed_periods, {"AM"})
+
     def test_scheduler_matches_product_rules_by_season_window(self) -> None:
         payload = {
             "time_slots": [

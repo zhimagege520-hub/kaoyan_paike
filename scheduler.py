@@ -985,44 +985,8 @@ def parse_products(
         if product_id in products:
             raise ValueError(f"重复的产品 id: {product_id}")
 
-        schedule_rules = [
-            *top_level_schedule_rules.get(product_id, []),
-            *[
-                parse_schedule_rule(raw_rule, f"产品 {product_id} 的排课规则")
-                for raw_rule in raw_product.get("schedule_rules", [])
-            ],
-        ]
-        requirements: List[ProductRequirement] = []
-        for raw_req in raw_product.get("requirements", []):
-            total_hours = int(raw_req["total_hours"])
-            matching_schedule_rules = find_schedule_rules(product_id, raw_req, schedule_rules)
-            block_hours = infer_requirement_block_hours(raw_req, total_hours, matching_schedule_rules)
-            validate_positive_hours(total_hours, block_hours, f"产品 {product_id}/{raw_req['subject']}/{raw_req.get('course_module', '')}")
-            allowed_periods = parse_period_set(raw_req.get("allowed_periods"), f"产品 {product_id}/allowed_periods")
-            allowed_weekdays = parse_weekday_set(raw_req.get("allowed_weekdays"), f"产品 {product_id}/allowed_weekdays")
-            excluded_weekdays = parse_weekday_set(raw_req.get("excluded_weekdays"), f"产品 {product_id}/excluded_weekdays")
-            requirements.append(
-                ProductRequirement(
-                    subject_category=raw_req.get("subject_category", ""),
-                    subject=raw_req["subject"],
-                    quarter=raw_req.get("quarter"),
-                    stage=raw_req.get("stage"),
-                    course_module=raw_req.get("course_module"),
-                    course_group=raw_req.get("course_group", raw_req.get("teacher_group")),
-                    total_hours=total_hours,
-                    block_hours=block_hours,
-                    course_code=blank_marker_to_empty(raw_req.get("course_code")),
-                    course_name=blank_marker_to_empty(raw_req.get("course_name")),
-                    room_ids=parse_id_set(raw_req, "room_ids"),
-                    start_date=validate_date(raw_req.get("start_date"), f"产品 {product_id}/start_date"),
-                    end_date=validate_date(raw_req.get("end_date"), f"产品 {product_id}/end_date"),
-                    allowed_periods=allowed_periods,
-                    allowed_weekdays=allowed_weekdays,
-                    excluded_weekdays=excluded_weekdays,
-                    schedule_rules=tuple(matching_schedule_rules),
-                )
-            )
-
+        schedule_rules = parse_product_schedule_rules(product_id, raw_product, top_level_schedule_rules)
+        requirements = parse_product_requirements(product_id, raw_product.get("requirements", []), schedule_rules)
         if not requirements:
             raise ValueError(f"产品 {product_id} 至少需要配置一条课程需求")
 
@@ -1033,6 +997,59 @@ def parse_products(
         )
 
     return products
+
+
+def parse_product_schedule_rules(
+    product_id: str,
+    raw_product: dict,
+    top_level_schedule_rules: Mapping[str, List[ScheduleRule]],
+) -> List[ScheduleRule]:
+    inline_rules = [
+        parse_schedule_rule(raw_rule, f"产品 {product_id} 的排课规则")
+        for raw_rule in raw_product.get("schedule_rules", [])
+    ]
+    return [*top_level_schedule_rules.get(product_id, []), *inline_rules]
+
+
+def parse_product_requirements(
+    product_id: str,
+    raw_requirements: List[dict],
+    schedule_rules: List[ScheduleRule],
+) -> List[ProductRequirement]:
+    return [
+        parse_product_requirement(product_id, raw_req, schedule_rules)
+        for raw_req in raw_requirements
+    ]
+
+
+def parse_product_requirement(
+    product_id: str,
+    raw_req: dict,
+    schedule_rules: List[ScheduleRule],
+) -> ProductRequirement:
+    total_hours = int(raw_req["total_hours"])
+    matching_schedule_rules = find_schedule_rules(product_id, raw_req, schedule_rules)
+    block_hours = infer_requirement_block_hours(raw_req, total_hours, matching_schedule_rules)
+    validate_positive_hours(total_hours, block_hours, f"产品 {product_id}/{raw_req['subject']}/{raw_req.get('course_module', '')}")
+    return ProductRequirement(
+        subject_category=raw_req.get("subject_category", ""),
+        subject=raw_req["subject"],
+        quarter=raw_req.get("quarter"),
+        stage=raw_req.get("stage"),
+        course_module=raw_req.get("course_module"),
+        course_group=raw_req.get("course_group", raw_req.get("teacher_group")),
+        total_hours=total_hours,
+        block_hours=block_hours,
+        course_code=blank_marker_to_empty(raw_req.get("course_code")),
+        course_name=blank_marker_to_empty(raw_req.get("course_name")),
+        room_ids=parse_id_set(raw_req, "room_ids"),
+        start_date=validate_date(raw_req.get("start_date"), f"产品 {product_id}/start_date"),
+        end_date=validate_date(raw_req.get("end_date"), f"产品 {product_id}/end_date"),
+        allowed_periods=parse_period_set(raw_req.get("allowed_periods"), f"产品 {product_id}/allowed_periods"),
+        allowed_weekdays=parse_weekday_set(raw_req.get("allowed_weekdays"), f"产品 {product_id}/allowed_weekdays"),
+        excluded_weekdays=parse_weekday_set(raw_req.get("excluded_weekdays"), f"产品 {product_id}/excluded_weekdays"),
+        schedule_rules=tuple(matching_schedule_rules),
+    )
 
 
 def positive_int(value: object) -> int:
