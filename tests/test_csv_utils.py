@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from scripts.csv_utils import (
+    csv_rows_text,
     clean_cell,
     read_csv_rows,
     read_csv_text_with_fieldnames,
@@ -48,6 +49,24 @@ class CsvUtilsTest(unittest.TestCase):
             write_csv_rows(path, ["id"], [{"id": "1"}], encoding="utf-8")
 
             self.assertFalse(path.read_bytes().startswith(b"\xef\xbb\xbf"))
+
+    def test_csv_rows_text_can_format_values_and_include_bom(self) -> None:
+        def formatter(value: object) -> str:
+            if isinstance(value, bool):
+                return "是" if value else "否"
+            if isinstance(value, list):
+                return "|".join(str(item) for item in value)
+            return str(value or "")
+
+        text = csv_rows_text(
+            ["id", "active", "tags"],
+            [{"id": "1", "active": True, "tags": ["A", "B"]}],
+            bom=True,
+            value_formatter=formatter,
+        )
+
+        self.assertTrue(text.startswith("\ufeff"))
+        self.assertIn("1,是,A|B", text)
 
     def test_write_csv_rows_can_raise_for_extra_fields(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

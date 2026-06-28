@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import html
 import json
 import re
@@ -12,12 +11,41 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Set, Tuple
 
+from scripts.csv_utils import write_csv_rows
 from scripts.field_utils import parse_bool, parse_bool_default
 from scripts.schedule_modes import assignment_is_shared
 
 
 VALID_PERIODS = {"AM", "PM", "EVENING"}
 PERIOD_ORDER = {"AM": 0, "PM": 1, "EVENING": 2}
+SCHEDULE_CSV_FIELDNAMES = [
+    "date",
+    "period",
+    "start_slot_id",
+    "start_slot_name",
+    "start_time",
+    "end_slot_id",
+    "end_slot_name",
+    "end_time",
+    "slot_ids",
+    "class_id",
+    "class_name",
+    "product_id",
+    "product_name",
+    "subject_category",
+    "subject",
+    "quarter",
+    "stage",
+    "course_module",
+    "course_group",
+    "teacher_id",
+    "teacher_name",
+    "room_id",
+    "room_name",
+    "teaching_area_id",
+    "duration_hours",
+    "source",
+]
 SEASON_WINDOW_ID_TO_NAME = {
     "WINDOW_WINTER": "寒假",
     "WINDOW_SPRING": "春季",
@@ -2495,73 +2523,41 @@ def greedy_schedule(
 
 
 def write_csv(assignments: List[Assignment], out_path: Path, schedule_input: Optional[ScheduleInput] = None) -> None:
-    with out_path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "date",
-                "period",
-                "start_slot_id",
-                "start_slot_name",
-                "start_time",
-                "end_slot_id",
-                "end_slot_name",
-                "end_time",
-                "slot_ids",
-                "class_id",
-                "class_name",
-                "product_id",
-                "product_name",
-                "subject_category",
-                "subject",
-                "quarter",
-                "stage",
-                "course_module",
-                "course_group",
-                "teacher_id",
-                "teacher_name",
-                "room_id",
-                "room_name",
-                "teaching_area_id",
-                "duration_hours",
-                "source",
-            ],
+    rows = []
+    for assignment in assignments:
+        slots = assignment.candidate.slots
+        room = schedule_input.rooms.get(assignment.candidate.room_id) if schedule_input else None
+        rows.append(
+            {
+                "date": slots[0].date,
+                "period": slots[0].period,
+                "start_slot_id": slots[0].id,
+                "start_slot_name": slots[0].name,
+                "start_time": slots[0].start_time or "",
+                "end_slot_id": slots[-1].id,
+                "end_slot_name": slots[-1].name,
+                "end_time": slots[-1].end_time or "",
+                "slot_ids": "|".join(slot.id for slot in slots),
+                "class_id": assignment.task.class_id,
+                "class_name": assignment.task.class_name,
+                "product_id": assignment.task.product_id or "",
+                "product_name": assignment.task.product_name or "",
+                "subject_category": assignment.task.subject_category,
+                "subject": assignment.task.subject,
+                "quarter": assignment.task.quarter or "",
+                "stage": assignment.task.stage or "",
+                "course_module": assignment.task.course_module or "",
+                "course_group": assignment.task.course_group or "",
+                "teacher_id": assignment.candidate.teacher_id,
+                "teacher_name": assignment.candidate.teacher_name,
+                "room_id": assignment.candidate.room_id,
+                "room_name": room.name if room else "",
+                "teaching_area_id": room.teaching_area_id if room else "",
+                "duration_hours": sum(slot.duration_hours for slot in slots),
+                "source": "locked" if assignment.task.is_locked else "generated",
+            }
         )
-        writer.writeheader()
-
-        for assignment in assignments:
-            slots = assignment.candidate.slots
-            room = schedule_input.rooms.get(assignment.candidate.room_id) if schedule_input else None
-            writer.writerow(
-                {
-                    "date": slots[0].date,
-                    "period": slots[0].period,
-                    "start_slot_id": slots[0].id,
-                    "start_slot_name": slots[0].name,
-                    "start_time": slots[0].start_time or "",
-                    "end_slot_id": slots[-1].id,
-                    "end_slot_name": slots[-1].name,
-                    "end_time": slots[-1].end_time or "",
-                    "slot_ids": "|".join(slot.id for slot in slots),
-                    "class_id": assignment.task.class_id,
-                    "class_name": assignment.task.class_name,
-                    "product_id": assignment.task.product_id or "",
-                    "product_name": assignment.task.product_name or "",
-                    "subject_category": assignment.task.subject_category,
-                    "subject": assignment.task.subject,
-                    "quarter": assignment.task.quarter or "",
-                    "stage": assignment.task.stage or "",
-                    "course_module": assignment.task.course_module or "",
-                    "course_group": assignment.task.course_group or "",
-                    "teacher_id": assignment.candidate.teacher_id,
-                    "teacher_name": assignment.candidate.teacher_name,
-                    "room_id": assignment.candidate.room_id,
-                    "room_name": room.name if room else "",
-                    "teaching_area_id": room.teaching_area_id if room else "",
-                    "duration_hours": sum(slot.duration_hours for slot in slots),
-                    "source": "locked" if assignment.task.is_locked else "generated",
-                }
-            )
+    write_csv_rows(out_path, SCHEDULE_CSV_FIELDNAMES, rows, encoding="utf-8", extrasaction="raise")
 
 
 def write_html(assignments: List[Assignment], schedule_input: ScheduleInput, out_path: Path) -> None:

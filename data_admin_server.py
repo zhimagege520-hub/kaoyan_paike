@@ -19,6 +19,7 @@ from types import SimpleNamespace
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from urllib.parse import unquote, urlparse
 
+from scripts.csv_utils import csv_rows_text, write_csv_rows
 from scripts.field_utils import normalize_text, parse_bool as normalize_bool, split_pipe_values as split_id_list
 from scripts.schedule_modes import (
     assignment_is_shared,
@@ -396,21 +397,11 @@ def csv_escape(value: Any) -> str:
 
 
 def write_csv(path: Path, rows: List[Dict[str, Any]], fieldnames: List[str]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({field: csv_escape(row.get(field, "")) for field in fieldnames})
+    write_csv_rows(path, fieldnames, rows, encoding="utf-8", value_formatter=csv_escape)
 
 
 def csv_text(rows: List[Dict[str, Any]], fieldnames: List[str]) -> str:
-    handle = io.StringIO(newline="")
-    writer = csv.DictWriter(handle, fieldnames=fieldnames)
-    writer.writeheader()
-    for row in rows:
-        writer.writerow({field: csv_escape(row.get(field, "")) for field in fieldnames})
-    return "\ufeff" + handle.getvalue()
+    return csv_rows_text(fieldnames, rows, bom=True, value_formatter=csv_escape)
 
 
 def unique_list(values: Iterable[str]) -> List[str]:
