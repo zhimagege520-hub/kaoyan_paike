@@ -9,6 +9,7 @@ import sys
 from datetime import date as Date
 from dataclasses import dataclass, field
 from pathlib import Path
+from string import Template
 from typing import Dict, List, Mapping, Optional, Set, Tuple
 
 from scripts.csv_utils import write_csv_rows
@@ -2564,6 +2565,186 @@ class ScheduleHtmlView:
     colors: Dict[str, str]
 
 
+SCHEDULE_HTML_CSS_TEMPLATE = Template(
+    """
+    :root {
+      --grid-columns: repeat($slot_count, minmax(132px, 1fr));
+      --border: #d7dce2;
+      --muted: #607086;
+      --text: #1b2636;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    header {
+      padding: 24px 28px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    main { padding: 20px 28px 28px; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 14px;
+      font-size: 14px;
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+    }
+    .legend-item i {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+    .timeline {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      background: var(--panel);
+    }
+    .grid {
+      min-width: ${grid_min_width}px;
+      display: grid;
+      grid-template-columns: 168px var(--grid-columns);
+    }
+    .corner,
+    .slot-header,
+    .class-label {
+      border-bottom: 1px solid var(--border);
+      background: #fbfcfd;
+    }
+    .corner,
+    .class-label {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      border-right: 1px solid var(--border);
+    }
+    .corner {
+      top: 0;
+      min-height: 64px;
+      padding: 16px;
+      font-weight: 700;
+    }
+    .slot-header {
+      min-height: 64px;
+      padding: 10px 8px;
+      border-right: 1px solid var(--border);
+      font-size: 13px;
+      text-align: center;
+    }
+    .slot-header span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+    }
+    .slot-header em {
+      display: block;
+      margin-top: 3px;
+      color: #344256;
+      font-size: 12px;
+      font-style: normal;
+    }
+    .class-label {
+      min-height: 76px;
+      padding: 14px 12px;
+      font-weight: 700;
+    }
+    .class-label small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .class-track {
+      position: relative;
+      min-height: 76px;
+      display: grid;
+      grid-template-columns: var(--grid-columns);
+      grid-column: 2 / -1;
+      border-bottom: 1px solid var(--border);
+      background:
+        repeating-linear-gradient(
+          to right,
+          transparent 0,
+          transparent calc(100% / $safe_slot_count - 1px),
+          var(--border) calc(100% / $safe_slot_count - 1px),
+          var(--border) calc(100% / $safe_slot_count)
+        );
+    }
+    .bar {
+      align-self: center;
+      min-height: 52px;
+      margin: 8px 6px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(27, 38, 54, 0.12);
+      overflow: hidden;
+    }
+    .bar strong,
+    .bar span {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bar strong { font-size: 14px; }
+    .bar span {
+      margin-top: 4px;
+      font-size: 12px;
+      opacity: 0.92;
+    }
+    .table-wrap {
+      margin-top: 18px;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      background: var(--panel);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 860px;
+    }
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      font-size: 14px;
+    }
+    th {
+      background: #fbfcfd;
+      color: var(--muted);
+      font-weight: 700;
+    }
+"""
+)
+
+
 def build_schedule_html_view(assignments: List[Assignment], schedule_input: ScheduleInput) -> ScheduleHtmlView:
     slots = list(schedule_input.time_slots)
     slot_index = {slot.id: index + 1 for index, slot in enumerate(slots)}
@@ -2606,207 +2787,58 @@ def build_schedule_html_view(assignments: List[Assignment], schedule_input: Sche
     )
 
 
-def write_html(assignments: List[Assignment], schedule_input: ScheduleInput, out_path: Path) -> None:
-    view = build_schedule_html_view(assignments, schedule_input)
-    slot_columns = "\n".join(
+def render_schedule_html_styles(view: ScheduleHtmlView) -> str:
+    return SCHEDULE_HTML_CSS_TEMPLATE.substitute(
+        slot_count=len(view.slots),
+        grid_min_width=max(760, len(view.slots) * 132 + 168),
+        safe_slot_count=max(len(view.slots), 1),
+    )
+
+
+def render_slot_headers(slots: List[TimeSlot]) -> str:
+    return "\n".join(
         (
             f'<div class="slot-header"><strong>{escape(slot.date)}</strong>'
             f'<span>{escape(slot.name)}</span>'
             f'<em>{escape(format_slot_time(slot))}</em></div>'
         )
-        for slot in view.slots
+        for slot in slots
     )
-    rows = "\n".join(
-        render_class_row(cls, view.assignments_by_class[cls.id], view.slot_index, view.colors)
-        for cls in view.classes
-    )
-    legend = "\n".join(
+
+
+def render_schedule_legend(view: ScheduleHtmlView) -> str:
+    return "\n".join(
         f'<span class="legend-item"><i style="background:{escape(view.colors[subject])}"></i>{escape(subject)}</span>'
         for subject in view.subjects
     )
 
-    out_path.write_text(
-        f"""<!doctype html>
+
+def render_schedule_timeline(view: ScheduleHtmlView) -> str:
+    slot_columns = render_slot_headers(view.slots)
+    rows = "\n".join(
+        render_class_row(cls, view.assignments_by_class[cls.id], view.slot_index, view.colors)
+        for cls in view.classes
+    )
+    return f"""
+    <section class="timeline">
+      <div class="grid">
+        <div class="corner">班级 / 课节</div>
+        {slot_columns}
+        {rows}
+      </div>
+    </section>
+"""
+
+
+def render_schedule_html_document(view: ScheduleHtmlView, assignments: List[Assignment]) -> str:
+    return f"""<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>班级课表甘特图</title>
   <style>
-    :root {{
-      --grid-columns: repeat({len(view.slots)}, minmax(132px, 1fr));
-      --border: #d7dce2;
-      --muted: #607086;
-      --text: #1b2636;
-      --bg: #f6f7f9;
-      --panel: #ffffff;
-    }}
-    * {{ box-sizing: border-box; }}
-    body {{
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }}
-    header {{
-      padding: 24px 28px 14px;
-      border-bottom: 1px solid var(--border);
-      background: var(--panel);
-    }}
-    h1 {{
-      margin: 0 0 8px;
-      font-size: 24px;
-      font-weight: 700;
-      letter-spacing: 0;
-    }}
-    .summary {{
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      color: var(--muted);
-      font-size: 14px;
-    }}
-    main {{ padding: 20px 28px 28px; }}
-    .legend {{
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-bottom: 14px;
-      font-size: 14px;
-    }}
-    .legend-item {{
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--muted);
-    }}
-    .legend-item i {{
-      width: 12px;
-      height: 12px;
-      border-radius: 3px;
-      display: inline-block;
-    }}
-    .timeline {{
-      overflow-x: auto;
-      border: 1px solid var(--border);
-      background: var(--panel);
-    }}
-    .grid {{
-      min-width: {max(760, len(view.slots) * 132 + 168)}px;
-      display: grid;
-      grid-template-columns: 168px var(--grid-columns);
-    }}
-    .corner,
-    .slot-header,
-    .class-label {{
-      border-bottom: 1px solid var(--border);
-      background: #fbfcfd;
-    }}
-    .corner,
-    .class-label {{
-      position: sticky;
-      left: 0;
-      z-index: 3;
-      border-right: 1px solid var(--border);
-    }}
-    .corner {{
-      top: 0;
-      min-height: 64px;
-      padding: 16px;
-      font-weight: 700;
-    }}
-    .slot-header {{
-      min-height: 64px;
-      padding: 10px 8px;
-      border-right: 1px solid var(--border);
-      font-size: 13px;
-      text-align: center;
-    }}
-    .slot-header span {{
-      display: block;
-      margin-top: 4px;
-      color: var(--muted);
-    }}
-    .slot-header em {{
-      display: block;
-      margin-top: 3px;
-      color: #344256;
-      font-size: 12px;
-      font-style: normal;
-    }}
-    .class-label {{
-      min-height: 76px;
-      padding: 14px 12px;
-      font-weight: 700;
-    }}
-    .class-label small {{
-      display: block;
-      margin-top: 4px;
-      color: var(--muted);
-      font-weight: 500;
-    }}
-    .class-track {{
-      position: relative;
-      min-height: 76px;
-      display: grid;
-      grid-template-columns: var(--grid-columns);
-      grid-column: 2 / -1;
-      border-bottom: 1px solid var(--border);
-      background:
-        repeating-linear-gradient(
-          to right,
-          transparent 0,
-          transparent calc(100% / {max(len(view.slots), 1)} - 1px),
-          var(--border) calc(100% / {max(len(view.slots), 1)} - 1px),
-          var(--border) calc(100% / {max(len(view.slots), 1)})
-        );
-    }}
-    .bar {{
-      align-self: center;
-      min-height: 52px;
-      margin: 8px 6px;
-      padding: 8px 10px;
-      border-radius: 6px;
-      color: #fff;
-      box-shadow: 0 2px 8px rgba(27, 38, 54, 0.12);
-      overflow: hidden;
-    }}
-    .bar strong,
-    .bar span {{
-      display: block;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }}
-    .bar strong {{ font-size: 14px; }}
-    .bar span {{
-      margin-top: 4px;
-      font-size: 12px;
-      opacity: 0.92;
-    }}
-    .table-wrap {{
-      margin-top: 18px;
-      overflow-x: auto;
-      border: 1px solid var(--border);
-      background: var(--panel);
-    }}
-    table {{
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 860px;
-    }}
-    th,
-    td {{
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      text-align: left;
-      font-size: 14px;
-    }}
-    th {{
-      background: #fbfcfd;
-      color: var(--muted);
-      font-weight: 700;
-    }}
+{render_schedule_html_styles(view)}
   </style>
 </head>
 <body>
@@ -2819,21 +2851,18 @@ def write_html(assignments: List[Assignment], schedule_input: ScheduleInput, out
     </div>
   </header>
   <main>
-    <div class="legend">{legend}</div>
-    <section class="timeline">
-      <div class="grid">
-        <div class="corner">班级 / 课节</div>
-        {slot_columns}
-        {rows}
-      </div>
-    </section>
+    <div class="legend">{render_schedule_legend(view)}</div>
+    {render_schedule_timeline(view)}
     {render_assignment_table(assignments)}
   </main>
 </body>
 </html>
-""",
-        encoding="utf-8",
-    )
+"""
+
+
+def write_html(assignments: List[Assignment], schedule_input: ScheduleInput, out_path: Path) -> None:
+    view = build_schedule_html_view(assignments, schedule_input)
+    out_path.write_text(render_schedule_html_document(view, assignments), encoding="utf-8")
 
 
 def build_subject_colors(subjects: List[str]) -> Dict[str, str]:

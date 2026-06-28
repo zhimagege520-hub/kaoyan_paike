@@ -3047,6 +3047,13 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(html_view.subjects, ["英语"])
         self.assertIn("英语", html_view.colors)
         self.assertEqual(html_view.assignments_by_class["C_LOCKED"], [assignment])
+        html_document = scheduler.render_schedule_html_document(html_view, [assignment])
+
+        self.assertIn("班级 1 个", html_document)
+        self.assertIn("课程块 1 个", html_document)
+        self.assertIn("课节 1 个", html_document)
+        self.assertIn("min-width: 760px", html_document)
+        self.assertEqual(html_document.count('<section class="timeline">'), 1)
 
         with tempfile.TemporaryDirectory() as tmp:
             out_path = Path(tmp) / "schedule.html"
