@@ -1455,9 +1455,7 @@ def normalize_class_conflict_group(group: Dict[str, Any]) -> Dict[str, Any]:
         "suite_code": normalize_text(group.get("suite_code")),
         "class_ids": split_id_list(group.get("class_ids")),
         "is_conflict_group_active": is_active,
-        "is_active": is_active,
         "conflict_source": conflict_source,
-        "source": conflict_source,
         "notes": normalize_text(group.get("notes")),
     }
 
@@ -2098,8 +2096,8 @@ def build_suite_conflict_groups(classes: List[Dict[str, Any]]) -> List[Dict[str,
                 "exam_season": exam_season,
                 "suite_code": suite_code,
                 "class_ids": [],
-                "is_active": True,
-                "source": "套班编码",
+                "is_conflict_group_active": True,
+                "conflict_source": "套班编码",
                 "notes": "按套班编码自动生成",
             },
         )

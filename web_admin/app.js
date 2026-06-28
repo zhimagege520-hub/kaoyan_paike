@@ -6509,12 +6509,6 @@ function handleValueChange(target, event = null) {
       value = arrayValues(value);
     }
     setByIndex(listName, rowIndex, field, value);
-    if (listName === "class_conflict_groups") {
-      const item = state.class_conflict_groups[rowIndex];
-      if (!item) return;
-      if (field === "is_conflict_group_active") item.is_active = value;
-      if (field === "conflict_source") item.source = value;
-    }
     if (listName === "class_window_boundaries") {
       const item = state.class_window_boundaries[rowIndex];
       if (!item) return;

@@ -827,10 +827,42 @@ class SchedulingPipelineTest(unittest.TestCase):
         group = state["class_conflict_groups"][0]
 
         self.assertFalse(group["is_conflict_group_active"])
-        self.assertFalse(group["is_active"])
         self.assertEqual("当前字段", group["conflict_source"])
-        self.assertEqual("当前字段", group["source"])
+        self.assertNotIn("is_active", group)
+        self.assertNotIn("source", group)
         self.assertEqual([], data_admin_server.scheduler_conflict_groups(state, state["classes"], []))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            data_admin_server.DATA_DIR = Path(tmp) / "data"
+            data_admin_server.save_state(payload)
+            document = json.loads((data_admin_server.DATA_DIR / "class_conflict_groups.json").read_text(encoding="utf-8"))
+            saved_group = document["class_conflict_groups"][0]
+            with (data_admin_server.DATA_DIR / "class_conflict_groups.csv").open(encoding="utf-8") as handle:
+                header = next(csv.reader(handle))
+
+        self.assertIn("is_conflict_group_active", saved_group)
+        self.assertIn("conflict_source", saved_group)
+        self.assertNotIn("is_active", saved_group)
+        self.assertNotIn("source", saved_group)
+        self.assertIn("is_conflict_group_active", header)
+        self.assertIn("conflict_source", header)
+        self.assertNotIn("is_active", header)
+        self.assertNotIn("source", header)
+
+    def test_generated_suite_conflict_groups_use_current_fields_only(self) -> None:
+        groups = data_admin_server.build_suite_conflict_groups(
+            [
+                {"id": "C1", "name": "一班", "suite_code": "2701", "exam_season": "27"},
+                {"id": "C2", "name": "二班", "suite_code": "2701", "exam_season": "27"},
+            ]
+        )
+
+        self.assertEqual(1, len(groups))
+        group = groups[0]
+        self.assertTrue(group["is_conflict_group_active"])
+        self.assertEqual("套班编码", group["conflict_source"])
+        self.assertNotIn("is_active", group)
+        self.assertNotIn("source", group)
 
     def test_historical_lesson_fieldnames_are_separate_from_locked_schedule(self) -> None:
         self.assertEqual(data_admin_server.HISTORICAL_SCHEDULED_LESSON_FIELDNAMES, TABLE_FIELDNAMES["historical_scheduled_lessons"])

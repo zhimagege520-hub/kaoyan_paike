@@ -314,8 +314,12 @@ def enrich_rows(key: str, rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 row["local_product_id"] = normalize_text(row.get("canonical_product_id"))
             row.pop("canonical_product_id", None)
         elif key == "class_conflict_groups":
-            row["is_active"] = row.get("is_conflict_group_active", True)
-            row["source"] = row.get("conflict_source", "")
+            if row.get("is_conflict_group_active") in ("", None):
+                row["is_conflict_group_active"] = row.get("is_active", True)
+            if not normalize_text(row.get("conflict_source")):
+                row["conflict_source"] = normalize_text(row.get("source")) or "手动"
+            row.pop("is_active", None)
+            row.pop("source", None)
         elif key == "class_teacher_assignments":
             enriched.append(current_teacher_assignment_template_row(row))
             continue

@@ -105,11 +105,11 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertIn('data-field="conflict_source"', source)
         self.assertIn("conflictGroupIsActive(group)", source)
         self.assertIn("conflictGroupSource(group)", source)
-        self.assertIn('if (field === "is_conflict_group_active") item.is_active = value;', source)
-        self.assertIn('if (field === "conflict_source") item.source = value;', source)
         self.assertIn("is_conflict_group_active: true", source)
         self.assertIn('conflict_source: "手动"', source)
         self.assertIn('conflict_source: "套班编码"', source)
+        self.assertNotIn('if (field === "is_conflict_group_active") item.is_active = value;', source)
+        self.assertNotIn('if (field === "conflict_source") item.source = value;', source)
         self.assertNotIn(
             'data-list="class_conflict_groups" data-index="${index}" data-field="is_active"',
             source,
