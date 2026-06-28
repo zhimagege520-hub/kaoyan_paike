@@ -2326,9 +2326,13 @@ function renderTimeData() {
   const usableCount = timeSlots.filter((slot) => slot.is_usable !== false).length;
   const unusableCount = timeSlots.length - usableCount;
   const activeBlackouts = blackoutRows.filter((item) => item.is_active !== false).length;
+  const slotDates = timeSlots.map((slot) => slot.date).filter(Boolean).sort();
+  const slotRangeLabel = slotDates.length
+    ? `${slotDates[0]} 至 ${slotDates[slotDates.length - 1]} 的课节`
+    : "按年度窗口生成的课节";
   const windowStats = [
     ["年度窗口", windows.length, "按年份+季节生成的排课窗口", ""],
-    ["课节明细", timeSlots.length, "从 2026-07-01 到 2027-12-21 的课节", ""],
+    ["课节明细", timeSlots.length, slotRangeLabel, ""],
     ["可用课节", usableCount, "默认可参与排课的课节", ""],
     ["不可用课节", unusableCount, "周一/周日规则、节假日或人工停课", unusableCount ? "warning" : ""],
     ["全局停课", activeBlackouts, "影响所有产品和课节池", activeBlackouts ? "warning" : ""],

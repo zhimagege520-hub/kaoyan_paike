@@ -61,6 +61,13 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertIn("same_half_day_4h_same_teacher_required: blockHours >= 4", body)
         self.assertIn('"RULE_WYQ_WINTER_WEEKEND_DAY"', body)
 
+    def test_time_slot_summary_uses_current_slot_range(self) -> None:
+        source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn("const slotRangeLabel = slotDates.length", source)
+        self.assertIn('["课节明细", timeSlots.length, slotRangeLabel, ""]', source)
+        self.assertNotIn("从 2026-07-01 到 2027-12-21 的课节", source)
+
 
 if __name__ == "__main__":
     unittest.main()
