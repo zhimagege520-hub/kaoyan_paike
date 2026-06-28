@@ -36,6 +36,13 @@ class DocumentationStaticTest(unittest.TestCase):
         self.assertNotIn("教师可用课节", readme)
         self.assertIn("教师不可排例外过多，或班级排课窗口过窄", readme)
 
+    def test_readme_describes_schedule_range_as_template_driven(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+        self.assertNotIn("当前排课范围按 `2026-07-01` 到 `2026-12-13` 处理", readme)
+        self.assertNotIn("157 个可排课日期、785 个可用课节", readme)
+        self.assertIn("正式排课范围以 `01_年度排课窗口表`、`02_课节表` 和 `11_班级排课窗口表` 为准", readme)
+
 
 if __name__ == "__main__":
     unittest.main()

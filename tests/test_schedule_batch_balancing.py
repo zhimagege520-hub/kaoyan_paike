@@ -1658,6 +1658,10 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
         self.assertEqual(payload["constraints"][0]["room_names"], "101教室 / 103教室")
         self.assertNotIn("checkin_date", payload["constraints"][0])
         self.assertNotIn("checkout_date", payload["constraints"][0])
+        self.assertIn("默认展示当前结果的完整日期范围", html_text)
+        self.assertNotIn("默认展示 2026-06-25 至 2026-12-13", html_text)
+        self.assertNotIn("DEFAULT_START_DATE", html_text)
+        self.assertNotIn("DEFAULT_END_DATE", html_text)
         ids = re.findall(r'id="([^"]+)"', html_text)
         duplicate_ids = [item for item, count in Counter(ids).items() if count > 1]
         self.assertEqual(duplicate_ids, [])

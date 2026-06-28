@@ -265,7 +265,7 @@ def write_day_table_html(
 <body>
 <main>
 	  <h1 id="pageTitle"></h1>
-		  <p class="meta">横向为日期，纵向为标准课节；班级课表与老师每日课表分开维护筛选，默认展示 2026-06-25 至 2026-12-13。</p>
+		  <p class="meta">横向为日期，纵向为标准课节；班级课表与老师每日课表分开维护筛选，默认展示当前结果的完整日期范围。</p>
 	  <section class="toolbar">
 	    <div class="filter-actions">
 	      <div class="view-tabs" aria-label="内容视图">
@@ -410,8 +410,6 @@ def write_day_table_html(
 <script id="schedulePayload" type="application/json">__PAYLOAD__</script>
 <script>
 	const payload = JSON.parse(document.getElementById("schedulePayload").textContent);
-	const DEFAULT_START_DATE = "2026-06-25";
-	const DEFAULT_END_DATE = "2026-12-13";
 	const periodLabels = Object.fromEntries(payload.periods.map((period) => [period.id, period.label]));
 	const slotRows = payload.slotRows || payload.periods.map((period) => ({ ...period, start_time: "", end_time: "" }));
 const weekdayLabels = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
@@ -483,35 +481,36 @@ function escapeHtml(value) {
   })[char]);
 }
 
-const stageDateRanges = {
-  "寒假": ["2026-01-01", "2026-02-28"],
-  "春季": ["2026-03-01", "2026-06-30"],
-  "暑假": ["2026-07-01", "2026-08-31"],
-  "秋季": ["2026-09-01", "2026-12-31"],
-};
-
 	const quickDateRanges = {
 	  default: () => [defaultStartDate(), defaultEndDate()],
-	  summer: () => ["2026-07-01", "2026-08-31"],
-	  autumn: () => ["2026-09-01", "2026-12-13"],
+	  summer: () => seasonRange(7, 8),
+	  autumn: () => seasonRange(9, 12),
 	  all: () => [payload.dates[0] || "", payload.dates[payload.dates.length - 1] || ""],
 };
 
+const stageMonthRanges = {
+  "寒假": [1, 2],
+  "春季": [3, 6],
+  "暑假": [7, 8],
+  "秋季": [9, 12],
+};
+
 function defaultStartDate() {
-  const first = payload.dates[0] || "";
-  const last = payload.dates[payload.dates.length - 1] || "";
-  if (!first || !last) return "";
-  if (DEFAULT_START_DATE < first || DEFAULT_START_DATE > last) return first;
-	  return DEFAULT_START_DATE;
+  return payload.dates[0] || "";
 	}
 
 	function defaultEndDate() {
-	  const first = payload.dates[0] || "";
-	  const last = payload.dates[payload.dates.length - 1] || "";
-	  if (!first || !last) return "";
-	  if (DEFAULT_END_DATE < first || DEFAULT_END_DATE > last) return last;
-	  return DEFAULT_END_DATE;
+	  return payload.dates[payload.dates.length - 1] || "";
 	}
+
+function seasonRange(startMonth, endMonth) {
+  const matching = (payload.dates || []).filter((date) => {
+    const month = Number(String(date).slice(5, 7));
+    return month >= startMonth && month <= endMonth;
+  });
+  if (!matching.length) return quickDateRanges.all();
+  return [matching[0], matching[matching.length - 1]];
+}
 
 	function requestRender() {
 	  window.clearTimeout(renderTimer);
@@ -526,8 +525,9 @@ function applyDateRange(rangeKey, startInput = startDateInput, endInput = endDat
 }
 
 function applyStageDateRange() {
-  const range = stageDateRanges[stageSelect.value];
-  if (range) {
+  const months = stageMonthRanges[stageSelect.value];
+  const range = months ? seasonRange(months[0], months[1]) : null;
+  if (range && range[0] && range[1]) {
     startDateInput.value = range[0];
     endDateInput.value = range[1];
     return;
