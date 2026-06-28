@@ -39,6 +39,11 @@ done < <(find scripts -name "*.py" -print | sort)
 
 run "$PYTHON_BIN" scripts/audit_release_package.py --root "$ROOT_DIR"
 
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  run git archive --format=zip -o "$WORK_DIR/release_package_audit.zip" HEAD
+  run "$PYTHON_BIN" scripts/audit_release_package.py --zip "$WORK_DIR/release_package_audit.zip"
+fi
+
 run "$PYTHON_BIN" -m unittest discover -v
 
 run "$PYTHON_BIN" scheduler.py \
