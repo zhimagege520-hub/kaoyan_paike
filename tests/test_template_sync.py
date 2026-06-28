@@ -15,7 +15,13 @@ from scripts.sync_template_workbook_to_admin_data import (
     standard_output_rows,
     write_csv,
 )
-from scripts.template_tables import TEMPLATE_SHEET_ALIASES, TEMPLATE_SHEETS
+from scripts.template_tables import (
+    BUSINESS_SOURCE_TABLES,
+    TEMPLATE_SHEET_ALIASES,
+    TEMPLATE_SHEETS,
+    build_table_aliases,
+    table_name_for,
+)
 
 
 class TemplateSyncTest(unittest.TestCase):
@@ -26,6 +32,17 @@ class TemplateSyncTest(unittest.TestCase):
         self.assertEqual(len(SHEETS), len(set(SHEETS.values())))
         for canonical_sheet in SHEET_ALIASES:
             self.assertIn(canonical_sheet, SHEETS)
+
+    def test_shared_table_aliases_cover_templates_and_business_exports(self) -> None:
+        aliases = build_table_aliases([*data_admin_server.STANDARD_TABLE_FIELDNAMES, *BUSINESS_SOURCE_TABLES])
+
+        self.assertEqual("class_window_boundaries", table_name_for("11_班级排课窗口表", aliases))
+        self.assertEqual("class_window_boundaries", table_name_for("11_班级窗口边界表", aliases))
+        self.assertEqual("business_product_mappings", table_name_for("18_业务产品映射表", aliases))
+        self.assertEqual("business_classes", table_name_for("班级查询导出.xlsx", aliases))
+        self.assertEqual("scheduled_lessons", table_name_for("6月配课明细.xlsx", aliases))
+        self.assertEqual("locked_scheduled_lessons", table_name_for("锁定课表.csv", aliases))
+        self.assertIsNone(table_name_for("随手整理草稿.csv", aliases))
 
     def test_class_teacher_assignment_sync_outputs_current_fields_only(self) -> None:
         rows = enrich_rows(
