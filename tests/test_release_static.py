@@ -38,6 +38,21 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIn("schedule_coverage_audit_verify_run.md", script)
         self.assertIn("schedule_quality_report_verify_run.md", script)
 
+    def test_shared_schedule_modules_use_csv_utils_for_csv_io(self) -> None:
+        modules = [
+            ROOT / "scripts" / "schedule_data.py",
+            ROOT / "scripts" / "schedule_class_windows.py",
+            ROOT / "scripts" / "schedule_conflicts.py",
+            ROOT / "scripts" / "schedule_scope.py",
+        ]
+        offenders = []
+        for path in modules:
+            source = path.read_text(encoding="utf-8")
+            if "import csv" in source or "csv." in source or "scripts.csv_utils" not in source:
+                offenders.append(str(path.relative_to(ROOT)))
+
+        self.assertEqual([], offenders)
+
 
 if __name__ == "__main__":
     unittest.main()

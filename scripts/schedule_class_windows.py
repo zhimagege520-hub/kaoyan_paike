@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import csv
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional, Set
 
 import scheduler
+from scripts.csv_utils import read_csv_rows
 from scripts.schedule_data import load_room_metadata
 from scripts.schedule_scope import normalize_date
 
@@ -174,16 +174,15 @@ def load_class_window_constraints(
         return {}
     room_ids_by_area = room_ids_by_area if room_ids_by_area is not None else room_ids_by_area_for_path(path)
     by_class: Dict[str, List[ClassWindowConstraint]] = {}
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            class_id = (row.get("class_id") or "").strip()
-            if not class_id or (class_ids and class_id not in class_ids):
-                continue
-            if included_only and not is_enabled(row.get("is_class_window_included") or ""):
-                continue
-            if not class_window_matches(row, schedule_window_ids, season_window_ids):
-                continue
-            by_class.setdefault(class_id, []).append(row_to_constraint(row, room_ids_by_area))
+    for row in read_csv_rows(path):
+        class_id = (row.get("class_id") or "").strip()
+        if not class_id or (class_ids and class_id not in class_ids):
+            continue
+        if included_only and not is_enabled(row.get("is_class_window_included") or ""):
+            continue
+        if not class_window_matches(row, schedule_window_ids, season_window_ids):
+            continue
+        by_class.setdefault(class_id, []).append(row_to_constraint(row, room_ids_by_area))
     return {
         class_id: merge_constraints(constraints)
         for class_id, constraints in by_class.items()
@@ -202,16 +201,15 @@ def load_class_window_constraint_items(
         return {}
     room_ids_by_area = room_ids_by_area if room_ids_by_area is not None else room_ids_by_area_for_path(path)
     by_class: Dict[str, List[ClassWindowConstraint]] = {}
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            class_id = (row.get("class_id") or "").strip()
-            if not class_id or (class_ids and class_id not in class_ids):
-                continue
-            if included_only and not is_enabled(row.get("is_class_window_included") or ""):
-                continue
-            if not class_window_matches(row, schedule_window_ids, season_window_ids):
-                continue
-            by_class.setdefault(class_id, []).append(row_to_constraint(row, room_ids_by_area))
+    for row in read_csv_rows(path):
+        class_id = (row.get("class_id") or "").strip()
+        if not class_id or (class_ids and class_id not in class_ids):
+            continue
+        if included_only and not is_enabled(row.get("is_class_window_included") or ""):
+            continue
+        if not class_window_matches(row, schedule_window_ids, season_window_ids):
+            continue
+        by_class.setdefault(class_id, []).append(row_to_constraint(row, room_ids_by_area))
     for constraints in by_class.values():
         constraints.sort(
             key=lambda constraint: (

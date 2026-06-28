@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import csv
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import scheduler
+from scripts.csv_utils import write_csv_rows
 
 
 def clean(value: object) -> str:
@@ -133,7 +133,6 @@ def write_teacher_time_conflicts_csv(
     room_names: Optional[Dict[str, str]] = None,
 ) -> None:
     room_names = room_names or {}
-    path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "teacher_id",
         "teacher_name",
@@ -147,28 +146,27 @@ def write_teacher_time_conflicts_csv(
         "rooms",
         "count",
     ]
-    with path.open("w", newline="", encoding="utf-8-sig") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        for items in teacher_time_conflict_groups(assignments):
-            first = items[0].candidate.slots[0]
-            start_time = min(item.candidate.slots[0].start_time or "" for item in items)
-            end_time = max(item.candidate.slots[-1].end_time or "" for item in items)
-            writer.writerow(
-                {
-                    "teacher_id": items[0].candidate.teacher_id,
-                    "teacher_name": items[0].candidate.teacher_name,
-                    "date": first.date,
-                    "period": first.period,
-                    "start_time": start_time,
-                    "end_time": end_time,
-                    "class_ids": "|".join(item.task.class_id for item in items),
-                    "class_names": "|".join(item.task.class_name for item in items),
-                    "subjects": "|".join(sorted({item.task.subject for item in items if item.task.subject})),
-                    "rooms": "|".join(
-                        room_names.get(item.candidate.room_id, item.candidate.room_id)
-                        for item in items
-                    ),
-                    "count": len(items),
-                }
-            )
+    rows = []
+    for items in teacher_time_conflict_groups(assignments):
+        first = items[0].candidate.slots[0]
+        start_time = min(item.candidate.slots[0].start_time or "" for item in items)
+        end_time = max(item.candidate.slots[-1].end_time or "" for item in items)
+        rows.append(
+            {
+                "teacher_id": items[0].candidate.teacher_id,
+                "teacher_name": items[0].candidate.teacher_name,
+                "date": first.date,
+                "period": first.period,
+                "start_time": start_time,
+                "end_time": end_time,
+                "class_ids": "|".join(item.task.class_id for item in items),
+                "class_names": "|".join(item.task.class_name for item in items),
+                "subjects": "|".join(sorted({item.task.subject for item in items if item.task.subject})),
+                "rooms": "|".join(
+                    room_names.get(item.candidate.room_id, item.candidate.room_id)
+                    for item in items
+                ),
+                "count": len(items),
+            }
+        )
+    write_csv_rows(path, fieldnames, rows, extrasaction="raise")

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import csv
 from dataclasses import replace
 from datetime import date as Date
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 import scheduler
+from scripts.csv_utils import read_csv_rows
 from scripts.schedule_data import infer_class_subject, infer_class_subject_category
 
 
@@ -186,19 +186,18 @@ def class_ids_for_suite_codes(
     if not classes_path.exists():
         raise ValueError(f"未找到班级数据: {classes_path}")
     rows_by_suite: Dict[str, List[Dict[str, str]]] = {suite_code: [] for suite_code in suite_codes}
-    with classes_path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            if (row.get("is_schedule_locked") or "").strip() in {"是", "1", "true", "True", "yes", "Y", "y"}:
-                continue
-            suite_code = (row.get("suite_code") or "").strip()
-            if suite_code not in rows_by_suite:
-                continue
-            subject = infer_class_subject(row)
-            if subjects and subject not in subjects:
-                continue
-            if not subjects and infer_class_subject_category(row, subject) != "公共课":
-                continue
-            rows_by_suite[suite_code].append(row)
+    for row in read_csv_rows(classes_path):
+        if (row.get("is_schedule_locked") or "").strip() in {"是", "1", "true", "True", "yes", "Y", "y"}:
+            continue
+        suite_code = (row.get("suite_code") or "").strip()
+        if suite_code not in rows_by_suite:
+            continue
+        subject = infer_class_subject(row)
+        if subjects and subject not in subjects:
+            continue
+        if not subjects and infer_class_subject_category(row, subject) != "公共课":
+            continue
+        rows_by_suite[suite_code].append(row)
 
     class_ids: List[str] = []
     for suite_code in suite_codes:

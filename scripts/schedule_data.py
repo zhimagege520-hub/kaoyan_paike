@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import csv
 import json
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import scheduler
+from scripts.csv_utils import read_csv_rows
 
 
 def _data_file(path: Path, file_name: str) -> Path:
@@ -38,11 +38,10 @@ def _load_room_metadata_from_csv(rooms_path: Path) -> Dict[str, Dict[str, str]]:
     if not rooms_path.exists():
         return {}
     lookup: Dict[str, Dict[str, str]] = {}
-    with rooms_path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            room_id = clean_cell(row.get("id"))
-            if room_id:
-                lookup[room_id] = {key: clean_cell(value) for key, value in row.items()}
+    for row in read_csv_rows(rooms_path):
+        room_id = clean_cell(row.get("id"))
+        if room_id:
+            lookup[room_id] = {key: clean_cell(value) for key, value in row.items()}
     return lookup
 
 
@@ -50,37 +49,36 @@ def load_class_metadata(path: Path) -> Dict[str, Dict[str, str]]:
     classes_path = _data_file(path, "classes.csv")
     if not classes_path.exists():
         return {}
-    with classes_path.open(newline="", encoding="utf-8-sig") as handle:
-        result: Dict[str, Dict[str, str]] = {}
-        for row in csv.DictReader(handle):
-            class_id = row.get("id", "")
-            if not class_id:
-                continue
-            subject = infer_class_subject(row)
-            result[class_id] = {
-                "id": row.get("id", ""),
-                "name": row.get("name", ""),
-                "product_id": row.get("product_id", ""),
-                "project": row.get("project", ""),
-                "suite_code": row.get("suite_code", ""),
-                "sub_product": row.get("sub_product", ""),
-                "product_line": row.get("product_line", ""),
-                "product_system": row.get("product_system", ""),
-                "course_nature": row.get("course_nature", ""),
-                "subject_category": infer_class_subject_category(row, subject),
-                "subject": subject,
-                "stages": row.get("stages", ""),
-                "start_date": row.get("start_date", ""),
-                "start_period": row.get("start_period", ""),
-                "first_lesson_date": row.get("first_lesson_date", ""),
-                "first_lesson_period": row.get("first_lesson_period", ""),
-                "end_date": row.get("end_date", ""),
-                "end_period": row.get("end_period", ""),
-                "preferred_room_ids": row.get("preferred_room_ids", ""),
-                "preferred_room_is_required": row.get("preferred_room_is_required", ""),
-                "is_schedule_locked": row.get("is_schedule_locked", ""),
-            }
-        return result
+    result: Dict[str, Dict[str, str]] = {}
+    for row in read_csv_rows(classes_path):
+        class_id = row.get("id", "")
+        if not class_id:
+            continue
+        subject = infer_class_subject(row)
+        result[class_id] = {
+            "id": row.get("id", ""),
+            "name": row.get("name", ""),
+            "product_id": row.get("product_id", ""),
+            "project": row.get("project", ""),
+            "suite_code": row.get("suite_code", ""),
+            "sub_product": row.get("sub_product", ""),
+            "product_line": row.get("product_line", ""),
+            "product_system": row.get("product_system", ""),
+            "course_nature": row.get("course_nature", ""),
+            "subject_category": infer_class_subject_category(row, subject),
+            "subject": subject,
+            "stages": row.get("stages", ""),
+            "start_date": row.get("start_date", ""),
+            "start_period": row.get("start_period", ""),
+            "first_lesson_date": row.get("first_lesson_date", ""),
+            "first_lesson_period": row.get("first_lesson_period", ""),
+            "end_date": row.get("end_date", ""),
+            "end_period": row.get("end_period", ""),
+            "preferred_room_ids": row.get("preferred_room_ids", ""),
+            "preferred_room_is_required": row.get("preferred_room_is_required", ""),
+            "is_schedule_locked": row.get("is_schedule_locked", ""),
+        }
+    return result
 
 
 def load_room_name_to_id(path: Path) -> Dict[str, str]:
@@ -88,12 +86,11 @@ def load_room_name_to_id(path: Path) -> Dict[str, str]:
     if not rooms_path.exists():
         return {}
     lookup: Dict[str, str] = {}
-    with rooms_path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            room_id = clean_cell(row.get("id"))
-            name = clean_cell(row.get("name"))
-            if name and room_id:
-                lookup.setdefault(name, room_id)
+    for row in read_csv_rows(rooms_path):
+        room_id = clean_cell(row.get("id"))
+        name = clean_cell(row.get("name"))
+        if name and room_id:
+            lookup.setdefault(name, room_id)
     return lookup
 
 
@@ -102,15 +99,14 @@ def load_teacher_name_to_id(path: Path, require_six_digit: bool = True) -> Dict[
     if not teachers_path.exists():
         return {}
     lookup: Dict[str, str] = {}
-    with teachers_path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            employee_id = clean_cell(row.get("employee_id"))
-            name = clean_cell(row.get("name"))
-            if not name or not employee_id:
-                continue
-            if require_six_digit and not (employee_id.isdigit() and len(employee_id) == 6):
-                continue
-            lookup.setdefault(name, employee_id)
+    for row in read_csv_rows(teachers_path):
+        employee_id = clean_cell(row.get("employee_id"))
+        name = clean_cell(row.get("name"))
+        if not name or not employee_id:
+            continue
+        if require_six_digit and not (employee_id.isdigit() and len(employee_id) == 6):
+            continue
+        lookup.setdefault(name, employee_id)
     return lookup
 
 
@@ -165,24 +161,23 @@ def load_product_course_tags(path: Path) -> List[Dict[str, str]]:
     if not product_courses_path.exists():
         return []
     tags: List[Dict[str, str]] = []
-    with product_courses_path.open(newline="", encoding="utf-8-sig") as handle:
-        for row in csv.DictReader(handle):
-            course_code = clean_cell(row.get("course_code"))
-            course_name = clean_cell(row.get("course_name"))
-            if not course_code and not course_name:
-                continue
-            tags.append(
-                {
-                    "product_id": clean_cell(row.get("product_id")),
-                    "subject": clean_cell(row.get("subject")),
-                    "quarter": clean_cell(row.get("quarter")),
-                    "stage": clean_cell(row.get("stage")),
-                    "course_module": clean_cell(row.get("course_module")),
-                    "course_group": clean_cell(row.get("course_group")),
-                    "course_code": course_code,
-                    "course_name": course_name,
-                }
-            )
+    for row in read_csv_rows(product_courses_path):
+        course_code = clean_cell(row.get("course_code"))
+        course_name = clean_cell(row.get("course_name"))
+        if not course_code and not course_name:
+            continue
+        tags.append(
+            {
+                "product_id": clean_cell(row.get("product_id")),
+                "subject": clean_cell(row.get("subject")),
+                "quarter": clean_cell(row.get("quarter")),
+                "stage": clean_cell(row.get("stage")),
+                "course_module": clean_cell(row.get("course_module")),
+                "course_group": clean_cell(row.get("course_group")),
+                "course_code": course_code,
+                "course_name": course_name,
+            }
+        )
     return tags
 
 
