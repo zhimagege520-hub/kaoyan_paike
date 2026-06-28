@@ -78,11 +78,16 @@ class DocumentationStaticTest(unittest.TestCase):
         self.assertIn("硬冲突和覆盖缺口必须处理", guide)
 
     def test_share_and_template_do_not_reintroduce_merge_detail_table_language(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
         share = (ROOT / "share" / "ai-scheduling-project" / "index.html").read_text(encoding="utf-8")
         template_source = (ROOT / "formal_template.py").read_text(encoding="utf-8")
 
         self.assertIn("共享课表关系转成标准排课输入", share)
+        self.assertIn("不需要额外维护第二张合班表", readme)
+        self.assertNotIn("合班课程明细表", readme)
         self.assertNotIn("合班" + "明细", share)
+        self.assertNotIn("merge_" + "course_" + "details", readme)
+        self.assertNotIn("低层业务导入", readme)
         self.assertNotIn("build_" + "merge_" + "rows", template_source)
         self.assertNotIn("first_" + "merge_" + "code", template_source)
         self.assertNotIn("full" + " 或 " + "partial", template_source)

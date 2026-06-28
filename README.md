@@ -75,7 +75,7 @@ python3 run_scheduling_pipeline.py --source incoming
 | `scheduled_lessons` / `已排课明细` / `历史课表` | `class_id`, `date`, `start_time`, `end_time`, `duration_hours`, `teacher_id`, `teacher_name`, `room_id`, `business_product_id`, `subject`, `stage`, `course_module`, `course_group` | 2024-03-01 至 2026-06-30 已排课节明细，用于学习老师安排、抵扣 2026-07-01 前已排课时、生成规则和合班候选参考。 |
 | `locked_scheduled_lessons` / `锁定课表` | `class_id`, `date`, `start_time`, `end_time`, `room_id`, `subject`, `quarter`, `stage`, `course_module`, `course_group` | 已经人工排定且不能移动的课节。导出排课输入后会占用对应教室课节和套班互斥关系；教师为空时不参与现有教师冲突。 |
 
-若进入排课范围的班级缺产品映射或缺课程老师安排，pipeline 会阻塞并在导入报告中列出问题。业务导出自带 `合班详情` 时，常规模板中优先在 `班级老师安排表` 维护共享课表关系；低层业务导入仍兼容 `merge_course_details` 作为历史明细入口。
+若进入排课范围的班级缺产品映射或缺课程老师安排，pipeline 会阻塞并在导入报告中列出问题。业务导出自带 `合班详情` 时，在 `班级老师安排表` 维护共享课表关系即可，不需要额外维护第二张合班表。
 
 历史课表不会直接变成 2026-07-01 之后的排课结果。系统会按 `class_id + subject + stage + course_module + course_group` 统计 2026-06-30 及以前的已排课时，从 27考研目标班级的产品课程总课时中扣除；课程剩余课时为 0 时不再排，整班无剩余课程时不进入 scheduler。若没有上传老师安排，系统会从历史课表按 `class_id + subject + stage + course_group` 学习老师；多老师冲突时按最近一次课节选择，并在报告中提示。
 
