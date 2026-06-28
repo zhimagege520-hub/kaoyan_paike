@@ -1327,6 +1327,31 @@ class SchedulingPipelineTest(unittest.TestCase):
             assignments = scheduler.schedule(scheduler.load_input(path))
             self.assertEqual(assignments[0].candidate.slots[0].date, "2026-07-02")
 
+    def test_class_boundary_period_requires_matching_date(self) -> None:
+        payload = {
+            "time_slots": [],
+            "rooms": [],
+            "classes": [
+                {
+                    "id": "C1",
+                    "name": "英语1班",
+                    "first_lesson_period": "AM",
+                    "requirements": [
+                        {
+                            "subject": "英语",
+                            "teacher_id": "T1",
+                            "teacher_name": "张老师",
+                            "total_hours": 2,
+                            "block_hours": 2,
+                        }
+                    ],
+                }
+            ],
+        }
+
+        with self.assertRaisesRegex(ValueError, "first_lesson_period 时也需要填写 first_lesson_date"):
+            scheduler.load_input_data(payload)
+
     def test_scheduler_respects_teacher_unavailability_date_period(self) -> None:
         payload = {
             "time_slots": [

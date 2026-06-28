@@ -224,6 +224,16 @@ class ClassWindowConstraint:
 
 
 @dataclass(frozen=True)
+class ClassSchedulingBounds:
+    start_date: Optional[str]
+    start_period: Optional[str]
+    end_date: Optional[str]
+    end_period: Optional[str]
+    first_lesson_date: Optional[str]
+    first_lesson_period: Optional[str]
+
+
+@dataclass(frozen=True)
 class Requirement:
     subject_category: str
     subject: str
@@ -1138,54 +1148,16 @@ def parse_class_row(
     allow_area_field_as_room_ids: bool = False,
 ) -> Optional[SchoolClass]:
     class_id = str(raw_class.get("id", "")).strip()
-    start_date = validate_date(raw_class.get("start_date"), f"班级 {class_id}/start_date")
-    start_period = raw_class.get("start_period") or ("AM" if start_date else None)
-    end_date = validate_date(raw_class.get("end_date"), f"班级 {class_id}/end_date")
-    end_period = raw_class.get("end_period") or ("EVENING" if end_date else None)
-    first_lesson_date = validate_date(raw_class.get("first_lesson_date"), f"班级 {class_id}/first_lesson_date")
-    first_lesson_period = raw_class.get("first_lesson_period") or ("AM" if first_lesson_date else None)
-    if start_period and not start_date:
-        raise ValueError(f"班级 {class_id} 填写 start_period 时也需要填写 start_date")
-    if end_period and not end_date:
-        raise ValueError(f"班级 {class_id} 填写 end_period 时也需要填写 end_date")
-    if first_lesson_period and not first_lesson_date:
-        raise ValueError(f"班级 {class_id} 填写 first_lesson_period 时也需要填写 first_lesson_date")
-    for label, period in (
-        ("start_period", start_period),
-        ("end_period", end_period),
-        ("first_lesson_period", first_lesson_period),
-    ):
-        if period and period not in VALID_PERIODS:
-            raise ValueError(f"班级 {class_id} 的 {label} 只能填写 AM、PM 或 EVENING")
-
-    product_id = raw_class.get("product_id")
-    product = products.get(product_id) if product_id else None
-    if product_id and not product:
-        raise ValueError(f"班级 {class_id} 引用了不存在的产品 {product_id}")
-
-    class_room_ids = parse_room_id_fields(
+    bounds = parse_class_scheduling_bounds(class_id, raw_class)
+    product = parse_class_product(class_id, raw_class, products)
+    class_room_ids = parse_class_room_ids(raw_class, allow_area_field_as_room_ids)
+    requirements = build_class_requirements(
+        class_id,
         raw_class,
+        product,
+        class_room_ids,
         allow_area_field_as_room_ids,
-        ("room_ids", "teaching_area_ids"),
-        ("preferred_room_ids", "preferred_teaching_area_ids"),
     )
-
-    if raw_class.get("requirements"):
-        requirements = parse_direct_requirements(
-            class_id,
-            raw_class.get("requirements", []),
-            class_room_ids,
-            allow_area_field_as_room_ids,
-        )
-    elif product:
-        requirements = build_requirements_from_product(class_id, product, raw_class, class_room_ids)
-    else:
-        requirements = parse_direct_requirements(
-            class_id,
-            raw_class.get("requirements", []),
-            class_room_ids,
-            allow_area_field_as_room_ids,
-        )
     if not requirements:
         if class_has_shared_schedule_markers(raw_class):
             return None
@@ -1199,14 +1171,95 @@ def parse_class_row(
         product_name=product.name if product else None,
         size=raw_class.get("size"),
         room_ids=class_room_ids,
+        start_date=bounds.start_date,
+        start_period=bounds.start_period,
+        end_date=bounds.end_date,
+        end_period=bounds.end_period,
+        first_lesson_date=bounds.first_lesson_date,
+        first_lesson_period=bounds.first_lesson_period,
+        stage_order=stage_order,
+        requirements=requirements,
+    )
+
+
+def parse_class_scheduling_bounds(class_id: str, raw_class: dict) -> ClassSchedulingBounds:
+    start_date = validate_date(raw_class.get("start_date"), f"班级 {class_id}/start_date")
+    start_period = raw_class.get("start_period") or ("AM" if start_date else None)
+    end_date = validate_date(raw_class.get("end_date"), f"班级 {class_id}/end_date")
+    end_period = raw_class.get("end_period") or ("EVENING" if end_date else None)
+    first_lesson_date = validate_date(raw_class.get("first_lesson_date"), f"班级 {class_id}/first_lesson_date")
+    first_lesson_period = raw_class.get("first_lesson_period") or ("AM" if first_lesson_date else None)
+
+    validate_class_period_pair(class_id, "start_period", start_period, "start_date", start_date)
+    validate_class_period_pair(class_id, "end_period", end_period, "end_date", end_date)
+    validate_class_period_pair(
+        class_id,
+        "first_lesson_period",
+        first_lesson_period,
+        "first_lesson_date",
+        first_lesson_date,
+    )
+    return ClassSchedulingBounds(
         start_date=start_date,
         start_period=start_period,
         end_date=end_date,
         end_period=end_period,
         first_lesson_date=first_lesson_date,
         first_lesson_period=first_lesson_period,
-        stage_order=stage_order,
-        requirements=requirements,
+    )
+
+
+def validate_class_period_pair(
+    class_id: str,
+    period_label: str,
+    period: Optional[str],
+    date_label: str,
+    date_value: Optional[str],
+) -> None:
+    if period and not date_value:
+        raise ValueError(f"班级 {class_id} 填写 {period_label} 时也需要填写 {date_label}")
+    if period and period not in VALID_PERIODS:
+        raise ValueError(f"班级 {class_id} 的 {period_label} 只能填写 AM、PM 或 EVENING")
+
+
+def parse_class_product(class_id: str, raw_class: dict, products: Dict[str, Product]) -> Optional[Product]:
+    product_id = raw_class.get("product_id")
+    product = products.get(product_id) if product_id else None
+    if product_id and not product:
+        raise ValueError(f"班级 {class_id} 引用了不存在的产品 {product_id}")
+    return product
+
+
+def parse_class_room_ids(raw_class: dict, allow_area_field_as_room_ids: bool) -> Optional[Set[str]]:
+    return parse_room_id_fields(
+        raw_class,
+        allow_area_field_as_room_ids,
+        ("room_ids", "teaching_area_ids"),
+        ("preferred_room_ids", "preferred_teaching_area_ids"),
+    )
+
+
+def build_class_requirements(
+    class_id: str,
+    raw_class: dict,
+    product: Optional[Product],
+    class_room_ids: Optional[Set[str]],
+    allow_area_field_as_room_ids: bool,
+) -> List[Requirement]:
+    if raw_class.get("requirements"):
+        return parse_direct_requirements(
+            class_id,
+            raw_class.get("requirements", []),
+            class_room_ids,
+            allow_area_field_as_room_ids,
+        )
+    if product:
+        return build_requirements_from_product(class_id, product, raw_class, class_room_ids)
+    return parse_direct_requirements(
+        class_id,
+        raw_class.get("requirements", []),
+        class_room_ids,
+        allow_area_field_as_room_ids,
     )
 
 

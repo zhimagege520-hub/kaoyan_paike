@@ -94,6 +94,8 @@ class DocumentationStaticTest(unittest.TestCase):
         self.assertIn("| 11 | 班级排课窗口表 |", guide)
         self.assertIn("| 18 | ERP产品对应表 |", guide)
         self.assertIn("报告打开乱码或不可读", guide)
+        self.assertIn("first_lesson_period` 必须有 `first_lesson_date", guide)
+        self.assertIn("缺老师补录表不是另一套新数据", guide)
 
     def test_share_and_template_do_not_reintroduce_merge_detail_table_language(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
