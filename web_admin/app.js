@@ -24,7 +24,7 @@ const tabs = {
   businessMappings: ["ERP产品对应", "维护本地排课产品与 ERP 标准课程产品、课程编码和版本的对应关系。"],
   batchSchedules: ["排课运行维护", "先校验数据，再生成或更新课表，最后查看结果。"],
   launch: ["排课运行维护", "先校验数据，再生成或更新课表，最后查看结果。"],
-  publish: ["只读发布与复用资料", "确认发布门禁，打开只读课表和复用资料。"],
+  publish: ["发布复用中心", "确认发布门禁，打开只读课表和复用资料。"],
 };
 
 const publicTeacherSubjects = new Set(["英语", "政治", "数学", "语文"]);
@@ -172,6 +172,8 @@ const dataTemplatePage = {
   detail: "用于填写或核对排课基础数据，完成后在本页上传校验或运行排课。",
   url: "/outputs/ai_scheduling_sop_20260625/AI排课基础数据模板.xlsx",
 };
+const scheduleReportPreviewUrl = "/preview/outputs/batch_schedule_maintenance_report.md";
+const scheduleReportRawUrl = "/outputs/batch_schedule_maintenance_report.md";
 
 function html(value) {
   return String(value ?? "")
@@ -3594,9 +3596,9 @@ function renderLaunch() {
             <strong>${html(batchSchedulePage.title)}</strong>
             <span>${html(batchSchedulePage.detail)}</span>
           </a>
-          <a href="/outputs/batch_schedule_maintenance_report.md" target="_blank" rel="noreferrer">
+          <a href="${html(scheduleReportPreviewUrl)}" target="_blank" rel="noreferrer">
             <strong>排课报告</strong>
-            <span>查看覆盖、冲突、缺口和生成过程摘要。</span>
+            <span>用 UTF-8 预览覆盖、冲突、缺口和生成过程摘要。</span>
           </a>
           <a href="/outputs/batch_schedule_maintenance.csv" target="_blank" rel="noreferrer">
             <strong>CSV 明细</strong>
@@ -3625,17 +3627,18 @@ function renderPublish() {
   ];
   const resultLinks = [
     ["课表总表", "查看本轮排课结果", "/outputs/batch_schedule_maintenance.html"],
-    ["排课报告", "查看覆盖、冲突和缺口结论", "/outputs/batch_schedule_maintenance_report.md"],
+    ["排课报告", "UTF-8 预览覆盖、冲突和缺口结论", scheduleReportPreviewUrl],
     ["CSV 明细", "用于 ERP 对齐或二次核对", "/outputs/batch_schedule_maintenance.csv"],
   ];
   const reuseLinks = [
     ["方法复用专题页", "给同事理解这套工作方法", "/share/ai-scheduling-project/method-reuse.html"],
-    ["复用步骤清单", "按步骤复制到下一轮项目", "/docs/ai-scheduling-reuse-playbook.md"],
-    ["项目 SOP", "完整操作和验收流程", "/docs/ai-scheduling-sop.md"],
+    ["部门复用攻略", "下载后从安装到验收的操作手册", "/preview/docs/department-reuse-user-guide.md"],
+    ["复用步骤清单", "按步骤复制到下一轮项目", "/preview/docs/ai-scheduling-reuse-playbook.md"],
+    ["项目 SOP", "完整操作和验收流程", "/preview/docs/ai-scheduling-sop.md"],
   ];
   content.innerHTML = `
     ${section(
-      "只读发布与复用资料",
+      "发布复用中心",
       "功能：把已经核对过的课表安全地给同事查看，并沉淀后续可复用资料。",
       `<div class="gate-summary-grid">
         ${gates.map(([title, detail]) => `
@@ -3661,7 +3664,7 @@ function renderPublish() {
     )}
     ${section(
       "发布前核对资料",
-      "功能：发布前自己核对用。看报告确认没有硬问题，再看总表和 CSV 明细。",
+      `功能：发布前自己核对用。报告默认打开预览页；如需下载原始 Markdown，可打开 ${html(scheduleReportRawUrl)}。`,
       `<div class="publish-link-grid compact">
         ${resultLinks.map(([label, detail, url]) => `
           <a href="${html(url)}" target="_blank" rel="noreferrer">

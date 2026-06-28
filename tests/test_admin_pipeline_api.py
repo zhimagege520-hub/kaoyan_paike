@@ -88,6 +88,45 @@ class AdminPipelineApiTest(unittest.TestCase):
                 thread.join(timeout=5)
                 server.server_close()
 
+    def test_markdown_outputs_have_utf8_content_type_and_preview(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data_admin_server.DATA_DIR = root / "data"
+            data_admin_server.OUTPUT_DIR = root / "outputs"
+            data_admin_server.OUTPUT_DIR.mkdir(parents=True)
+            report_path = data_admin_server.OUTPUT_DIR / "batch_schedule_maintenance_report.md"
+            report_path.write_text("# 排课报告\n\n- 覆盖缺口：0\n", encoding="utf-8")
+
+            server = ThreadingHTTPServer(("127.0.0.1", 0), data_admin_server.AdminHandler)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            base_url = f"http://127.0.0.1:{server.server_port}"
+
+            try:
+                with urllib.request.urlopen(f"{base_url}/outputs/batch_schedule_maintenance_report.md", timeout=20) as response:
+                    self.assertIn("text/markdown", response.headers["Content-Type"])
+                    self.assertIn("charset=utf-8", response.headers["Content-Type"])
+                    self.assertIn("排课报告", response.read().decode("utf-8"))
+
+                with urllib.request.urlopen(f"{base_url}/preview/outputs/batch_schedule_maintenance_report.md", timeout=20) as response:
+                    body = response.read().decode("utf-8")
+                self.assertIn("text/html", response.headers["Content-Type"])
+                self.assertIn("已按 UTF-8 读取原始 Markdown", body)
+                self.assertIn("排课报告", body)
+                self.assertIn("/outputs/batch_schedule_maintenance_report.md", body)
+
+                head_request = urllib.request.Request(
+                    f"{base_url}/preview/outputs/batch_schedule_maintenance_report.md",
+                    method="HEAD",
+                )
+                with urllib.request.urlopen(head_request, timeout=20) as response:
+                    self.assertIn("text/html", response.headers["Content-Type"])
+                    self.assertEqual(b"", response.read())
+            finally:
+                server.shutdown()
+                thread.join(timeout=5)
+                server.server_close()
+
     def test_template_generation_and_preflight_api(self) -> None:
         try:
             from openpyxl import load_workbook

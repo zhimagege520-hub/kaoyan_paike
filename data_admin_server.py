@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import base64
 import csv
+import html as html_lib
 import io
 import json
 import mimetypes
@@ -2789,12 +2790,119 @@ def project_file_from_url(path_text: str, prefix: str, root_dir: Path) -> Path:
 
 
 def mime_type_for(path: Path) -> str:
-    mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-    text_suffixes = {".css", ".csv", ".html", ".js", ".json", ".md", ".mjs", ".svg", ".txt"}
+    suffix = path.suffix.lower()
+    explicit_types = {
+        ".css": "text/css",
+        ".csv": "text/csv",
+        ".html": "text/html",
+        ".js": "application/javascript",
+        ".json": "application/json",
+        ".md": "text/markdown",
+        ".mjs": "application/javascript",
+        ".svg": "image/svg+xml",
+        ".txt": "text/plain",
+    }
+    mime_type = explicit_types.get(suffix) or mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    text_suffixes = set(explicit_types)
     if path.suffix.lower() in text_suffixes or mime_type.startswith("text/"):
         if "charset=" not in mime_type:
             return f"{mime_type}; charset=utf-8"
     return mime_type
+
+
+def read_utf8_text(path: Path) -> str:
+    data = path.read_bytes()
+    for encoding in ("utf-8-sig", "utf-8"):
+        try:
+            return data.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return data.decode("utf-8", errors="replace")
+
+
+def markdown_preview_html(path: Path, source_url: str) -> str:
+    text = read_utf8_text(path)
+    title = path.stem
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            title = stripped.lstrip("#").strip() or title
+            break
+    escaped_title = html_lib.escape(title)
+    escaped_text = html_lib.escape(text)
+    escaped_source_url = html_lib.escape(source_url, quote=True)
+    return f"""<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{escaped_title}</title>
+  <style>
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      color: #1e2937;
+      background: #f5f7fb;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }}
+    main {{
+      width: min(1120px, calc(100vw - 32px));
+      margin: 24px auto 40px;
+    }}
+    header {{
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      padding: 18px 20px;
+      border: 1px solid #d9e2ec;
+      border-radius: 8px;
+      background: #fff;
+    }}
+    h1 {{
+      margin: 0 0 6px;
+      font-size: 22px;
+      line-height: 1.35;
+    }}
+    p {{
+      margin: 0;
+      color: #64748b;
+      line-height: 1.6;
+    }}
+    a {{
+      flex: 0 0 auto;
+      color: #0f766e;
+      font-weight: 700;
+      text-decoration: none;
+    }}
+    pre {{
+      margin: 0;
+      padding: 20px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border: 1px solid #d9e2ec;
+      border-radius: 8px;
+      background: #fff;
+      font: 14px/1.7 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }}
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>{escaped_title}</h1>
+        <p>已按 UTF-8 读取原始 Markdown，适合在后台直接核对报告内容。</p>
+      </div>
+      <a href="{escaped_source_url}" target="_blank" rel="noreferrer">打开原始文件</a>
+    </header>
+    <pre>{escaped_text}</pre>
+  </main>
+</body>
+</html>
+"""
 
 
 def public_job(job: Dict[str, Any]) -> Dict[str, Any]:
@@ -3125,6 +3233,12 @@ class AdminHandler(BaseHTTPRequestHandler):
         if parsed.path == "/":
             self.send_file(WEB_DIR / "index.html")
             return
+        if parsed.path.startswith("/preview/outputs/"):
+            self.send_markdown_preview(parsed.path, "/preview/outputs", OUTPUT_DIR, "/outputs")
+            return
+        if parsed.path.startswith("/preview/docs/"):
+            self.send_markdown_preview(parsed.path, "/preview/docs", DOCS_DIR, "/docs")
+            return
         if parsed.path.startswith("/outputs/"):
             self.send_output_file(parsed.path)
             return
@@ -3135,6 +3249,9 @@ class AdminHandler(BaseHTTPRequestHandler):
             self.send_project_file(parsed.path, "/share", SHARE_DIR)
             return
         self.send_file(WEB_DIR / unquote(parsed.path.lstrip("/")))
+
+    def do_HEAD(self) -> None:
+        self.do_GET()
 
     def do_POST(self) -> None:
         try:
@@ -3181,7 +3298,7 @@ class AdminHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        self.write_body(body)
 
     def send_download(self, body: bytes, filename: str, content_type: str) -> None:
         self.send_response(200)
@@ -3190,7 +3307,7 @@ class AdminHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        self.write_body(body)
 
     def send_output_file(self, path_text: str) -> None:
         try:
@@ -3209,7 +3326,26 @@ class AdminHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        self.write_body(body)
+
+    def send_markdown_preview(self, path_text: str, prefix: str, root_dir: Path, source_prefix: str) -> None:
+        try:
+            path = project_file_from_url(path_text, prefix, root_dir)
+            relative = path.resolve().relative_to(root_dir.resolve()).as_posix()
+        except ValueError:
+            self.send_error(404, "Not Found")
+            return
+        if not path.exists() or not path.is_file() or path.suffix.lower() != ".md":
+            self.send_error(404, "Not Found")
+            return
+        body = markdown_preview_html(path, f"{source_prefix}/{relative}").encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Disposition", f'inline; filename="{path.stem}.html"')
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.write_body(body)
 
     def send_project_file(self, path_text: str, prefix: str, root_dir: Path) -> None:
         try:
@@ -3228,7 +3364,7 @@ class AdminHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        self.write_body(body)
 
     def send_file(self, path: Path) -> None:
         if not path.exists() or not path.is_file() or WEB_DIR not in path.resolve().parents and path.resolve() != WEB_DIR / "index.html":
@@ -3241,7 +3377,11 @@ class AdminHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        self.write_body(body)
+
+    def write_body(self, body: bytes) -> None:
+        if self.command != "HEAD":
+            self.wfile.write(body)
 
     def log_message(self, format: str, *args: Any) -> None:
         print(f"{self.address_string()} - {format % args}")

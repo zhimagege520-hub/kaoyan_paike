@@ -161,6 +161,19 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertNotIn("teacher.identity = value;", source)
         self.assertNotIn("teacher.teacher_type = value;", source)
 
+    def test_publish_page_uses_utf8_markdown_previews(self) -> None:
+        source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
+        index = (ROOT / "web_admin" / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn("发布复用中心", index)
+        self.assertIn('publish: ["发布复用中心"', source)
+        self.assertIn('const scheduleReportPreviewUrl = "/preview/outputs/batch_schedule_maintenance_report.md";', source)
+        self.assertIn('const scheduleReportRawUrl = "/outputs/batch_schedule_maintenance_report.md";', source)
+        self.assertIn('"/preview/docs/department-reuse-user-guide.md"', source)
+        self.assertIn('"/preview/docs/ai-scheduling-reuse-playbook.md"', source)
+        self.assertIn('"/preview/docs/ai-scheduling-sop.md"', source)
+        self.assertNotIn('["排课报告", "查看覆盖、冲突和缺口结论", "/outputs/batch_schedule_maintenance_report.md"]', source)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -87,6 +87,13 @@ class DocumentationStaticTest(unittest.TestCase):
         self.assertIn("scripts/audit_schedule_coverage.py", guide)
         self.assertIn("scripts/audit_schedule_quality.py", guide)
         self.assertIn("硬冲突和覆盖缺口必须处理", guide)
+        self.assertIn("共 19 张业务表", guide)
+        self.assertIn("系统能重点解决：上课时间安排、课程模块顺序、教室安排、联报班级冲突、老师同日跨教学区通勤质检", guide)
+        self.assertIn("老师安排本身仍需要教务和教学提前规划", guide)
+        self.assertIn("| 09 | 产品窗口排课规则表 |", guide)
+        self.assertIn("| 11 | 班级排课窗口表 |", guide)
+        self.assertIn("| 18 | ERP产品对应表 |", guide)
+        self.assertIn("报告打开乱码或不可读", guide)
 
     def test_share_and_template_do_not_reintroduce_merge_detail_table_language(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
