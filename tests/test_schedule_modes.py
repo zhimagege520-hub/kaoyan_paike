@@ -64,6 +64,43 @@ class ScheduleModesTest(unittest.TestCase):
         self.assertEqual(normalized["actual_scheduled_class_id"], "C_SELF")
         self.assertEqual(normalized["teacher_id"], "T1")
 
+    def test_current_actual_class_wins_when_mode_is_blank_and_legacy_source_is_stale(self) -> None:
+        row = {
+            "class_id": "C_SELF",
+            "class_schedule_mode": "",
+            "actual_scheduled_class_id": "C_SELF",
+            "schedule_mode": "",
+            "inherit_from_class_id": "C_OLD_MAIN",
+            "teacher_id": "T1",
+            "teacher_name": "张老师",
+        }
+
+        normalized = data_admin_server.normalize_teacher_assignment(row)
+
+        self.assertEqual(assignment_schedule_mode(row), "独立排课")
+        self.assertEqual(assignment_reference_class_id(row), "C_SELF")
+        self.assertFalse(assignment_is_shared(row, class_id="C_SELF"))
+        self.assertEqual(normalized["class_schedule_mode"], "本班实际排课")
+        self.assertEqual(normalized["actual_scheduled_class_id"], "C_SELF")
+        self.assertEqual(normalized["teacher_id"], "T1")
+
+    def test_current_actual_shared_class_wins_over_stale_legacy_source(self) -> None:
+        row = {
+            "class_id": "C_SUB",
+            "class_schedule_mode": "",
+            "actual_scheduled_class_id": "C_CURRENT_MAIN",
+            "schedule_mode": "",
+            "inherit_from_class_id": "C_OLD_MAIN",
+        }
+
+        normalized = data_admin_server.normalize_teacher_assignment(row)
+
+        self.assertEqual(assignment_schedule_mode(row), "共享课表")
+        self.assertEqual(assignment_reference_class_id(row), "C_CURRENT_MAIN")
+        self.assertTrue(assignment_is_shared(row, class_id="C_SUB"))
+        self.assertEqual(normalized["class_schedule_mode"], "共享实际排课班级")
+        self.assertEqual(normalized["actual_scheduled_class_id"], "C_CURRENT_MAIN")
+
     def test_self_referenced_shared_assignment_is_current_class_schedule(self) -> None:
         row = {
             "class_id": "C_SELF",

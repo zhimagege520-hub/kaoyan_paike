@@ -1287,9 +1287,10 @@ function normalizeScheduleMode(value, inheritFromClassId = "", actualScheduledCl
   if (text.includes("合班") || text.includes("主班")) return "合班主班";
   if (text.includes("本班") || text.includes("独立")) return "独立排课";
   if (currentClassId) {
-    if (inheritedClass && inheritedClass !== currentClassId) return "共享课表";
     if (actualClass && actualClass !== currentClassId) return "共享课表";
-    if (inheritedClass === currentClassId || actualClass === currentClassId) return "独立排课";
+    if (actualClass === currentClassId) return "独立排课";
+    if (inheritedClass && inheritedClass !== currentClassId) return "共享课表";
+    if (inheritedClass === currentClassId) return "独立排课";
   }
   if (compact === "shared" || compact === "inherit" || compact === "inherited" || text.includes("共享") || text.includes("继承")) return "共享课表";
   if (inheritedClass) return "共享课表";

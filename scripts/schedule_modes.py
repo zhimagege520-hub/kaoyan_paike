@@ -29,11 +29,13 @@ def normalize_class_schedule_mode(
     if any(keyword in text for keyword in INDEPENDENT_KEYWORDS):
         return "独立排课"
     if current_class:
-        if inherited_class and inherited_class != current_class:
-            return "共享课表"
         if actual_class and actual_class != current_class:
             return "共享课表"
-        if inherited_class == current_class or actual_class == current_class:
+        if actual_class == current_class:
+            return "独立排课"
+        if inherited_class and inherited_class != current_class:
+            return "共享课表"
+        if inherited_class == current_class:
             return "独立排课"
 
     if compact in {"shared", "inherit", "inherited"} or any(keyword in text for keyword in SHARED_KEYWORDS):

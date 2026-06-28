@@ -32,6 +32,10 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertNotIn("assignment.schedule_mode || assignment.class_schedule_mode", source)
         self.assertNotIn("exactExisting.schedule_mode || exactExisting.class_schedule_mode", source)
 
+        actual_check = "if (actualClass && actualClass !== currentClassId) return \"共享课表\";"
+        inherited_check = "if (inheritedClass && inheritedClass !== currentClassId) return \"共享课表\";"
+        self.assertLess(source.index(actual_check), source.index(inherited_check))
+
     def test_product_rule_guide_uses_season_window_label(self) -> None:
         source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
 
