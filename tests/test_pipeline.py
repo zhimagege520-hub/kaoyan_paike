@@ -1568,6 +1568,58 @@ class SchedulingPipelineTest(unittest.TestCase):
                 rooms,
             )
 
+    def test_build_course_blocks_expands_requirements_with_stable_ids_and_metadata(self) -> None:
+        cls = scheduler.SchoolClass(
+            id="C1",
+            name="英语1班",
+            product_id="P1",
+            product_name="英语产品",
+            size=45,
+            room_ids={"R1"},
+            start_date="2026-07-01",
+            start_period="AM",
+            end_date="2026-07-31",
+            end_period="PM",
+            first_lesson_date=None,
+            first_lesson_period=None,
+            stage_order={},
+            requirements=[
+                scheduler.Requirement(
+                    subject_category="公共课",
+                    subject="英语",
+                    quarter="暑假",
+                    stage="基础",
+                    course_module="词汇",
+                    course_group="阅读类",
+                    teacher_id="T1",
+                    teacher_name="张老师",
+                    total_hours=6,
+                    block_hours=2,
+                    course_code="ENG001",
+                    course_name="英语词汇",
+                    room_ids={"R1", "R2"},
+                    start_date="2026-07-03",
+                    end_date="2026-07-20",
+                    allowed_periods={"AM"},
+                    allowed_weekdays={0, 2},
+                    excluded_weekdays={6},
+                )
+            ],
+        )
+
+        tasks = scheduler.build_course_blocks({"C1": cls})
+
+        self.assertEqual([task.task_id for task in tasks], ["C1:英语:1:1", "C1:英语:1:2", "C1:英语:1:3"])
+        self.assertEqual({task.block_hours for task in tasks}, {2})
+        self.assertEqual({task.course_code for task in tasks}, {"ENG001"})
+        self.assertEqual({task.course_name for task in tasks}, {"英语词汇"})
+        self.assertEqual(tasks[0].product_id, "P1")
+        self.assertEqual(tasks[0].class_size, 45)
+        self.assertEqual(tasks[0].room_ids, {"R1", "R2"})
+        self.assertEqual(tasks[0].allowed_periods, {"AM"})
+        self.assertEqual(tasks[0].allowed_weekdays, {0, 2})
+        self.assertEqual(tasks[0].excluded_weekdays, {6})
+
     def test_teacher_assignment_fallback_requires_same_course_group(self) -> None:
         base_requirement = scheduler.ProductRequirement(
             subject_category="公共课",

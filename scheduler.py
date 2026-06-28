@@ -2120,41 +2120,77 @@ def candidate_matches_start_anchor(cls: SchoolClass, candidate: Candidate) -> bo
 
 def build_course_blocks(classes: Dict[str, SchoolClass]) -> List[CourseBlock]:
     tasks: List[CourseBlock] = []
-
     for cls in classes.values():
-        for req_index, req in enumerate(cls.requirements, start=1):
-            block_count = req.total_hours // req.block_hours
-            for i in range(block_count):
-                tasks.append(
-                    CourseBlock(
-                        task_id=f"{cls.id}:{req.subject}:{req_index}:{i + 1}",
-                        class_id=cls.id,
-                        class_name=cls.name,
-                        product_id=cls.product_id,
-                        product_name=cls.product_name,
-                        class_size=cls.size,
-                        subject_category=req.subject_category,
-                        subject=req.subject,
-                        quarter=req.quarter,
-                        stage=req.stage,
-                        course_module=req.course_module,
-                        course_group=req.course_group,
-                        teacher_id=req.teacher_id,
-                        teacher_name=req.teacher_name,
-                        block_hours=req.block_hours,
-                        course_code=req.course_code,
-                        course_name=req.course_name,
-                        room_ids=req.room_ids,
-                        start_date=req.start_date,
-                        end_date=req.end_date,
-                        allowed_periods=req.allowed_periods,
-                        allowed_weekdays=req.allowed_weekdays,
-                        excluded_weekdays=req.excluded_weekdays,
-                        schedule_rules=req.schedule_rules,
-                    )
-                )
-
+        tasks.extend(course_blocks_for_class(cls))
     return tasks
+
+
+def course_blocks_for_class(cls: SchoolClass) -> List[CourseBlock]:
+    tasks: List[CourseBlock] = []
+    for req_index, req in enumerate(cls.requirements, start=1):
+        tasks.extend(course_blocks_for_requirement(cls, req, req_index))
+    return tasks
+
+
+def course_blocks_for_requirement(cls: SchoolClass, req: Requirement, req_index: int) -> List[CourseBlock]:
+    return [
+        course_block_from_requirement(cls, req, req_index, block_index)
+        for block_index in range(1, requirement_block_count(req) + 1)
+    ]
+
+
+def requirement_block_count(req: Requirement) -> int:
+    return req.total_hours // req.block_hours
+
+
+def course_block_task_id(cls: SchoolClass, req: Requirement, req_index: int, block_index: int) -> str:
+    return f"{cls.id}:{req.subject}:{req_index}:{block_index}"
+
+
+def course_block_from_requirement(
+    cls: SchoolClass,
+    req: Requirement,
+    req_index: int,
+    block_index: int,
+) -> CourseBlock:
+    return CourseBlock(
+        task_id=course_block_task_id(cls, req, req_index, block_index),
+        **course_block_class_fields(cls),
+        **course_block_requirement_fields(req),
+    )
+
+
+def course_block_class_fields(cls: SchoolClass) -> dict:
+    return {
+        "class_id": cls.id,
+        "class_name": cls.name,
+        "product_id": cls.product_id,
+        "product_name": cls.product_name,
+        "class_size": cls.size,
+    }
+
+
+def course_block_requirement_fields(req: Requirement) -> dict:
+    return {
+        "subject_category": req.subject_category,
+        "subject": req.subject,
+        "quarter": req.quarter,
+        "stage": req.stage,
+        "course_module": req.course_module,
+        "course_group": req.course_group,
+        "teacher_id": req.teacher_id,
+        "teacher_name": req.teacher_name,
+        "block_hours": req.block_hours,
+        "course_code": req.course_code,
+        "course_name": req.course_name,
+        "room_ids": req.room_ids,
+        "start_date": req.start_date,
+        "end_date": req.end_date,
+        "allowed_periods": req.allowed_periods,
+        "allowed_weekdays": req.allowed_weekdays,
+        "excluded_weekdays": req.excluded_weekdays,
+        "schedule_rules": req.schedule_rules,
+    }
 
 
 def task_stage_rank(cls: SchoolClass, task: CourseBlock) -> Optional[int]:
