@@ -25,6 +25,7 @@ from scripts.build_camp_maintenance_schedule import (  # noqa: E402
 from scripts.csv_utils import clean_cell as clean, read_csv_rows, write_csv_rows  # noqa: E402
 from scripts.schedule_conflicts import write_teacher_time_conflicts_csv  # noqa: E402
 from scripts.schedule_data import load_room_name_to_id, load_room_names, load_teacher_name_to_id  # noqa: E402
+from scripts.schedule_display import weekday_label  # noqa: E402
 from scripts.schedule_modes import assignment_is_shared, assignment_reference_class_id  # noqa: E402
 from scripts.schedule_outputs import write_day_table_html  # noqa: E402
 
@@ -61,7 +62,6 @@ TIME_SLOT_MAP = {
     ("19:00", "21:00"): ("EVENING", "EVENING1", "晚上一"),
 }
 
-WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 PERIOD_ORDER = {"AM": 0, "PM": 1, "EVENING": 2}
 
 
@@ -75,10 +75,6 @@ def normalize_date(value: object) -> str:
         year, month, day = text.split("/")[:3]
         return Date(int(year), int(month), int(day)).isoformat()
     return Date.fromisoformat(text).isoformat()
-
-
-def weekday_label(date_text: str) -> str:
-    return WEEKDAYS[Date.fromisoformat(date_text).weekday()]
 
 
 def parse_time_range(value: object) -> Tuple[str, str]:

@@ -18,6 +18,7 @@ if str(ROOT) not in sys.path:
 import scheduler
 from scripts import build_camp_maintenance_schedule as maintenance
 from scripts.schedule_data import load_class_metadata, load_room_names
+from scripts.schedule_display import week_start, weekday_label
 from scripts.schedule_outputs import write_day_table_html
 
 DEFAULT_TARGET_CLASSES = {
@@ -46,20 +47,9 @@ PERIOD_SLOTS = {
 PERIOD_ORDER = {"AM": 0, "PM": 1, "EVENING": 2}
 SLOT_ORDER = {"AM1": 0, "AM2": 1, "PM1": 2, "PM2": 3, "EVENING1": 4}
 SUBJECT_ORDER = {"数学": 0, "政治": 1, "英语": 2}
-WEEKDAY_LABELS = "一二三四五六日"
-
 
 def clean(value: object) -> str:
     return str(value or "").strip()
-
-
-def weekday_label(date_text: str) -> str:
-    return "周" + WEEKDAY_LABELS[Date.fromisoformat(date_text).weekday()]
-
-
-def week_start(date_text: str) -> str:
-    value = Date.fromisoformat(date_text)
-    return (value - timedelta(days=value.weekday())).isoformat()
 
 
 def iter_dates(start: str, end: str) -> Iterable[str]:
