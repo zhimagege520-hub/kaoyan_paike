@@ -2636,7 +2636,7 @@ function classActualScheduleWindowIds(cls) {
       return String(left.schedule_window_id || "").localeCompare(String(right.schedule_window_id || ""), "zh-CN");
     });
   const windowIds = rows.map((item) => item.schedule_window_id || item.schedule_window_name).filter(Boolean);
-  return windowIds.length ? uniqueList(windowIds) : arrayValues(cls?.actual_schedule_window_ids);
+  return uniqueList(windowIds);
 }
 
 function classById(classId) {
@@ -2990,7 +2990,7 @@ function erpProductOptions(selectedValue = "") {
 }
 
 function syncBusinessMappingLocalFields(mapping) {
-  const product = productById(mapping.local_product_id || mapping.canonical_product_id);
+  const product = productById(mapping.local_product_id);
   if (!product) return;
   mapping.local_product_id = product.id;
   mapping.local_product_name = product.name;
@@ -3039,7 +3039,7 @@ function ensureBusinessProductMappingRows() {
   state.business_product_mappings = state.business_product_mappings || [];
   const existing = new Set(
     state.business_product_mappings
-      .map((mapping) => mapping.local_product_id || mapping.canonical_product_id)
+      .map((mapping) => mapping.local_product_id)
       .filter(Boolean),
   );
   let added = 0;
@@ -3089,7 +3089,6 @@ function businessMappingSearchText(mapping) {
     mapping.erp_subject,
     mapping.business_product_id,
     mapping.business_product_name,
-    mapping.canonical_product_id,
     listText(mapping.class_name_keywords),
     mapping.match_status,
     mapping.match_confidence,
@@ -3132,7 +3131,7 @@ function businessMappingEditTable(entries) {
             <tr class="${mapping.match_status === "已匹配" ? "matched" : "needs-review"}">
               <td>
                 <strong>${html(mapping.local_product_name || productName(mapping.local_product_id))}</strong>
-                <span>${html(mapping.local_product_id || mapping.canonical_product_id)}</span>
+                <span>${html(mapping.local_product_id)}</span>
                 <small>${html([mapping.local_product_line, mapping.local_sub_product, mapping.local_course_nature, mapping.local_subject].filter(Boolean).join(" / "))}</small>
               </td>
               <td>

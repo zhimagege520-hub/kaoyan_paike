@@ -83,9 +83,8 @@ class WebAdminStaticTest(unittest.TestCase):
         source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
 
         self.assertIn("mapping.local_product_id = product.id;", source)
-        self.assertIn("mapping.local_product_id || mapping.canonical_product_id", source)
-        self.assertNotIn("canonical_product_id: product.id", source)
-        self.assertNotIn("mapping.canonical_product_id = product.id", source)
+        self.assertIn("const product = productById(mapping.local_product_id);", source)
+        self.assertNotIn("canonical_product_id", source)
 
     def test_class_window_ids_are_derived_from_class_window_table(self) -> None:
         source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
@@ -94,7 +93,7 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertIn("state.class_window_boundaries", source)
         self.assertIn('["年度窗口", listText(classActualScheduleWindowIds(cls))]', source)
         self.assertIn("classActualScheduleWindowIds(cls).join", source)
-        self.assertNotIn("actual_schedule_window_ids: []", source)
+        self.assertNotIn("actual_schedule_window_ids", source)
 
     def test_class_conflict_frontend_edits_current_fields(self) -> None:
         source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
