@@ -2966,7 +2966,6 @@ function syncBusinessMappingLocalFields(mapping) {
   mapping.local_product_system = product.product_system || "";
   mapping.local_course_nature = product.course_nature || "";
   mapping.local_subject = product.subject || "";
-  mapping.canonical_product_id = product.id;
 }
 
 function applyBusinessMappingErpProduct(mapping) {
@@ -3032,7 +3031,6 @@ function ensureBusinessProductMappingRows() {
       business_product_id: "",
       business_product_name: "",
       class_name_keywords: [],
-      canonical_product_id: product.id,
       notes: "请关联ERP标准课程产品。",
     });
     added += 1;
@@ -6565,7 +6563,7 @@ function handleValueChange(target, event = null) {
         renderBusinessMappings();
         return;
       }
-      if (field === "local_product_id" || field === "canonical_product_id") {
+      if (field === "local_product_id") {
         syncBusinessMappingLocalFields(mapping);
         renderBusinessMappings();
         return;

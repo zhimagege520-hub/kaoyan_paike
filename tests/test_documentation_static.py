@@ -91,6 +91,10 @@ class DocumentationStaticTest(unittest.TestCase):
         self.assertNotIn("build_" + "merge_" + "rows", template_source)
         self.assertNotIn("first_" + "merge_" + "code", template_source)
         self.assertNotIn("full" + " 或 " + "partial", template_source)
+        self.assertIn("ERP产品对应", template_source)
+        self.assertIn("在 local_product_id 填本地产品 ID", template_source)
+        self.assertNotIn("兼容字段 canonical_product_id", template_source)
+        self.assertNotIn("部分课程例外", template_source)
 
 
 if __name__ == "__main__":

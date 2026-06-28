@@ -340,7 +340,7 @@ def product_map_from_rows(rows: Iterable[Mapping[str, Any]]) -> Dict[str, Dict[s
         if not business_id and not product_ids:
             continue
         if not business_id or not product_ids:
-            errors.append(f"产品映射缺少 business_product_id 或 local_product_id/canonical_product_id: {dict(row)}")
+            errors.append(f"产品映射缺少 business_product_id 或 local_product_id: {dict(row)}")
             continue
         canonical_id = product_ids[0] if len(product_ids) == 1 else "|".join(product_ids)
         rule = {

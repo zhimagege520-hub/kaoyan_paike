@@ -355,9 +355,9 @@ class SchedulingPipelineTest(unittest.TestCase):
             mapping_sheet.append(["用途：关联本地产品和 ERP 标准产品"])
             mapping_sheet.append([])
             mapping_sheet.append([])
-            mapping_sheet.append(["本地产品ID", "ERP课程编码", "标准产品ID"])
-            mapping_sheet.append(["local_product_id", "business_product_id", "canonical_product_id"])
-            mapping_sheet.append(["P1", "100", "P1"])
+            mapping_sheet.append(["本地产品ID", "ERP课程编码"])
+            mapping_sheet.append(["local_product_id", "business_product_id"])
+            mapping_sheet.append(["P1", "100"])
             workbook.save(workbook_path)
 
             tables = load_source_tables(workbook_path)
@@ -712,6 +712,39 @@ class SchedulingPipelineTest(unittest.TestCase):
             self.assertNotIn(old_field, header)
         self.assertIn("class_schedule_mode", header)
         self.assertIn("actual_scheduled_class_id", header)
+
+    def test_business_product_mapping_saves_current_local_product_field_only(self) -> None:
+        payload = {
+            "products": [{"id": "P1", "name": "测试产品", "subject": "英语"}],
+            "product_courses": [],
+            "business_product_mappings": [
+                {
+                    "business_product_id": "100",
+                    "business_product_name": "ERP产品",
+                    "canonical_product_id": "P1",
+                    "match_status": "已匹配",
+                }
+            ],
+        }
+
+        normalized = data_admin_server.normalize_payload(payload)
+        self.assertEqual(normalized["business_product_mappings"][0]["local_product_id"], "P1")
+        self.assertNotIn("canonical_product_id", normalized["business_product_mappings"][0])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            data_admin_server.DATA_DIR = Path(tmp) / "data"
+            data_admin_server.save_state(payload)
+            mapping_doc = json.loads(
+                (data_admin_server.DATA_DIR / "business_product_mappings.json").read_text(encoding="utf-8")
+            )
+            with (data_admin_server.DATA_DIR / "business_product_mappings.csv").open(encoding="utf-8") as handle:
+                header = next(csv.reader(handle))
+
+        saved_row = mapping_doc["business_product_mappings"][0]
+        self.assertEqual(saved_row["local_product_id"], "P1")
+        self.assertNotIn("canonical_product_id", saved_row)
+        self.assertIn("local_product_id", header)
+        self.assertNotIn("canonical_product_id", header)
 
     def test_scheduler_rules_export_preserves_season_window(self) -> None:
         rules = [

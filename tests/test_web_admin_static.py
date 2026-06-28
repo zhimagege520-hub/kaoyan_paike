@@ -79,6 +79,14 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertIn('["课节明细", timeSlots.length, slotRangeLabel, ""]', source)
         self.assertNotIn("从 2026-07-01 到 2027-12-21 的课节", source)
 
+    def test_business_mapping_editor_writes_current_local_product_field_only(self) -> None:
+        source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn("mapping.local_product_id = product.id;", source)
+        self.assertIn("mapping.local_product_id || mapping.canonical_product_id", source)
+        self.assertNotIn("canonical_product_id: product.id", source)
+        self.assertNotIn("mapping.canonical_product_id = product.id", source)
+
 
 if __name__ == "__main__":
     unittest.main()

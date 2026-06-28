@@ -84,7 +84,7 @@ def product_catalog_rows(base_payload: Mapping[str, Any]) -> List[Dict[str, Any]
     for product_id, product in sorted(products.items()):
         rows.append(
             {
-                "canonical_product_id": product_id,
+                "local_product_id": product_id,
                 "product_name": product.get("name", ""),
                 "project": product.get("project", ""),
                 "product_line": product.get("product_line", ""),
@@ -105,7 +105,7 @@ def candidate_products(product_name: str, product_rows: Sequence[Mapping[str, An
         return ""
     scored: List[Tuple[int, str]] = []
     for row in product_rows:
-        product_id = data_admin_server.normalize_text(row.get("canonical_product_id"))
+        product_id = data_admin_server.normalize_text(row.get("local_product_id") or row.get("canonical_product_id"))
         name = data_admin_server.normalize_text(row.get("product_name"))
         if not product_id:
             continue
@@ -127,9 +127,9 @@ def existing_product_map(rows: Iterable[Mapping[str, Any]]) -> Dict[str, str]:
     result: Dict[str, str] = {}
     for row in rows:
         business_product_id = row_value(row, "business_product_id", "erp_course_code", "课程产品编号", "product_id")
-        canonical_product_id = row_value(row, "canonical_product_id", "local_product_id", "系统产品ID", "标准产品ID", "canonical_id")
-        if business_product_id and canonical_product_id:
-            result[business_product_id] = canonical_product_id
+        local_product_id = row_value(row, "local_product_id", "canonical_product_id", "系统产品ID", "标准产品ID", "canonical_id")
+        if business_product_id and local_product_id:
+            result[business_product_id] = local_product_id
     return result
 
 
@@ -176,23 +176,22 @@ def build_product_map_rows(
                 "product_system": row_value(row, "产品体系"),
                 "class_count": 0,
                 "class_name_keywords": "",
-                "canonical_product_id": existing_map.get(business_product_id, ""),
-                "candidate_canonical_products": "",
+                "candidate_local_products": "",
                 "notes": "",
             },
         )
         item["class_count"] += 1
     for item in grouped.values():
         if item["product_system"] == "计费体系":
-            item["candidate_canonical_products"] = ""
+            item["candidate_local_products"] = ""
             item["notes"] = "计费体系自动排除，无需填写"
             item["match_status"] = "自动排除"
             continue
-        item["candidate_canonical_products"] = candidate_products(item["business_product_name"], product_rows)
-        if not item["canonical_product_id"]:
+        item["candidate_local_products"] = candidate_products(item["business_product_name"], product_rows)
+        if not item["local_product_id"]:
             candidate_note = (
-                f"；候选本地产品：{item['candidate_canonical_products']}"
-                if item["candidate_canonical_products"]
+                f"；候选本地产品：{item['candidate_local_products']}"
+                if item["candidate_local_products"]
                 else ""
             )
             item["notes"] = f"请确认 local_product_id{candidate_note}"
@@ -232,7 +231,7 @@ def build_gap_rows(
     for row in product_map_rows:
         if row.get("product_system") == "计费体系":
             continue
-        if not data_admin_server.normalize_text(row.get("canonical_product_id")):
+        if not data_admin_server.normalize_text(row.get("local_product_id")):
             gaps.append(
                 {
                     "gap_type": "产品映射待确认",
@@ -368,9 +367,9 @@ def generate_formal_launch_template(source: Path, output_dir: Path, timestamp: s
         {"item": "流程", "description": "先补齐 business_product_mappings 和 class_teacher_assignments，再回到网页做上传前校验。"},
         {"item": "首批范围", "description": f"系统只纳入 考研/考博、考试月份 {BUSINESS_EXAM_MONTH}、考季 {BUSINESS_EXAM_SEASON}，且与 2026-07-01 至 2026-12-31 有交集的班级。"},
         {"item": "计费体系", "description": "计费体系自动排除，不需要填写准入规则。"},
-        {"item": "产品映射", "description": "同一业务产品编码对应寒暑营/暑假营或无忧秋/春/寒/暑时，可在 local_product_id 或兼容字段 canonical_product_id 填多个本地产品 ID，系统会按班级名称自动区分；也可用 class_name_keywords 拆行指定。"},
+        {"item": "ERP产品对应", "description": "同一 ERP 课程产品可能对应多个本地排课产品时，在 local_product_id 填本地产品 ID，多个用 | 分隔；需要按班级名称区分时，拆成多行并填写 class_name_keywords。"},
         {"item": "老师安排", "description": "按班级、产品、阶段、课程类别填写；合班共享课表时填写 class_schedule_mode=共享实际排课班级，并填写 actual_scheduled_class_id。"},
-        {"item": "业务合班", "description": "业务导出自带合班详情时，默认按第一班作为实际排课班级生成共享课表关系；只有部分课程例外时才需要在班级老师安排表逐行维护。"},
+        {"item": "共享课表关系", "description": "业务导出自带合班详情时，在班级老师安排表确认实际排课班级；共享班只维护 actual_scheduled_class_id，不单独生成课次。"},
         {"item": "历史课表", "description": "已排课明细用于学习老师和抵扣 2026-06-30 前已排课时，不会直接生成未来排课结果。"},
     ]
     scheduled_field_rows = [
@@ -396,7 +395,7 @@ def generate_formal_launch_template(source: Path, output_dir: Path, timestamp: s
         ("business_product_mappings", product_map_rows, data_admin_server.BUSINESS_PRODUCT_MAPPING_FIELDNAMES),
         ("class_teacher_assignments", learned_assignment_rows, data_admin_server.TEACHER_ASSIGNMENT_FIELDNAMES),
         ("scheduled_lessons字段说明", scheduled_field_rows, ["field", "required", "description"]),
-        ("产品目录参考", product_rows, ["canonical_product_id", "product_name", "project", "product_line", "sub_product", "product_system", "subject", "subject_category", "course_nature", "course_count"]),
+        ("产品目录参考", product_rows, ["local_product_id", "product_name", "project", "product_line", "sub_product", "product_system", "subject", "subject_category", "course_nature", "course_count"]),
         ("业务班级筛选结果", business_selection_rows, ["class_id", "class_name", "business_product_id", "business_product_name", "product_system", "exam_season", "exam_month", "actual_start_date", "actual_end_date", "room_id", "room_name", "teacher_raw", "merge_detail", "schedule_status"]),
         ("历史学习结果", history_rows, ["class_id", "product_id", "product_name", "subject", "stage", "course_group", "teacher_id", "teacher_name", "source"]),
         ("缺口清单", gap_rows, ["gap_type", "target_id", "description", "severity"]),

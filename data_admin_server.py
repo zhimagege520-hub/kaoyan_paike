@@ -323,7 +323,6 @@ BUSINESS_PRODUCT_MAPPING_FIELDNAMES = [
     "business_product_id",
     "business_product_name",
     "class_name_keywords",
-    "canonical_product_id",
     "notes",
 ]
 ERP_STANDARD_PRODUCT_FIELDNAMES = [
@@ -1831,7 +1830,15 @@ def normalize_class_window_boundary(record: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def normalize_business_product_mapping(record: Dict[str, Any]) -> Dict[str, Any]:
-    return normalize_generic_record(record, BUSINESS_PRODUCT_MAPPING_FIELDNAMES)
+    current = dict(record)
+    if not normalize_text(current.get("local_product_id")):
+        current["local_product_id"] = normalize_text(
+            current.get("canonical_product_id")
+            or current.get("系统产品ID")
+            or current.get("标准产品ID")
+            or current.get("canonical_id")
+        )
+    return normalize_generic_record(current, BUSINESS_PRODUCT_MAPPING_FIELDNAMES)
 
 
 def normalize_erp_standard_product(record: Dict[str, Any]) -> Dict[str, Any]:

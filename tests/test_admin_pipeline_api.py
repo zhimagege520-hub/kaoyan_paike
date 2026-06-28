@@ -127,6 +127,18 @@ class AdminPipelineApiTest(unittest.TestCase):
                 self.assertNotIn("business_product_map", workbook.sheetnames)
                 self.assertNotIn("scheduling_scope_overrides", workbook.sheetnames)
                 self.assertNotIn("merge_course_details", workbook.sheetnames)
+                mapping_header = [
+                    cell.value
+                    for cell in next(workbook["business_product_mappings"].iter_rows(max_row=1))
+                ]
+                self.assertIn("local_product_id", mapping_header)
+                self.assertNotIn("canonical_product_id", mapping_header)
+                product_reference_header = [
+                    cell.value
+                    for cell in next(workbook["产品目录参考"].iter_rows(max_row=1))
+                ]
+                self.assertIn("local_product_id", product_reference_header)
+                self.assertNotIn("canonical_product_id", product_reference_header)
                 teacher_header = [
                     cell.value
                     for cell in next(workbook["class_teacher_assignments"].iter_rows(max_row=1))
@@ -144,8 +156,8 @@ class AdminPipelineApiTest(unittest.TestCase):
 
                 write_csv(
                     source / "business_product_mappings.csv",
-                    ["business_product_id", "business_product_name", "local_product_id", "canonical_product_id"],
-                    [{"business_product_id": "100", "business_product_name": "考研英语无忧计划全年班", "local_product_id": "P_REG", "canonical_product_id": "P_REG"}],
+                    ["business_product_id", "business_product_name", "local_product_id"],
+                    [{"business_product_id": "100", "business_product_name": "考研英语无忧计划全年班", "local_product_id": "P_REG"}],
                 )
                 write_csv(source / "class_teacher_assignments.csv", ["class_id", "subject", "stage", "course_module", "course_group", "teacher_id", "teacher_name"], [assignment("C_REG")])
                 files = [file_payload(path) for path in sorted(source.glob("*.csv"))]
