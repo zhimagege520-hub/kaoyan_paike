@@ -21,6 +21,7 @@ from scripts.field_utils import (
 )
 from scripts.period_utils import PERIOD_ORDER, VALID_PERIODS, normalize_period, period_sort_value
 from scripts.schedule_modes import assignment_is_shared
+from scripts.weekday_utils import parse_weekday_set
 
 
 SCHEDULE_CSV_FIELDNAMES = [
@@ -58,54 +59,6 @@ SEASON_WINDOW_ID_TO_NAME = {
     "WINDOW_AUTUMN": "秋季",
 }
 SEASON_WINDOW_NAME_TO_ID = {name: window_id for window_id, name in SEASON_WINDOW_ID_TO_NAME.items()}
-WEEKDAY_ALIASES = {
-    "0": 0,
-    "1": 0,
-    "MON": 0,
-    "MONDAY": 0,
-    "周一": 0,
-    "星期一": 0,
-    "一": 0,
-    "2": 1,
-    "TUE": 1,
-    "TUESDAY": 1,
-    "周二": 1,
-    "星期二": 1,
-    "二": 1,
-    "3": 2,
-    "WED": 2,
-    "WEDNESDAY": 2,
-    "周三": 2,
-    "星期三": 2,
-    "三": 2,
-    "4": 3,
-    "THU": 3,
-    "THURSDAY": 3,
-    "周四": 3,
-    "星期四": 3,
-    "四": 3,
-    "5": 4,
-    "FRI": 4,
-    "FRIDAY": 4,
-    "周五": 4,
-    "星期五": 4,
-    "五": 4,
-    "6": 5,
-    "SAT": 5,
-    "SATURDAY": 5,
-    "周六": 5,
-    "星期六": 5,
-    "六": 5,
-    "7": 6,
-    "SUN": 6,
-    "SUNDAY": 6,
-    "周日": 6,
-    "周天": 6,
-    "星期日": 6,
-    "星期天": 6,
-    "日": 6,
-    "天": 6,
-}
 STAGE_ORDER_PROFILES = [
     ({"寒暑营", "无忧寒"}, ["寒假", "春季", "暑假", "秋季"]),
     ({"全年营"}, ["一轮", "二轮", "三轮", "四轮"]),
@@ -1097,20 +1050,6 @@ def parse_period_set(values: object, label: str) -> Optional[Set[str]]:
         if value not in VALID_PERIODS:
             raise ValueError(f"{label} 包含不支持的时段 {period}，可用 AM/PM/EVENING")
         normalized.add(value)
-    return normalized
-
-
-def parse_weekday_set(values: object, label: str) -> Optional[Set[int]]:
-    weekdays = parse_string_set(values)
-    if not weekdays:
-        return None
-
-    normalized: Set[int] = set()
-    for weekday in weekdays:
-        key = weekday.strip().upper()
-        if key not in WEEKDAY_ALIASES:
-            raise ValueError(f"{label} 包含不支持的星期 {weekday}")
-        normalized.add(WEEKDAY_ALIASES[key])
     return normalized
 
 

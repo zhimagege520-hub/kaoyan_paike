@@ -12,6 +12,7 @@ from scripts.csv_utils import write_csv_rows
 from scripts.field_utils import is_blank_marker, normalize_int, normalize_text, parse_date_value, parse_time_minutes
 from scripts.period_utils import VALID_PERIODS, normalize_period, period_from_time_text
 from scripts.product_catalog import product_catalog as shared_product_catalog
+from scripts.weekday_utils import weekday_label_for_date
 
 
 BUSINESS_PROJECT = "考研/考博"
@@ -251,8 +252,7 @@ def lesson_key(lesson: ScheduledLesson) -> CourseKey:
 
 
 def weekday_name(value: date) -> str:
-    names = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
-    return names[value.weekday()]
+    return weekday_label_for_date(value)
 
 
 def local_product_entries(value: Any) -> List[Dict[str, str]]:

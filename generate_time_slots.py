@@ -7,6 +7,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import List, Set
 
+from scripts.weekday_utils import SUNDAY, parse_weekday_set
+
 
 DEFAULT_DAY_SLOTS = [
     {
@@ -51,54 +53,15 @@ DEFAULT_DAY_SLOTS = [
     },
 ]
 
-WEEKDAY_ALIASES = {
-    "MON": 0,
-    "MONDAY": 0,
-    "周一": 0,
-    "星期一": 0,
-    "TUE": 1,
-    "TUESDAY": 1,
-    "周二": 1,
-    "星期二": 1,
-    "WED": 2,
-    "WEDNESDAY": 2,
-    "周三": 2,
-    "星期三": 2,
-    "THU": 3,
-    "THURSDAY": 3,
-    "周四": 3,
-    "星期四": 3,
-    "FRI": 4,
-    "FRIDAY": 4,
-    "周五": 4,
-    "星期五": 4,
-    "SAT": 5,
-    "SATURDAY": 5,
-    "周六": 5,
-    "星期六": 5,
-    "SUN": 6,
-    "SUNDAY": 6,
-    "周日": 6,
-    "周天": 6,
-    "星期日": 6,
-    "星期天": 6,
-}
-
-
 def parse_date(value: str) -> date:
     return datetime.strptime(value, "%Y-%m-%d").date()
 
 
 def parse_weekdays(values: str) -> Set[int]:
-    weekdays: Set[int] = set()
-    for value in values.split(","):
-        key = value.strip().upper()
-        if not key:
-            continue
-        if key not in WEEKDAY_ALIASES:
-            raise ValueError(f"不支持的星期: {value}")
-        weekdays.add(WEEKDAY_ALIASES[key])
-    return weekdays
+    try:
+        return parse_weekday_set(values, "exclude-weekdays") or set()
+    except ValueError as exc:
+        raise ValueError(str(exc).replace("exclude-weekdays 包含不支持的星期", "不支持的星期:")) from exc
 
 
 def slot_allowed(slot: dict, slot_set: str) -> bool:
@@ -115,7 +78,7 @@ def should_exclude_day(current: date, excluded_weekdays: Set[int], sunday_policy
     weekday = current.weekday()
     if weekday not in excluded_weekdays:
         return False
-    if sunday_policy == "summer-only" and weekday == WEEKDAY_ALIASES["SUN"]:
+    if sunday_policy == "summer-only" and weekday == SUNDAY:
         return current.month in {7, 8}
     return True
 

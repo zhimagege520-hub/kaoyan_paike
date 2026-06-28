@@ -5,10 +5,10 @@ from datetime import date as Date, timedelta
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 import scheduler
+from scripts.weekday_utils import WEEKDAY_LABELS, weekday_label_for_date
 
 
 PERIOD_LABELS = {"AM": "上午", "PM": "下午", "EVENING": "晚上"}
-WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 STANDARD_DISPLAY_SLOTS = (
     {"id": "AM1", "period": "AM", "label": "上午一", "start_time": "08:00", "end_time": "10:00"},
     {"id": "AM2", "period": "AM", "label": "上午二", "start_time": "10:20", "end_time": "12:20"},
@@ -31,7 +31,7 @@ def assignment_period_key(assignment: scheduler.Assignment) -> Tuple[str, str]:
 
 
 def weekday_label(date_text: str) -> str:
-    return WEEKDAY_LABELS[Date.fromisoformat(date_text).weekday()]
+    return weekday_label_for_date(date_text)
 
 
 def date_range(start: str, end: str) -> List[str]:

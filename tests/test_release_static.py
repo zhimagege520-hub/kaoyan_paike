@@ -188,6 +188,24 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIsNone(re.search(r"(?m)^PERIOD_ORDER\s*=", erp_adjusted_sync_source))
         self.assertIsNone(re.search(r"(?m)^\s*aliases\s*=\s*\{", business_import_source))
 
+    def test_weekday_normalization_lives_in_shared_weekday_utils(self) -> None:
+        scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")
+        generator_source = (ROOT / "generate_time_slots.py").read_text(encoding="utf-8")
+        business_import_source = (ROOT / "business_class_import.py").read_text(encoding="utf-8")
+        schedule_display_source = (ROOT / "scripts" / "schedule_display.py").read_text(encoding="utf-8")
+        weekday_utils_source = (ROOT / "scripts" / "weekday_utils.py").read_text(encoding="utf-8")
+
+        self.assertIn("from scripts.weekday_utils import", scheduler_source)
+        self.assertIn("from scripts.weekday_utils import", generator_source)
+        self.assertIn("from scripts.weekday_utils import", business_import_source)
+        self.assertIn("from scripts.weekday_utils import", schedule_display_source)
+        self.assertIn("WEEKDAY_ALIASES", weekday_utils_source)
+        self.assertIn("WEEKDAY_LABELS", weekday_utils_source)
+        self.assertIsNone(re.search(r"(?m)^WEEKDAY_ALIASES\s*=", scheduler_source))
+        self.assertIsNone(re.search(r"(?m)^WEEKDAY_ALIASES\s*=", generator_source))
+        self.assertIsNone(re.search(r"(?m)^WEEKDAY_LABELS\s*=", schedule_display_source))
+        self.assertNotIn('["周一", "周二", "周三", "周四", "周五", "周六", "周日"]', business_import_source)
+
     def test_cli_scripts_import_project_modules_with_bootstrap(self) -> None:
         project_import = re.compile(
             r"(?m)^\s*("
