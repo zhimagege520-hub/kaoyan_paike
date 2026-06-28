@@ -2051,6 +2051,46 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
         )
         self.assertLess(same_region_penalty, cross_region_penalty)
 
+    def test_teacher_travel_penalty_skips_non_travel_contexts_and_keeps_region_penalty(self) -> None:
+        morning = scheduler.TimeSlot("2026-07-06-AM", "2026-07-06", "AM", "上午", 1, duration_hours=2)
+        afternoon = scheduler.TimeSlot("2026-07-06-PM", "2026-07-06", "PM", "下午", 2, duration_hours=2)
+        candidate_assignment = make_teacher_travel_assignment(
+            "CAND",
+            afternoon,
+            "R_REMOTE",
+            teacher_id="T1",
+            task_id="TASK_CAND",
+        )
+        schedule_input = scheduler.ScheduleInput(
+            time_slots=[morning, afternoon],
+            rooms={
+                "R_REMOTE": scheduler.Room("R_REMOTE", teaching_area_id="A_REMOTE", region_tag="新站"),
+                "R_PARALLEL": scheduler.Room("R_PARALLEL", teaching_area_id="A_PARALLEL", region_tag="滨湖"),
+                "R_SAME_AREA": scheduler.Room("R_SAME_AREA", teaching_area_id="A_REMOTE", region_tag="包河"),
+                "R_SAME_REGION": scheduler.Room("R_SAME_REGION", teaching_area_id="A_NEAR", region_tag="新站/瑶海"),
+            },
+            classes={},
+            conflict_groups={},
+            class_conflict_groups={},
+            locked_assignments=[],
+            area_travel_minutes={("A_NEAR", "A_REMOTE"): 15},
+        )
+        existing = [
+            make_teacher_travel_assignment("PARALLEL", afternoon, "R_PARALLEL", teacher_id="T1"),
+            make_teacher_travel_assignment("SAME_TASK", morning, "R_PARALLEL", teacher_id="T1", task_id="TASK_CAND"),
+            make_teacher_travel_assignment("SAME_AREA", morning, "R_SAME_AREA", teacher_id="T1"),
+            make_teacher_travel_assignment("SAME_REGION", morning, "R_SAME_REGION", teacher_id="T1"),
+        ]
+
+        penalty = scheduler.candidate_same_day_teacher_travel_penalty(
+            schedule_input,
+            existing,
+            candidate_assignment.task,
+            candidate_assignment.candidate,
+        )
+
+        self.assertEqual(penalty, 500)
+
     def test_teacher_same_day_campus_warning_collapses_parallel_class_pairs(self) -> None:
         morning = scheduler.TimeSlot("2026-07-22-AM", "2026-07-22", "AM", "上午", 1, duration_hours=4)
         afternoon = scheduler.TimeSlot("2026-07-22-PM", "2026-07-22", "PM", "下午", 2, duration_hours=4)

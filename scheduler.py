@@ -462,6 +462,59 @@ def area_pair_key(left_area_id: str, right_area_id: str) -> Tuple[str, str]:
     return left, right
 
 
+def slots_dates(slots: Tuple[TimeSlot, ...]) -> Set[str]:
+    return {slot.date for slot in slots}
+
+
+def slots_periods(slots: Tuple[TimeSlot, ...]) -> Set[str]:
+    return {slot.period for slot in slots}
+
+
+def assignment_affects_same_day_teacher_travel(
+    assignment: Assignment,
+    task: CourseBlock,
+    teacher_key: str,
+    candidate_dates: Set[str],
+    candidate_periods: Set[str],
+) -> bool:
+    assignment_teacher = candidate_teacher_key(assignment.candidate)
+    if not assignment_teacher or assignment_teacher != teacher_key:
+        return False
+    if assignment.task.task_id == task.task_id:
+        return False
+    if not candidate_dates.intersection(slots_dates(assignment.candidate.slots)):
+        return False
+    return candidate_periods != slots_periods(assignment.candidate.slots)
+
+
+def is_new_station_avoid_pair(left_room: Optional[Room], right_room: Optional[Room]) -> bool:
+    return (
+        is_new_station_area(left_room)
+        and is_new_station_avoid_target(right_room)
+    ) or (
+        is_new_station_area(right_room)
+        and is_new_station_avoid_target(left_room)
+    )
+
+
+def room_pair_teacher_travel_penalty(
+    schedule_input: ScheduleInput,
+    candidate_room: Optional[Room],
+    assigned_room: Optional[Room],
+) -> int:
+    candidate_area = room_area_id(candidate_room)
+    assigned_area = room_area_id(assigned_room)
+    if candidate_area and assigned_area and candidate_area == assigned_area:
+        return 0
+    if same_region(candidate_room, assigned_room):
+        return 500
+
+    pair_minutes = schedule_input.area_travel_minutes.get(area_pair_key(candidate_area, assigned_area), 0)
+    if is_new_station_avoid_pair(candidate_room, assigned_room):
+        return 50_000 + max(0, pair_minutes - 20) * 100
+    return 5_000 + max(0, pair_minutes - 20) * 60
+
+
 def candidate_same_day_teacher_travel_penalty(
     schedule_input: ScheduleInput,
     existing_assignments: List[Assignment],
@@ -472,37 +525,21 @@ def candidate_same_day_teacher_travel_penalty(
     if not teacher_key:
         return 0
     candidate_room = schedule_input.rooms.get(candidate.room_id)
-    candidate_area = room_area_id(candidate_room)
-    candidate_dates = {slot.date for slot in candidate.slots}
-    candidate_periods = {slot.period for slot in candidate.slots}
+    candidate_dates = slots_dates(candidate.slots)
+    candidate_periods = slots_periods(candidate.slots)
     penalty = 0
 
     for assignment in existing_assignments:
-        assignment_teacher = candidate_teacher_key(assignment.candidate)
-        if not assignment_teacher or assignment_teacher != teacher_key:
-            continue
-        if assignment.task.task_id == task.task_id:
-            continue
-        assignment_dates = {slot.date for slot in assignment.candidate.slots}
-        if not candidate_dates.intersection(assignment_dates):
-            continue
-        assignment_periods = {slot.period for slot in assignment.candidate.slots}
-        if candidate_periods == assignment_periods:
+        if not assignment_affects_same_day_teacher_travel(
+            assignment,
+            task,
+            teacher_key,
+            candidate_dates,
+            candidate_periods,
+        ):
             continue
         assigned_room = schedule_input.rooms.get(assignment.candidate.room_id)
-        assigned_area = room_area_id(assigned_room)
-        if candidate_area and assigned_area and candidate_area == assigned_area:
-            continue
-        if same_region(candidate_room, assigned_room):
-            penalty += 500
-            continue
-        pair_minutes = schedule_input.area_travel_minutes.get(area_pair_key(candidate_area, assigned_area), 0)
-        if (is_new_station_area(candidate_room) and is_new_station_avoid_target(assigned_room)) or (
-            is_new_station_area(assigned_room) and is_new_station_avoid_target(candidate_room)
-        ):
-            penalty += 50_000 + max(0, pair_minutes - 20) * 100
-        else:
-            penalty += 5_000 + max(0, pair_minutes - 20) * 60
+        penalty += room_pair_teacher_travel_penalty(schedule_input, candidate_room, assigned_room)
     return penalty
 
 
