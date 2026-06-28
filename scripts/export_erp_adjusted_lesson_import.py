@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import sys
 from collections import Counter, defaultdict
 from datetime import datetime
@@ -38,10 +37,10 @@ from scripts.export_erp_lesson_import import (  # noqa: E402
     display_date,
     load_course_code_lookup,
     load_shared_class_keys,
-    read_csv,
     split_values,
     validate_template_headers,
 )
+from scripts.csv_utils import read_csv_rows, write_csv_rows  # noqa: E402
 from scripts.schedule_data import load_class_metadata, load_room_name_to_id  # noqa: E402
 from scripts.sync_erp_adjusted_schedule import read_erp_rows  # noqa: E402
 
@@ -50,14 +49,6 @@ DEFAULT_CLASSES = Path("data/classes.csv")
 DEFAULT_ROOMS = Path("data/rooms.csv")
 DEFAULT_OUTPUT_DIR = Path("outputs")
 ONLINE_ROOM_ID = "RMHFWY97001"
-
-
-def write_csv(path: Path, fieldnames: Sequence[str], rows: Iterable[Dict[str, str]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8-sig") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(rows)
 
 
 def group_by_class(rows: Iterable[Dict[str, str]], class_field: str) -> Dict[str, List[Dict[str, str]]]:
@@ -337,7 +328,7 @@ def main() -> None:
     include_subjects = set(split_values(args.include_subjects))
     schedule_source = [
         row
-        for row in read_csv(args.schedule_csv)
+        for row in read_csv_rows(args.schedule_csv)
         if should_include_schedule_row(row, args.start_date, args.end_date, include_subjects)
     ]
     schedule_class_ids = {clean(row.get("class_id")) for row in schedule_source}
@@ -400,8 +391,8 @@ def main() -> None:
             all_gaps.append({**gap, "erp_lesson_id": clean(erp_row.get("课次ID"))})
 
     write_workbook(args.template, output_xlsx, export_rows)
-    write_csv(output_csv, ERP_HEADERS, export_csv_rows)
-    write_csv(
+    write_csv_rows(output_csv, ERP_HEADERS, export_csv_rows, extrasaction="ignore")
+    write_csv_rows(
         diff_csv,
         [
             "class_id",
@@ -423,8 +414,9 @@ def main() -> None:
             "change_reasons",
         ],
         diff_rows,
+        extrasaction="ignore",
     )
-    write_csv(issue_csv, ["issue_type", "class_id", "schedule_count", "erp_count", "message"], mapping_issues)
+    write_csv_rows(issue_csv, ["issue_type", "class_id", "schedule_count", "erp_count", "message"], mapping_issues)
     gap_fields = [
         "erp_lesson_id",
         "gap_type",
@@ -442,7 +434,7 @@ def main() -> None:
         "course_name",
         "is_shared_merge_row",
     ]
-    write_csv(gap_report, gap_fields, all_gaps)
+    write_csv_rows(gap_report, gap_fields, all_gaps, extrasaction="ignore")
     write_report(report, args.erp_export, output_xlsx, diff_rows, mapping_issues, all_gaps, args.start_date, args.end_date)
 
     print(f"schedule_rows={len(schedule_source)}")

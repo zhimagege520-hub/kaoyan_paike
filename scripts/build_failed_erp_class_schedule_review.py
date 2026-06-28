@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import re
+import sys
 from collections import Counter, defaultdict
 from datetime import date as Date, datetime, timedelta
 from pathlib import Path
@@ -15,6 +15,11 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.csv_utils import read_csv_rows
 from scripts.schedule_display import weekday_label
 
 
@@ -69,11 +74,6 @@ def display_date(value: str) -> str:
         return clean(value).replace("-", "/")
 
 
-def read_csv(path: Path) -> List[Dict[str, str]]:
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        return list(csv.DictReader(handle))
-
-
 def read_result_rows(path: Path) -> List[Dict[str, str]]:
     workbook = load_workbook(path, read_only=True, data_only=True)
     worksheet = workbook.active
@@ -89,7 +89,7 @@ def read_result_rows(path: Path) -> List[Dict[str, str]]:
 
 
 def load_classes(path: Path) -> Dict[str, Dict[str, str]]:
-    return {clean(row.get("id")): row for row in read_csv(path) if clean(row.get("id"))}
+    return {clean(row.get("id")): row for row in read_csv_rows(path) if clean(row.get("id"))}
 
 
 def row_slot(row: Dict[str, str]) -> str:
@@ -279,7 +279,7 @@ def main() -> None:
     stamp = args.timestamp or datetime.now().strftime("%Y%m%d_%H%M%S")
     result_rows = read_result_rows(args.result_xlsx)
     classes = load_classes(args.classes)
-    schedule_rows_all = read_csv(args.schedule_csv)
+    schedule_rows_all = read_csv_rows(args.schedule_csv)
     failed_class_ids = {clean(row.get("班级编码")) for row in result_rows}
     mentioned_counter = extract_class_codes(result_rows)
     local_schedule_class_ids = {clean(row.get("class_id")) for row in schedule_rows_all}

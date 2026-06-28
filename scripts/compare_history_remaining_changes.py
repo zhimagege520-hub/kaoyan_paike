@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import os
 import sys
 from collections import defaultdict
@@ -16,6 +15,7 @@ if str(ROOT) not in sys.path:
 
 import scheduler
 from scripts import build_camp_maintenance_schedule as maintenance
+from scripts.csv_utils import write_csv_rows
 
 
 RequirementKey = Tuple[str, str, str, str]
@@ -87,7 +87,6 @@ def requirement_rows(
 
 
 def write_csv(path: Path, rows: Sequence[dict]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "class_id",
         "class_name",
@@ -105,11 +104,7 @@ def write_csv(path: Path, rows: Sequence[dict]) -> None:
         "new_remaining_hours",
         "delta_remaining_hours",
     ]
-    with path.open("w", newline="", encoding="utf-8-sig") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in rows:
-            writer.writerow(row)
+    write_csv_rows(path, fieldnames, rows)
 
 
 def write_report(

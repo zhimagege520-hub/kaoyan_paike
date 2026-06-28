@@ -4,12 +4,11 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import sys
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Tuple
+from typing import Dict, List, Sequence, Tuple
 
 from openpyxl import load_workbook
 
@@ -19,6 +18,7 @@ if str(ROOT) not in sys.path:
 
 from scripts.schedule_data import load_class_metadata  # noqa: E402
 from scripts.schedule_modes import assignment_reference_class_id, assignment_schedule_mode  # noqa: E402
+from scripts.csv_utils import read_csv_rows, write_csv_rows  # noqa: E402
 
 
 DEFAULT_FAILURES = Path("outputs/erp_import_failures_annotated_20260521_161645.csv")
@@ -89,11 +89,6 @@ def date_key(value: str) -> str:
     return f"{year:04d}-{month:02d}-{day:02d}"
 
 
-def read_csv(path: Path) -> List[Dict[str, str]]:
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        return list(csv.DictReader(handle))
-
-
 def split_remark(remark: str) -> Tuple[str, str, str]:
     parts = [part.strip() for part in remark.split("/") if part.strip()]
     if len(parts) >= 3:
@@ -107,7 +102,7 @@ def split_remark(remark: str) -> Tuple[str, str, str]:
 
 def load_course_names(path: Path) -> Dict[str, str]:
     names: Dict[str, str] = {}
-    for row in read_csv(path):
+    for row in read_csv_rows(path):
         code = clean(row.get("course_code"))
         if code:
             names[code] = clean(row.get("course_name"))
@@ -121,7 +116,7 @@ def group_matches(row_group: str, assignment_group: str) -> bool:
 def load_merge_modes(path: Path) -> Tuple[Dict[Tuple[str, str, str, str], str], set[Tuple[str, str, str, str]]]:
     modes: Dict[Tuple[str, str, str, str], str] = {}
     inherited_main_keys: set[Tuple[str, str, str, str]] = set()
-    for row in read_csv(path):
+    for row in read_csv_rows(path):
         class_id = clean(row.get("class_id"))
         subject = clean(row.get("subject"))
         stage = clean(row.get("stage"))
@@ -304,14 +299,6 @@ def write_retry_workbook(template: Path, output_path: Path, rows: Sequence[Dict[
     workbook.save(output_path)
 
 
-def write_csv(path: Path, fieldnames: Sequence[str], rows: Iterable[Dict[str, str]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8-sig") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
-
-
 def write_report(path: Path, source: Path, output_xlsx: Path, rows: Sequence[Dict[str, str]], log_rows: Sequence[Dict[str, str]]) -> None:
     action_counter: Counter[str] = Counter()
     for item in log_rows:
@@ -350,7 +337,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     stamp = args.timestamp or datetime.now().strftime("%Y%m%d_%H%M%S")
-    failures = read_csv(args.failures)
+    failures = read_csv_rows(args.failures)
     class_meta = load_class_metadata(args.classes)
     merge_modes, inherited_main_keys = load_merge_modes(args.teacher_assignments)
     course_names = load_course_names(args.product_courses)
@@ -385,8 +372,8 @@ def main() -> None:
     report = args.output_dir / f"erp_lesson_import_retry_report_{stamp}.md"
 
     write_retry_workbook(args.template, output_xlsx, output_rows)
-    write_csv(output_csv, ERP_HEADERS, [dict(zip(ERP_HEADERS, output_values(row))) for row in output_rows])
-    write_csv(log_csv, list(log_rows[0].keys()) if log_rows else [], log_rows)
+    write_csv_rows(output_csv, ERP_HEADERS, [dict(zip(ERP_HEADERS, output_values(row))) for row in output_rows])
+    write_csv_rows(log_csv, list(log_rows[0].keys()) if log_rows else [], log_rows)
     write_report(report, args.failures, output_xlsx, output_rows, log_rows)
 
     action_counter: Counter[str] = Counter()
