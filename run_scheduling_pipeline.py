@@ -8,13 +8,13 @@ import sys
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Set
+from typing import Any, Dict, List, Optional, Sequence, Set
 
 import data_admin_server
 import scheduler
 from business_class_import import BusinessDataError, convert_business_tables
 from generate_time_slots import generate_time_slots, parse_weekdays
-from scripts.csv_utils import read_csv_text_with_fieldnames, write_csv_rows
+from scripts.csv_utils import clean_csv_rows, read_csv_with_fieldnames, write_csv_rows
 
 
 TABLES = list(data_admin_server.STANDARD_TABLE_FIELDNAMES)
@@ -257,22 +257,15 @@ def source_files(source: Path) -> List[Path]:
     return files
 
 
-def read_csv_text(path: Path) -> str:
-    for encoding in ("utf-8-sig", "utf-8", "gb18030"):
-        try:
-            return path.read_text(encoding=encoding)
-        except UnicodeDecodeError:
-            continue
-    raise PipelineError(f"无法识别 CSV 编码: {path}")
-
-
-def read_csv_rows(path: Path) -> List[Dict[str, Any]]:
-    text = read_csv_text(path)
-    fieldnames, rows = read_csv_text_with_fieldnames(text)
+def load_csv_table_rows(path: Path) -> List[Dict[str, str]]:
+    try:
+        fieldnames, rows = read_csv_with_fieldnames(path)
+    except UnicodeDecodeError as exc:
+        raise PipelineError(f"无法识别 CSV 编码: {path}") from exc
     if not fieldnames:
         return []
     validate_headers([header or "" for header in fieldnames], str(path))
-    return clean_rows(rows)
+    return clean_csv_rows(rows)
 
 
 def cell_text(cell: Any) -> str:
@@ -333,7 +326,7 @@ def read_xlsx_tables(path: Path) -> List[LoadedTable]:
                 if header
             }
             records.append(record)
-        tables.append(LoadedTable(table_name, f"{path.name}/{sheet.title}", clean_rows(records)))
+        tables.append(LoadedTable(table_name, f"{path.name}/{sheet.title}", clean_csv_rows(records)))
     return tables
 
 
@@ -372,19 +365,6 @@ def validate_headers(headers: Sequence[str], label: str) -> None:
         seen.add(header)
 
 
-def clean_rows(rows: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    result = []
-    for row in rows:
-        cleaned = {
-            str(key).strip(): ("" if value is None else str(value).strip())
-            for key, value in row.items()
-            if key is not None and str(key).strip()
-        }
-        if any(value for value in cleaned.values()):
-            result.append(cleaned)
-    return result
-
-
 def load_source_tables(source: Path) -> Dict[str, LoadedTable]:
     loaded: Dict[str, LoadedTable] = {}
     for path in source_files(source):
@@ -394,7 +374,7 @@ def load_source_tables(source: Path) -> Dict[str, LoadedTable]:
             if not table_name:
                 print(f"跳过未识别的 CSV 文件: {path.name}", file=sys.stderr)
                 continue
-            tables = [LoadedTable(table_name, path.name, read_csv_rows(path))]
+            tables = [LoadedTable(table_name, path.name, load_csv_table_rows(path))]
         else:
             tables = read_xlsx_tables(path)
 

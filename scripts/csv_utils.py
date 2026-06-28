@@ -5,6 +5,8 @@ import io
 from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
+DEFAULT_ENCODINGS: Sequence[str] = ("utf-8-sig", "utf-8", "gb18030")
+
 
 def clean_cell(value: object) -> str:
     if value is None:
@@ -12,15 +14,37 @@ def clean_cell(value: object) -> str:
     return str(value).strip()
 
 
+def clean_csv_rows(rows: Iterable[Dict[str, object]]) -> List[Dict[str, str]]:
+    result: List[Dict[str, str]] = []
+    for row in rows:
+        cleaned = {
+            str(key).strip(): clean_cell(value)
+            for key, value in row.items()
+            if key is not None and str(key).strip()
+        }
+        if any(value for value in cleaned.values()):
+            result.append(cleaned)
+    return result
+
+
+def read_csv_text(path: Path, encodings: Sequence[str] = DEFAULT_ENCODINGS) -> str:
+    last_error: Optional[UnicodeDecodeError] = None
+    for encoding in encodings:
+        try:
+            return path.read_text(encoding=encoding)
+        except UnicodeDecodeError as exc:
+            last_error = exc
+    if last_error is not None:
+        raise last_error
+    return path.read_text(encoding="utf-8-sig")
+
+
 def read_csv_rows(path: Path) -> List[Dict[str, str]]:
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        return [dict(row) for row in csv.DictReader(handle)]
+    return read_csv_with_fieldnames(path)[1]
 
 
 def read_csv_with_fieldnames(path: Path) -> Tuple[List[str], List[Dict[str, str]]]:
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        reader = csv.DictReader(handle)
-        return list(reader.fieldnames or []), [dict(row) for row in reader]
+    return read_csv_text_with_fieldnames(read_csv_text(path))
 
 
 def read_csv_text_with_fieldnames(text: str) -> Tuple[List[str], List[Dict[str, str]]]:

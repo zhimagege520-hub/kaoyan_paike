@@ -6,8 +6,10 @@ import unittest
 from pathlib import Path
 
 from scripts.csv_utils import (
+    clean_csv_rows,
     csv_rows_text,
     clean_cell,
+    read_csv_text,
     read_csv_rows,
     read_csv_text_with_fieldnames,
     read_csv_with_fieldnames,
@@ -33,6 +35,24 @@ class CsvUtilsTest(unittest.TestCase):
                 read_csv_text_with_fieldnames("\ufeffid,name\n2,李四\n"),
                 (["id", "name"], [{"id": "2", "name": "李四"}]),
             )
+
+    def test_read_csv_with_fieldnames_accepts_gb18030_export(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "rows.csv"
+            path.write_bytes("id,name\n1,张三\n".encode("gb18030"))
+
+            self.assertIn("张三", read_csv_text(path))
+            self.assertEqual(read_csv_with_fieldnames(path), (["id", "name"], [{"id": "1", "name": "张三"}]))
+
+    def test_clean_csv_rows_strips_headers_values_and_drops_empty_rows(self) -> None:
+        rows = clean_csv_rows(
+            [
+                {" id ": " 1 ", "name": " 张三 ", None: "ignored"},
+                {" id ": " ", "name": None},
+            ]
+        )
+
+        self.assertEqual(rows, [{"id": "1", "name": "张三"}])
 
     def test_write_csv_rows_filters_to_declared_fields_by_default(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
