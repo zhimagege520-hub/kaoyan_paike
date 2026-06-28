@@ -4,16 +4,20 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 import data_admin_server
 from scripts.csv_utils import read_csv_rows, write_csv_rows
 
 
-ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
 
 ERP_STANDARD_PRODUCT_FIELDNAMES = data_admin_server.ERP_STANDARD_PRODUCT_FIELDNAMES

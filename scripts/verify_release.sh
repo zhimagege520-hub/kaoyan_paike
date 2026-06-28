@@ -38,6 +38,14 @@ while IFS= read -r script_path; do
   run "$PYTHON_BIN" -m py_compile "$script_path"
 done < <(find scripts -name "*.py" -print | sort)
 
+while IFS= read -r script_path; do
+  if grep -q "argparse" "$script_path" && grep -q "if __name__" "$script_path"; then
+    echo
+    echo "==> $PYTHON_BIN $script_path --help"
+    "$PYTHON_BIN" "$script_path" --help >/dev/null
+  fi
+done < <(find scripts -name "*.py" -print | sort)
+
 run "$PYTHON_BIN" scripts/audit_release_package.py --root "$ROOT_DIR"
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then

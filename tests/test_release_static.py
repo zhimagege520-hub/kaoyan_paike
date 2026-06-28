@@ -72,6 +72,9 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIn('export PYTHONPYCACHEPREFIX="$WORK_DIR/pycache"', script)
         self.assertIn('find scripts -name "*.py"', script)
         self.assertIn("-m py_compile \"$script_path\"", script)
+        self.assertIn('--help >/dev/null', script)
+        self.assertIn('grep -q "argparse" "$script_path"', script)
+        self.assertIn('grep -q "if __name__" "$script_path"', script)
 
     def test_release_surface_does_not_reintroduce_summer_lodging_constraints(self) -> None:
         forbidden_terms = [
@@ -96,6 +99,31 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIn("actions/setup-python", workflow)
         self.assertIn("python3 -m pip install -r requirements.txt", workflow)
         self.assertIn("bash scripts/verify_release.sh", workflow)
+
+    def test_cli_scripts_import_project_modules_with_bootstrap(self) -> None:
+        project_import = re.compile(
+            r"(?m)^\s*("
+            r"from\s+scripts\.|import\s+scripts\."
+            r"|import\s+data_admin_server\b|import\s+data_admin_server\s+as\b"
+            r"|from\s+run_scheduling_pipeline\b|import\s+business_class_import\b"
+            r"|import\s+business_class_import\s+as\b|import\s+scheduler\b|from\s+scheduler\b"
+            r")"
+        )
+        offenders = []
+        for path in sorted((ROOT / "scripts").glob("*.py")):
+            source = path.read_text(encoding="utf-8")
+            if 'if __name__ == "__main__"' not in source and "if __name__ == '__main__'" not in source:
+                continue
+            if not project_import.search(source):
+                continue
+            has_bootstrap = (
+                "ROOT = Path(__file__).resolve().parents[1]" in source
+                and "sys.path.insert(0, str(ROOT))" in source
+            )
+            if not has_bootstrap:
+                offenders.append(str(path.relative_to(ROOT)))
+
+        self.assertEqual([], offenders)
 
     def test_release_path_modules_use_csv_utils_for_csv_io(self) -> None:
         modules = [
