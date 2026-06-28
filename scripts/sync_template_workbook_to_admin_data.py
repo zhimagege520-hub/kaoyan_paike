@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import sys
 from datetime import date, datetime, time
@@ -15,6 +14,7 @@ if str(ROOT) not in sys.path:
 
 from openpyxl import load_workbook
 
+from scripts.csv_utils import write_csv_rows
 from scripts.field_utils import normalize_text, parse_bool as normalize_bool
 from scripts.schedule_modes import (
     assignment_actual_scheduled_class_id,
@@ -419,12 +419,7 @@ def write_csv(path: Path, rows: List[Dict[str, Any]]) -> None:
             if field not in seen:
                 seen.add(field)
                 fields.append(field)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8-sig") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fields)
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({field: csv_value(row.get(field, "")) for field in fields})
+    write_csv_rows(path, fields, rows, value_formatter=csv_value)
 
 
 def sync(workbook_path: Path) -> Dict[str, int]:

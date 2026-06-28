@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import csv
-import io
 import zipfile
 from dataclasses import dataclass
 from datetime import datetime
@@ -25,6 +23,7 @@ from business_class_import import (
     learn_teacher_assignments,
     teacher_employee_ids_from_business_rows,
 )
+from scripts.csv_utils import csv_rows_text
 
 
 @dataclass
@@ -37,12 +36,7 @@ class TemplateGenerationResult:
     warnings: List[str]
 
 def csv_text(rows: Sequence[Mapping[str, Any]], fieldnames: Sequence[str]) -> str:
-    handle = io.StringIO(newline="")
-    writer = csv.DictWriter(handle, fieldnames=fieldnames)
-    writer.writeheader()
-    for row in rows:
-        writer.writerow({field: data_admin_server.csv_escape(row.get(field, "")) for field in fieldnames})
-    return "\ufeff" + handle.getvalue()
+    return csv_rows_text(fieldnames, rows, bom=True, value_formatter=data_admin_server.csv_escape)
 
 
 def selected_business_rows(rows: Iterable[Mapping[str, Any]]) -> Tuple[List[Mapping[str, Any]], List[str]]:

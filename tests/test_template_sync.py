@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 
-from scripts.sync_template_workbook_to_admin_data import enrich_rows
+import formal_template
+from scripts.csv_utils import read_csv_rows
+from scripts.sync_template_workbook_to_admin_data import enrich_rows, write_csv
 
 
 class TemplateSyncTest(unittest.TestCase):
@@ -84,6 +88,34 @@ class TemplateSyncTest(unittest.TestCase):
         self.assertEqual(rows[3]["class_schedule_mode"], "合班实际排课班级")
         self.assertEqual(rows[3]["actual_scheduled_class_id"], "C_MAIN")
         self.assertEqual(rows[3]["teacher_id"], "T_MAIN")
+
+    def test_write_csv_uses_shared_formatter_and_keeps_union_field_order(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "template_sync.csv"
+            write_csv(
+                path,
+                [
+                    {"id": "1", "enabled": True, "tags": ["A", "B"]},
+                    {"id": "2", "extra": "later"},
+                ],
+            )
+            self.assertTrue(path.read_bytes().startswith(b"\xef\xbb\xbf"))
+            text = path.read_text(encoding="utf-8-sig")
+            rows = read_csv_rows(path)
+
+        self.assertEqual(text.splitlines()[0], "id,enabled,tags,extra")
+        self.assertEqual(rows[0]["enabled"], "是")
+        self.assertEqual(rows[0]["tags"], "A|B")
+        self.assertEqual(rows[1]["extra"], "later")
+
+    def test_formal_template_csv_text_uses_shared_csv_formatting(self) -> None:
+        text = formal_template.csv_text(
+            [{"id": "1", "enabled": True, "tags": ["A", "B"]}],
+            ["id", "enabled", "tags"],
+        )
+
+        self.assertTrue(text.startswith("\ufeff"))
+        self.assertIn("1,是,A|B", text)
 
 
 if __name__ == "__main__":

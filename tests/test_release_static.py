@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import unittest
 from pathlib import Path
 
@@ -40,6 +41,7 @@ class ReleaseStaticTest(unittest.TestCase):
 
     def test_release_path_modules_use_csv_utils_for_csv_io(self) -> None:
         modules = [
+            ROOT / "formal_template.py",
             ROOT / "scheduler.py",
             ROOT / "run_scheduling_pipeline.py",
             ROOT / "scripts" / "schedule_data.py",
@@ -47,11 +49,13 @@ class ReleaseStaticTest(unittest.TestCase):
             ROOT / "scripts" / "schedule_conflicts.py",
             ROOT / "scripts" / "schedule_outputs.py",
             ROOT / "scripts" / "schedule_scope.py",
+            ROOT / "scripts" / "sync_template_workbook_to_admin_data.py",
         ]
         offenders = []
         for path in modules:
             source = path.read_text(encoding="utf-8")
-            if "import csv" in source or "csv." in source or "scripts.csv_utils" not in source:
+            imports_stdlib_csv = bool(re.search(r"(?m)^\s*(import\s+csv\b|from\s+csv\s+import\b)", source))
+            if imports_stdlib_csv or "csv." in source or "scripts.csv_utils" not in source:
                 offenders.append(str(path.relative_to(ROOT)))
 
         self.assertEqual([], offenders)
