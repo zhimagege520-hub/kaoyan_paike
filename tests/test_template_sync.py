@@ -7,10 +7,23 @@ from pathlib import Path
 import data_admin_server
 import formal_template
 from scripts.csv_utils import read_csv_rows
-from scripts.sync_template_workbook_to_admin_data import enrich_rows, output_fields_for_key, standard_output_rows, write_csv
+from scripts.sync_template_workbook_to_admin_data import (
+    SHEET_ALIASES,
+    SHEETS,
+    enrich_rows,
+    output_fields_for_key,
+    standard_output_rows,
+    write_csv,
+)
 
 
 class TemplateSyncTest(unittest.TestCase):
+    def test_template_sheet_keys_follow_admin_standard_table_order(self) -> None:
+        self.assertEqual(list(data_admin_server.STANDARD_TABLE_FIELDNAMES), list(SHEETS.values()))
+        self.assertEqual(len(SHEETS), len(set(SHEETS.values())))
+        for canonical_sheet in SHEET_ALIASES:
+            self.assertIn(canonical_sheet, SHEETS)
+
     def test_class_teacher_assignment_sync_outputs_current_fields_only(self) -> None:
         rows = enrich_rows(
             "class_teacher_assignments",
