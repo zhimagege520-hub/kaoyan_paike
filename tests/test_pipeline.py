@@ -3044,6 +3044,85 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(locked[0].candidate.room_id, "R1")
         self.assertEqual(generated[0].candidate.room_id, "R2")
 
+    def test_schedule_search_state_tracks_locked_placed_and_unplaced_constraints(self) -> None:
+        morning = scheduler.TimeSlot("2026-07-13-AM-1", "2026-07-13", "AM", "上午一", 1)
+        afternoon = scheduler.TimeSlot("2026-07-13-PM-1", "2026-07-13", "PM", "下午一", 1)
+
+        def school_class(class_id: str) -> scheduler.SchoolClass:
+            return scheduler.SchoolClass(
+                id=class_id,
+                name=class_id,
+                product_id=None,
+                product_name=None,
+                size=30,
+                room_ids={"R1", "R2"},
+                start_date=None,
+                start_period=None,
+                end_date=None,
+                end_period=None,
+                first_lesson_date=None,
+                first_lesson_period=None,
+                stage_order={},
+                requirements=[],
+            )
+
+        def task(task_id: str, class_id: str, teacher_id: str) -> scheduler.CourseBlock:
+            return scheduler.CourseBlock(
+                task_id=task_id,
+                class_id=class_id,
+                class_name=class_id,
+                product_id=None,
+                product_name=None,
+                class_size=30,
+                subject_category="公共课",
+                subject="英语",
+                quarter=None,
+                stage="基础",
+                course_module=None,
+                course_group="阅读类",
+                teacher_id=teacher_id,
+                teacher_name=teacher_id,
+                block_hours=2,
+                room_ids={"R1", "R2"},
+                start_date=None,
+                end_date=None,
+                allowed_periods=None,
+                allowed_weekdays=None,
+                excluded_weekdays=None,
+                schedule_rules=(),
+            )
+
+        locked_task = task("LOCKED", "LOCKED_CLASS", "T_LOCK")
+        locked_assignment = scheduler.Assignment(
+            locked_task,
+            scheduler.Candidate((morning,), "T_LOCK", "锁定老师", "R1"),
+        )
+        task_a = task("TASK_A", "C1", "T1")
+        task_b = task("TASK_B", "C2", "T1")
+        schedule_input = scheduler.ScheduleInput(
+            time_slots=[morning, afternoon],
+            rooms={"R1": scheduler.Room("R1"), "R2": scheduler.Room("R2")},
+            classes={"C1": school_class("C1"), "C2": school_class("C2")},
+            conflict_groups={"G1": {"LOCKED_CLASS", "C1", "C2"}},
+            class_conflict_groups={"LOCKED_CLASS": {"G1"}, "C1": {"G1"}, "C2": {"G1"}},
+            locked_assignments=[locked_assignment],
+        )
+        state = scheduler.ScheduleSearchState(
+            schedule_input,
+            {"TASK_A": task_a, "TASK_B": task_b},
+            {"C1": ["TASK_A"], "C2": ["TASK_B"]},
+        )
+
+        self.assertFalse(state.is_valid(task_a, scheduler.Candidate((morning,), "T1", "张老师", "R1")))
+
+        placed = scheduler.Candidate((afternoon,), "T1", "张老师", "R1")
+        other_same_teacher = scheduler.Candidate((afternoon,), "T1", "张老师", "R2")
+        self.assertTrue(state.is_valid(task_a, placed))
+        state.place(task_a, placed)
+        self.assertFalse(state.is_valid(task_b, other_same_teacher))
+        state.unplace(task_a, placed)
+        self.assertTrue(state.is_valid(task_b, other_same_teacher))
+
     def test_duplicate_table_sources_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp)

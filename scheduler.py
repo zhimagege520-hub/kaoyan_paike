@@ -2187,6 +2187,151 @@ def locked_constraint_sets(
     return class_slot_used, teacher_slot_used, room_slot_used, conflict_group_slot_used
 
 
+@dataclass
+class ScheduleSearchState:
+    schedule_input: ScheduleInput
+    task_by_id: Dict[str, CourseBlock]
+    task_ids_by_class: Dict[str, List[str]]
+    assignments: Dict[str, Assignment] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        (
+            self.class_slot_used,
+            self.teacher_slot_used,
+            self.room_slot_used,
+            self.conflict_group_slot_used,
+        ) = locked_constraint_sets(self.schedule_input)
+        self.class_teacher_day_loads = locked_class_teacher_day_loads(self.schedule_input)
+        self.class_day_hour_loads, self.class_day_block_loads = locked_class_day_rule_loads(
+            self.schedule_input
+        )
+
+    def is_valid(self, task: CourseBlock, candidate: Candidate) -> bool:
+        cls = self.schedule_input.classes[task.class_id]
+        if not task_stage_ready(task, cls, self.task_by_id, self.task_ids_by_class, self.assignments):
+            return False
+        if not candidate_respects_stage_order(
+            task,
+            candidate,
+            cls,
+            self.task_by_id,
+            self.task_ids_by_class,
+            self.assignments,
+        ):
+            return False
+        if not candidate_avoids_same_class_teacher_day_limit(self.class_teacher_day_loads, task, candidate):
+            return False
+        if not candidate_avoids_product_day_limits(self.class_day_hour_loads, self.class_day_block_loads, task, candidate):
+            return False
+        class_group_ids = self.schedule_input.class_conflict_groups.get(task.class_id, set())
+
+        for slot in candidate.slots:
+            if (task.class_id, slot.id) in self.class_slot_used:
+                return False
+            if candidate.teacher_id and (candidate.teacher_id, slot.id) in self.teacher_slot_used:
+                return False
+            if (candidate.room_id, slot.id) in self.room_slot_used:
+                return False
+            if any((group_id, slot.id) in self.conflict_group_slot_used for group_id in class_group_ids):
+                return False
+        return True
+
+    def place(self, task: CourseBlock, candidate: Candidate) -> None:
+        self.assignments[task.task_id] = Assignment(task=task, candidate=candidate)
+        class_group_ids = self.schedule_input.class_conflict_groups.get(task.class_id, set())
+
+        for slot in candidate.slots:
+            self.class_slot_used.add((task.class_id, slot.id))
+            if candidate.teacher_id:
+                self.teacher_slot_used.add((candidate.teacher_id, slot.id))
+            self.room_slot_used.add((candidate.room_id, slot.id))
+            for group_id in class_group_ids:
+                self.conflict_group_slot_used.add((group_id, slot.id))
+        add_class_teacher_day_load(self.class_teacher_day_loads, task, candidate)
+        add_class_day_rule_load(self.class_day_hour_loads, self.class_day_block_loads, task, candidate)
+
+    def unplace(self, task: CourseBlock, candidate: Candidate) -> None:
+        self.assignments.pop(task.task_id, None)
+        class_group_ids = self.schedule_input.class_conflict_groups.get(task.class_id, set())
+
+        for slot in candidate.slots:
+            self.class_slot_used.remove((task.class_id, slot.id))
+            if candidate.teacher_id:
+                self.teacher_slot_used.remove((candidate.teacher_id, slot.id))
+            self.room_slot_used.remove((candidate.room_id, slot.id))
+            for group_id in class_group_ids:
+                self.conflict_group_slot_used.remove((group_id, slot.id))
+        add_class_teacher_day_load(self.class_teacher_day_loads, task, candidate, delta=-1.0)
+        add_class_day_rule_load(self.class_day_hour_loads, self.class_day_block_loads, task, candidate, delta=-1)
+
+    def remaining_task_ids(self) -> List[str]:
+        return [task_id for task_id in self.task_by_id if task_id not in self.assignments]
+
+    def class_anchor_satisfied(self, cls: SchoolClass) -> bool:
+        if not class_has_start_anchor(cls) or not self.task_ids_by_class[cls.id]:
+            return True
+        return any(
+            candidate_matches_start_anchor(cls, self.assignments[task_id].candidate)
+            for task_id in self.task_ids_by_class[cls.id]
+            if task_id in self.assignments
+        )
+
+    def start_anchors_satisfied(self) -> bool:
+        return all(self.class_anchor_satisfied(cls) for cls in self.schedule_input.classes.values())
+
+    def domain_size_after_filter(
+        self,
+        task_id: str,
+        domains: Dict[str, List[Candidate]],
+        anchor_only: bool = False,
+    ) -> int:
+        task = self.task_by_id[task_id]
+        cls = self.schedule_input.classes[task.class_id]
+        if not task_stage_ready(task, cls, self.task_by_id, self.task_ids_by_class, self.assignments):
+            return 0
+        return sum(
+            1
+            for candidate in domains[task_id]
+            if self.is_valid(task, candidate)
+            and (not anchor_only or candidate_matches_start_anchor(cls, candidate))
+        )
+
+    def valid_options(
+        self,
+        task_id: str,
+        domains: Dict[str, List[Candidate]],
+        anchor_only: bool = False,
+    ) -> List[Candidate]:
+        task = self.task_by_id[task_id]
+        cls = self.schedule_input.classes[task.class_id]
+        if not task_stage_ready(task, cls, self.task_by_id, self.task_ids_by_class, self.assignments):
+            return []
+        options = [
+            candidate
+            for candidate in domains[task_id]
+            if self.is_valid(task, candidate)
+            and (not anchor_only or candidate_matches_start_anchor(cls, candidate))
+        ]
+        options.sort(key=lambda candidate: self.candidate_sort_key(task, candidate))
+        return options
+
+    def candidate_sort_key(
+        self,
+        task: CourseBlock,
+        candidate: Candidate,
+    ) -> Tuple[float, Tuple[str, int, int, str], str]:
+        return (
+            candidate_same_day_teacher_travel_penalty(
+                self.schedule_input,
+                [*self.schedule_input.locked_assignments, *self.assignments.values()],
+                task,
+                candidate,
+            ),
+            slot_sort_key(candidate.slots[0]),
+            candidate.room_id,
+        )
+
+
 def schedule(schedule_input: ScheduleInput) -> List[Assignment]:
     tasks = build_course_blocks(schedule_input.classes)
 
@@ -2222,104 +2367,35 @@ def schedule(schedule_input: ScheduleInput) -> List[Assignment]:
     if greedy_result is not None:
         return sorted_assignments([*schedule_input.locked_assignments, *greedy_result])
 
-    class_slot_used, teacher_slot_used, room_slot_used, conflict_group_slot_used = locked_constraint_sets(schedule_input)
-    assignments: Dict[str, Assignment] = {}
-    class_teacher_day_loads = locked_class_teacher_day_loads(schedule_input)
-    class_day_hour_loads, class_day_block_loads = locked_class_day_rule_loads(schedule_input)
-
-    def is_valid(task: CourseBlock, candidate: Candidate) -> bool:
-        cls = schedule_input.classes[task.class_id]
-        if not task_stage_ready(task, cls, task_by_id, task_ids_by_class, assignments):
-            return False
-        if not candidate_respects_stage_order(task, candidate, cls, task_by_id, task_ids_by_class, assignments):
-            return False
-        if not candidate_avoids_same_class_teacher_day_limit(class_teacher_day_loads, task, candidate):
-            return False
-        if not candidate_avoids_product_day_limits(class_day_hour_loads, class_day_block_loads, task, candidate):
-            return False
-        class_group_ids = schedule_input.class_conflict_groups.get(task.class_id, set())
-
-        for slot in candidate.slots:
-            if (task.class_id, slot.id) in class_slot_used:
-                return False
-            if candidate.teacher_id and (candidate.teacher_id, slot.id) in teacher_slot_used:
-                return False
-            if (candidate.room_id, slot.id) in room_slot_used:
-                return False
-            if any((group_id, slot.id) in conflict_group_slot_used for group_id in class_group_ids):
-                return False
-
-        return True
-
-    def place(task: CourseBlock, candidate: Candidate) -> None:
-        assignments[task.task_id] = Assignment(task=task, candidate=candidate)
-        class_group_ids = schedule_input.class_conflict_groups.get(task.class_id, set())
-
-        for slot in candidate.slots:
-            class_slot_used.add((task.class_id, slot.id))
-            if candidate.teacher_id:
-                teacher_slot_used.add((candidate.teacher_id, slot.id))
-            room_slot_used.add((candidate.room_id, slot.id))
-            for group_id in class_group_ids:
-                conflict_group_slot_used.add((group_id, slot.id))
-        add_class_teacher_day_load(class_teacher_day_loads, task, candidate)
-        add_class_day_rule_load(class_day_hour_loads, class_day_block_loads, task, candidate)
-
-    def unplace(task: CourseBlock, candidate: Candidate) -> None:
-        assignments.pop(task.task_id, None)
-        class_group_ids = schedule_input.class_conflict_groups.get(task.class_id, set())
-
-        for slot in candidate.slots:
-            class_slot_used.remove((task.class_id, slot.id))
-            if candidate.teacher_id:
-                teacher_slot_used.remove((candidate.teacher_id, slot.id))
-            room_slot_used.remove((candidate.room_id, slot.id))
-            for group_id in class_group_ids:
-                conflict_group_slot_used.remove((group_id, slot.id))
-        add_class_teacher_day_load(class_teacher_day_loads, task, candidate, delta=-1.0)
-        add_class_day_rule_load(class_day_hour_loads, class_day_block_loads, task, candidate, delta=-1)
-
-    def remaining_task_ids() -> List[str]:
-        return [task_id for task_id in task_by_id if task_id not in assignments]
-
-    def class_anchor_satisfied(cls: SchoolClass) -> bool:
-        if not class_has_start_anchor(cls) or not task_ids_by_class[cls.id]:
-            return True
-        return any(
-            candidate_matches_start_anchor(cls, assignments[task_id].candidate)
-            for task_id in task_ids_by_class[cls.id]
-            if task_id in assignments
-        )
-
-    def domain_size_after_filter(task_id: str, anchor_only: bool = False) -> int:
-        task = task_by_id[task_id]
-        cls = schedule_input.classes[task.class_id]
-        if not task_stage_ready(task, cls, task_by_id, task_ids_by_class, assignments):
-            return 0
-        return sum(
-            1
-            for candidate in domains[task_id]
-            if is_valid(task, candidate)
-            and (not anchor_only or candidate_matches_start_anchor(cls, candidate))
-        )
+    search_state = ScheduleSearchState(schedule_input, task_by_id, task_ids_by_class)
 
     def choose_next_task() -> str:
         for cls in schedule_input.classes.values():
-            if class_anchor_satisfied(cls):
+            if search_state.class_anchor_satisfied(cls):
                 continue
             anchor_candidates = [
                 task_id
                 for task_id in task_ids_by_class[cls.id]
-                if task_id not in assignments and domain_size_after_filter(task_id, anchor_only=True) > 0
+                if task_id not in search_state.assignments
+                and search_state.domain_size_after_filter(task_id, domains, anchor_only=True) > 0
             ]
             if anchor_candidates:
-                anchor_candidates.sort(key=lambda task_id: (domain_size_after_filter(task_id, anchor_only=True), len(domains[task_id])))
+                anchor_candidates.sort(
+                    key=lambda task_id: (
+                        search_state.domain_size_after_filter(task_id, domains, anchor_only=True),
+                        len(domains[task_id]),
+                    )
+                )
                 return anchor_candidates[0]
-            remaining_for_class = [task_id for task_id in task_ids_by_class[cls.id] if task_id not in assignments]
+            remaining_for_class = [
+                task_id
+                for task_id in task_ids_by_class[cls.id]
+                if task_id not in search_state.assignments
+            ]
             if remaining_for_class:
                 return remaining_for_class[0]
 
-        candidates = remaining_task_ids()
+        candidates = search_state.remaining_task_ids()
         ready_candidates = [
             task_id
             for task_id in candidates
@@ -2333,50 +2409,42 @@ def schedule(schedule_input: ScheduleInput) -> List[Assignment]:
         ]
         if ready_candidates:
             candidates = ready_candidates
-        candidates.sort(key=lambda task_id: (domain_size_after_filter(task_id), len(domains[task_id])))
+        candidates.sort(
+            key=lambda task_id: (
+                search_state.domain_size_after_filter(task_id, domains),
+                len(domains[task_id]),
+            )
+        )
         return candidates[0]
 
     def start_anchors_satisfied() -> bool:
-        for cls in schedule_input.classes.values():
-            if not class_anchor_satisfied(cls):
-                return False
-        return True
+        return search_state.start_anchors_satisfied()
 
     def backtrack() -> bool:
-        if len(assignments) == len(task_by_id):
+        if len(search_state.assignments) == len(task_by_id):
             return start_anchors_satisfied()
 
         task_id = choose_next_task()
         task = task_by_id[task_id]
         cls = schedule_input.classes[task.class_id]
-        options = [candidate for candidate in domains[task_id] if is_valid(task, candidate)]
-        if not class_anchor_satisfied(cls):
-            options = [candidate for candidate in options if candidate_matches_start_anchor(cls, candidate)]
-        options.sort(
-            key=lambda candidate: (
-                candidate_same_day_teacher_travel_penalty(
-                    schedule_input,
-                    [*schedule_input.locked_assignments, *assignments.values()],
-                    task,
-                    candidate,
-                ),
-                slot_sort_key(candidate.slots[0]),
-                candidate.room_id,
-            )
+        options = search_state.valid_options(
+            task_id,
+            domains,
+            anchor_only=not search_state.class_anchor_satisfied(cls),
         )
 
         for candidate in options:
-            place(task, candidate)
+            search_state.place(task, candidate)
             if backtrack():
                 return True
-            unplace(task, candidate)
+            search_state.unplace(task, candidate)
 
         return False
 
     if not backtrack():
         raise ValueError("无法找到满足约束的排课方案，请检查教师不可排日期时段、班级排课窗口、教室资源或互斥关系")
 
-    return sorted_assignments([*schedule_input.locked_assignments, *assignments.values()])
+    return sorted_assignments([*schedule_input.locked_assignments, *search_state.assignments.values()])
 
 
 def sorted_assignments(assignments: List[Assignment]) -> List[Assignment]:
@@ -2398,90 +2466,16 @@ def greedy_schedule(
     task_ids_by_class: Dict[str, List[str]],
     domains: Dict[str, List[Candidate]],
 ) -> Optional[List[Assignment]]:
-    class_slot_used, teacher_slot_used, room_slot_used, conflict_group_slot_used = locked_constraint_sets(schedule_input)
-    assignments: Dict[str, Assignment] = {}
-    class_teacher_day_loads = locked_class_teacher_day_loads(schedule_input)
-    class_day_hour_loads, class_day_block_loads = locked_class_day_rule_loads(schedule_input)
-
-    def is_valid(task: CourseBlock, candidate: Candidate) -> bool:
-        cls = schedule_input.classes[task.class_id]
-        if not task_stage_ready(task, cls, task_by_id, task_ids_by_class, assignments):
-            return False
-        if not candidate_respects_stage_order(task, candidate, cls, task_by_id, task_ids_by_class, assignments):
-            return False
-        if not candidate_avoids_same_class_teacher_day_limit(class_teacher_day_loads, task, candidate):
-            return False
-        if not candidate_avoids_product_day_limits(class_day_hour_loads, class_day_block_loads, task, candidate):
-            return False
-        class_group_ids = schedule_input.class_conflict_groups.get(task.class_id, set())
-
-        for slot in candidate.slots:
-            if (task.class_id, slot.id) in class_slot_used:
-                return False
-            if candidate.teacher_id and (candidate.teacher_id, slot.id) in teacher_slot_used:
-                return False
-            if (candidate.room_id, slot.id) in room_slot_used:
-                return False
-            if any((group_id, slot.id) in conflict_group_slot_used for group_id in class_group_ids):
-                return False
-        return True
-
-    def place(task: CourseBlock, candidate: Candidate) -> None:
-        assignments[task.task_id] = Assignment(task=task, candidate=candidate)
-        class_group_ids = schedule_input.class_conflict_groups.get(task.class_id, set())
-
-        for slot in candidate.slots:
-            class_slot_used.add((task.class_id, slot.id))
-            if candidate.teacher_id:
-                teacher_slot_used.add((candidate.teacher_id, slot.id))
-            room_slot_used.add((candidate.room_id, slot.id))
-            for group_id in class_group_ids:
-                conflict_group_slot_used.add((group_id, slot.id))
-        add_class_teacher_day_load(class_teacher_day_loads, task, candidate)
-        add_class_day_rule_load(class_day_hour_loads, class_day_block_loads, task, candidate)
-
-    def class_anchor_satisfied(cls: SchoolClass) -> bool:
-        if not class_has_start_anchor(cls) or not task_ids_by_class[cls.id]:
-            return True
-        return any(
-            candidate_matches_start_anchor(cls, assignments[task_id].candidate)
-            for task_id in task_ids_by_class[cls.id]
-            if task_id in assignments
-        )
-
-    def valid_options(task_id: str, anchor_only: bool = False) -> List[Candidate]:
-        task = task_by_id[task_id]
-        cls = schedule_input.classes[task.class_id]
-        if not task_stage_ready(task, cls, task_by_id, task_ids_by_class, assignments):
-            return []
-        options = [
-            candidate
-            for candidate in domains[task_id]
-            if is_valid(task, candidate)
-            and (not anchor_only or candidate_matches_start_anchor(cls, candidate))
-        ]
-        options.sort(
-            key=lambda candidate: (
-                candidate_same_day_teacher_travel_penalty(
-                    schedule_input,
-                    [*schedule_input.locked_assignments, *assignments.values()],
-                    task,
-                    candidate,
-                ),
-                slot_sort_key(candidate.slots[0]),
-                candidate.room_id,
-            )
-        )
-        return options
+    search_state = ScheduleSearchState(schedule_input, task_by_id, task_ids_by_class)
 
     def choose_next_task() -> Optional[Tuple[str, List[Candidate]]]:
         for cls in schedule_input.classes.values():
-            if class_anchor_satisfied(cls):
+            if search_state.class_anchor_satisfied(cls):
                 continue
             anchor_choices = [
-                (task_id, valid_options(task_id, anchor_only=True))
+                (task_id, search_state.valid_options(task_id, domains, anchor_only=True))
                 for task_id in task_ids_by_class[cls.id]
-                if task_id not in assignments
+                if task_id not in search_state.assignments
             ]
             anchor_choices = [(task_id, options) for task_id, options in anchor_choices if options]
             if not anchor_choices:
@@ -2490,15 +2484,15 @@ def greedy_schedule(
             return anchor_choices[0]
 
         choices = [
-            (task_id, valid_options(task_id))
+            (task_id, search_state.valid_options(task_id, domains))
             for task_id in task_by_id
-            if task_id not in assignments
+            if task_id not in search_state.assignments
             and task_stage_ready(
                 task_by_id[task_id],
                 schedule_input.classes[task_by_id[task_id].class_id],
                 task_by_id,
                 task_ids_by_class,
-                assignments,
+                search_state.assignments,
             )
         ]
         if not choices:
@@ -2508,18 +2502,18 @@ def greedy_schedule(
         choices.sort(key=lambda item: (len(item[1]), len(domains[item[0]])))
         return choices[0]
 
-    while len(assignments) < len(task_by_id):
+    while len(search_state.assignments) < len(task_by_id):
         choice = choose_next_task()
         if choice is None:
             return None
         task_id, options = choice
         if not options:
             return None
-        place(task_by_id[task_id], options[0])
+        search_state.place(task_by_id[task_id], options[0])
 
-    if not all(class_anchor_satisfied(cls) for cls in schedule_input.classes.values()):
+    if not search_state.start_anchors_satisfied():
         return None
-    return list(assignments.values())
+    return list(search_state.assignments.values())
 
 
 def write_csv(assignments: List[Assignment], out_path: Path, schedule_input: Optional[ScheduleInput] = None) -> None:
