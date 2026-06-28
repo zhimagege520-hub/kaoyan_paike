@@ -1830,6 +1830,31 @@ class SchedulingPipelineTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "没有启用教室"):
             data_admin_server.normalize_payload(payload)
 
+    def test_class_window_disabled_room_is_validation_error(self) -> None:
+        payload = {
+            "teaching_areas": [{"id": "A2", "name": "暑假校区"}],
+            "rooms": [
+                {"id": "R_OFF", "name": "停用教室", "teaching_area_id": "A2", "capacity": 60, "is_active": "否"},
+            ],
+            "products": [{"id": "P1", "name": "考研暑假营-英语"}],
+            "classes": [{"id": "C1", "name": "暑假班", "product_id": "P1", "subject": "英语"}],
+            "class_window_boundaries": [
+                {
+                    "class_window_id": "C1_2026暑假",
+                    "class_id": "C1",
+                    "schedule_window_id": "2026暑假",
+                    "season_name": "暑假",
+                    "earliest_date": "2026-07-05",
+                    "latest_date": "2026-07-10",
+                    "preferred_room_ids": "R_OFF",
+                    "is_class_window_included": "是",
+                }
+            ],
+        }
+
+        with self.assertRaisesRegex(ValueError, "未启用"):
+            data_admin_server.normalize_payload(payload)
+
     def test_scheduler_blocks_class_window_area_constraint_with_no_rooms(self) -> None:
         payload = {
             "time_slots": [

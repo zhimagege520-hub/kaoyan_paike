@@ -1929,20 +1929,25 @@ def class_window_label(boundary: Dict[str, Any]) -> str:
     )
 
 
-def validate_state(state: Dict[str, Any]) -> None:
-    errors: List[str] = []
-    teaching_area_ids = {area["id"] for area in state["teaching_areas"] if area["id"]}
-    room_ids = {room["id"] for room in state["rooms"] if room["id"]}
-    active_room_ids = {room["id"] for room in state["rooms"] if room["id"] and normalize_bool(room.get("is_active"))}
+def validation_references(state: Dict[str, Any]) -> Dict[str, Any]:
     active_room_ids_by_area: Dict[str, Set[str]] = {}
     for room in state["rooms"]:
         room_id = normalize_text(room.get("id"))
         area_id = normalize_text(room.get("teaching_area_id"))
-        if room_id and area_id and room_id in active_room_ids:
-            active_room_ids_by_area.setdefault(area_id, set()).add(room_id)
-    product_ids = {product["id"] for product in state["products"] if product["id"]}
-    class_ids = {cls["id"] for cls in state["classes"] if cls["id"]}
+        if not room_id or not area_id or not normalize_bool(room.get("is_active")):
+            continue
+        active_room_ids_by_area.setdefault(area_id, set()).add(room_id)
+    return {
+        "teaching_area_ids": {area["id"] for area in state["teaching_areas"] if area["id"]},
+        "room_ids": {room["id"] for room in state["rooms"] if room["id"]},
+        "active_room_ids": {room["id"] for room in state["rooms"] if room["id"] and normalize_bool(room.get("is_active"))},
+        "active_room_ids_by_area": active_room_ids_by_area,
+        "product_ids": {product["id"] for product in state["products"] if product["id"]},
+        "class_ids": {cls["id"] for cls in state["classes"] if cls["id"]},
+    }
 
+
+def validate_state_uniques(state: Dict[str, Any], errors: List[str]) -> None:
     validate_unique(state["teaching_areas"], "id", "教学区", errors)
     validate_unique(state["rooms"], "id", "教室", errors)
     validate_unique(state["teachers"], "employee_id", "教师", errors)
@@ -1952,9 +1957,16 @@ def validate_state(state: Dict[str, Any]) -> None:
     validate_unique(state["product_schedule_rules"], "rule_id", "产品排课规则", errors)
     validate_unique(state["global_blackout_dates"], "id", "全局停课日期", errors)
 
+
+def validate_room_references(state: Dict[str, Any], refs: Dict[str, Any], errors: List[str]) -> None:
+    teaching_area_ids = refs["teaching_area_ids"]
     for room in state["rooms"]:
         if room["teaching_area_id"] and room["teaching_area_id"] not in teaching_area_ids:
             errors.append(f"教室 {room['name'] or room['id']} 关联了不存在的教学区 {room['teaching_area_id']}")
+
+
+def validate_product_references(state: Dict[str, Any], refs: Dict[str, Any], errors: List[str]) -> None:
+    product_ids = refs["product_ids"]
     for course in state["product_courses"]:
         if course["product_id"] and course["product_id"] not in product_ids:
             errors.append(f"产品课程 {course['product_id']}/{course['subject']}/{course['course_module']} 关联了不存在的产品 {course['product_id']}")
@@ -1964,6 +1976,12 @@ def validate_state(state: Dict[str, Any]) -> None:
                 errors.append(f"排课规则 {rule['rule_id']} 关联了不存在的产品 {product_id}")
         if rule["scope_type"] == "product_ids" and not rule.get("product_ids") and not rule.get("product_id"):
             errors.append(f"排课规则 {rule['rule_id']} 需要选择产品，或改为按关键词匹配")
+
+
+def validate_class_references(state: Dict[str, Any], refs: Dict[str, Any], errors: List[str]) -> None:
+    product_ids = refs["product_ids"]
+    teaching_area_ids = refs["teaching_area_ids"]
+    room_ids = refs["room_ids"]
     for cls in state["classes"]:
         if cls["product_id"] and cls["product_id"] not in product_ids:
             errors.append(f"班级 {cls['name'] or cls['id']} 关联了不存在的产品 {cls['product_id']}")
@@ -1977,6 +1995,14 @@ def validate_state(state: Dict[str, Any]) -> None:
             for room_id in requirement.get("room_ids", []):
                 if room_id not in room_ids:
                     errors.append(f"班级 {cls['name'] or cls['id']} 的课程需求关联了不存在的教室 {room_id}")
+
+
+def validate_class_window_references(state: Dict[str, Any], refs: Dict[str, Any], errors: List[str]) -> None:
+    class_ids = refs["class_ids"]
+    teaching_area_ids = refs["teaching_area_ids"]
+    room_ids = refs["room_ids"]
+    active_room_ids = refs["active_room_ids"]
+    active_room_ids_by_area = refs["active_room_ids_by_area"]
     for boundary in state.get("class_window_boundaries", []):
         if not class_window_is_included(boundary):
             continue
@@ -2002,21 +2028,48 @@ def validate_state(state: Dict[str, Any]) -> None:
                 errors.append(f"班级排课窗口 {label} 已填写教学区，但这些教学区下没有启用教室: {'|'.join(area_ids)}")
         if room_ids_in_boundary and not any(room_id in active_room_ids for room_id in room_ids_in_boundary):
             errors.append(f"班级排课窗口 {label} 已填写教室，但没有任何启用教室可用于自动排课: {'|'.join(room_ids_in_boundary)}")
+
+
+def validate_conflict_group_references(state: Dict[str, Any], refs: Dict[str, Any], errors: List[str]) -> None:
+    class_ids = refs["class_ids"]
     for group in state["class_conflict_groups"]:
         if class_conflict_group_is_active(group) and len(group.get("class_ids", [])) < 2:
             errors.append(f"班级互斥关系 {group['name'] or group['id']} 至少需要选择 2 个班级")
         for class_id in group.get("class_ids", []):
             if class_id not in class_ids:
                 errors.append(f"班级互斥关系 {group['name'] or group['id']} 包含不存在的班级 {class_id}")
+
+
+def validate_locked_lesson_references(state: Dict[str, Any], refs: Dict[str, Any], errors: List[str]) -> None:
+    class_ids = refs["class_ids"]
+    room_ids = refs["room_ids"]
     for lesson in state.get("locked_scheduled_lessons", []):
         if lesson.get("class_id") and lesson["class_id"] not in class_ids:
             errors.append(f"锁定课表 {lesson['id']} 关联了不存在的班级 {lesson['class_id']}")
         if lesson.get("room_id") and lesson["room_id"] not in room_ids:
             errors.append(f"锁定课表 {lesson['id']} 关联了不存在的教室 {lesson['room_id']}")
+
+
+def validate_teaching_area_link_references(state: Dict[str, Any], refs: Dict[str, Any], errors: List[str]) -> None:
+    teaching_area_ids = refs["teaching_area_ids"]
     for link in state["teaching_area_links"]:
         for field in ("from_teaching_area_id", "to_teaching_area_id"):
             if link[field] and link[field] not in teaching_area_ids:
                 errors.append(f"教学区通勤关系 {link['id']} 包含不存在的教学区 {link[field]}")
+
+
+def validate_state(state: Dict[str, Any]) -> None:
+    errors: List[str] = []
+    refs = validation_references(state)
+
+    validate_state_uniques(state, errors)
+    validate_room_references(state, refs, errors)
+    validate_product_references(state, refs, errors)
+    validate_class_references(state, refs, errors)
+    validate_class_window_references(state, refs, errors)
+    validate_conflict_group_references(state, refs, errors)
+    validate_locked_lesson_references(state, refs, errors)
+    validate_teaching_area_link_references(state, refs, errors)
 
     if errors:
         raise ValueError("\n".join(errors))
