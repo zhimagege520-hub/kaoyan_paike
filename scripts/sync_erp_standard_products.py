@@ -90,7 +90,6 @@ BUSINESS_PRODUCT_MAPPING_FIELDNAMES = [
     "business_product_id",
     "business_product_name",
     "class_name_keywords",
-    "canonical_product_id",
     "notes",
 ]
 
@@ -338,7 +337,6 @@ def mapping_row(
         "local_subject": product.get("subject", ""),
         "match_source": source or "",
         "class_name_keywords": keyword_for_product(product),
-        "canonical_product_id": product.get("id", ""),
     }
     if erp_row:
         row.update(

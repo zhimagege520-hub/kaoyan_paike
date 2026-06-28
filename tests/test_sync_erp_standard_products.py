@@ -38,6 +38,29 @@ class SyncErpStandardProductsTest(unittest.TestCase):
         self.assertEqual(sync_products.text(math.nan), "")
         self.assertEqual(sync_products.text(" 课程 "), "课程")
 
+    def test_business_mapping_output_uses_current_local_product_field_only(self) -> None:
+        product = {
+            "id": "P_LOCAL",
+            "name": "本地产品",
+            "product_line": "无忧计划",
+            "sub_product": "无忧暑",
+            "course_nature": "正课",
+            "subject": "英语",
+        }
+        row = sync_products.mapping_row(product, None, "")
+
+        self.assertEqual(row["local_product_id"], "P_LOCAL")
+        self.assertNotIn("canonical_product_id", row)
+        self.assertNotIn("canonical_product_id", sync_products.BUSINESS_PRODUCT_MAPPING_FIELDNAMES)
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "business_product_mappings.csv"
+            sync_products.write_csv(path, [row], sync_products.BUSINESS_PRODUCT_MAPPING_FIELDNAMES)
+            header = path.read_text(encoding="utf-8").splitlines()[0].split(",")
+
+        self.assertIn("local_product_id", header)
+        self.assertNotIn("canonical_product_id", header)
+
 
 if __name__ == "__main__":
     unittest.main()
