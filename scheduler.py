@@ -2273,13 +2273,60 @@ def candidate_hits_teacher_unavailability(
     )
 
 
+def candidate_slot_block_matches_task(
+    task: CourseBlock,
+    cls: SchoolClass,
+    slot_block: Tuple[TimeSlot, ...],
+    schedule_input: ScheduleInput,
+) -> bool:
+    if not all(slot_in_class_window(slot, cls) for slot in slot_block):
+        return False
+    if not all(slot_matches_task_constraints(slot, task) for slot in slot_block):
+        return False
+    return not candidate_hits_teacher_unavailability(task, slot_block, schedule_input)
+
+
+def task_possible_room_ids(task: CourseBlock, schedule_input: ScheduleInput) -> Set[str]:
+    if task.room_ids:
+        return set(task.room_ids)
+    return set(schedule_input.rooms.keys())
+
+
+def candidate_room_ids_for_slot_block(
+    possible_rooms: Set[str],
+    class_window_constraints: List[ClassWindowConstraint],
+    slot_block: Tuple[TimeSlot, ...],
+) -> Set[str]:
+    window_room_ids = class_window_room_ids_for_slots(class_window_constraints, slot_block)
+    if window_room_ids is None:
+        return set(possible_rooms)
+    if not window_room_ids:
+        return set()
+    return possible_rooms & window_room_ids
+
+
+def sorted_candidate_room_ids(
+    room_ids: Set[str],
+    schedule_input: ScheduleInput,
+    class_size: Optional[int],
+) -> List[str]:
+    return sorted(
+        room_ids,
+        key=lambda room_id: (
+            room_capacity_shortfall(schedule_input.rooms.get(room_id), class_size) > 0,
+            room_capacity_shortfall(schedule_input.rooms.get(room_id), class_size),
+            room_id,
+        ),
+    )
+
+
 def candidate_assignments(
     task: CourseBlock,
     schedule_input: ScheduleInput,
     slot_blocks: Optional[List[Tuple[TimeSlot, ...]]] = None,
 ) -> List[Candidate]:
     cls = schedule_input.classes[task.class_id]
-    possible_rooms = set(task.room_ids) if task.room_ids else set(schedule_input.rooms.keys())
+    possible_rooms = task_possible_room_ids(task, schedule_input)
     class_window_constraints = schedule_input.class_window_constraints.get(task.class_id, [])
     candidates: List[Candidate] = []
 
@@ -2288,24 +2335,12 @@ def candidate_assignments(
         task.block_hours,
     )
     for slot_block in candidate_slot_blocks:
-        slot_ids = {slot.id for slot in slot_block}
-        if not all(slot_in_class_window(slot, cls) for slot in slot_block):
+        if not candidate_slot_block_matches_task(task, cls, slot_block, schedule_input):
             continue
-        if not all(slot_matches_task_constraints(slot, task) for slot in slot_block):
-            continue
-        if candidate_hits_teacher_unavailability(task, slot_block, schedule_input):
-            continue
-        window_room_ids = class_window_room_ids_for_slots(class_window_constraints, slot_block)
-        if window_room_ids == set():
-            continue
-        slot_possible_rooms = possible_rooms & window_room_ids if window_room_ids else possible_rooms
-        room_order = sorted(
-            slot_possible_rooms,
-            key=lambda room_id: (
-                room_capacity_shortfall(schedule_input.rooms.get(room_id), task.class_size) > 0,
-                room_capacity_shortfall(schedule_input.rooms.get(room_id), task.class_size),
-                room_id,
-            ),
+        room_order = sorted_candidate_room_ids(
+            candidate_room_ids_for_slot_block(possible_rooms, class_window_constraints, slot_block),
+            schedule_input,
+            task.class_size,
         )
 
         for room_id in room_order:
