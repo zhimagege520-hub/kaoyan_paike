@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import shutil
 import sys
 from collections import Counter
@@ -15,6 +14,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.build_camp_maintenance_schedule import load_class_metadata  # noqa: E402
+from scripts.csv_utils import read_csv_rows  # noqa: E402
 from scripts.repair_schedule_quality_hotspots import (  # noqa: E402
     PERIOD_ORDER,
     PUBLIC_SUBJECTS,
@@ -28,7 +28,6 @@ from scripts.repair_schedule_quality_hotspots import (  # noqa: E402
     load_window_constraints,
     load_room_meta,
     move_block,
-    read_csv_rows,
     regenerate_outputs,
     sort_rows,
     teacher_day_travel_score,

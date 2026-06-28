@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Mapping
@@ -16,6 +15,7 @@ if str(ROOT) not in sys.path:
 import business_class_import as business
 import data_admin_server
 from run_scheduling_pipeline import backup_data_dir, load_source_tables
+from scripts.csv_utils import write_csv_rows
 
 
 def employee_map_from_source(source: Path) -> Dict[str, str]:
@@ -117,11 +117,12 @@ def fix_state(state: Dict[str, Any], employee_ids_by_name: Mapping[str, str]) ->
 
 
 def write_report(path: Path, rows: List[Dict[str, Any]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["table", "class_id", "teacher_name", "old_id", "new_id", "action"])
-        writer.writeheader()
-        writer.writerows(rows)
+    write_csv_rows(
+        path,
+        ["table", "class_id", "teacher_name", "old_id", "new_id", "action"],
+        rows,
+        encoding="utf-8",
+    )
 
 
 def main() -> None:

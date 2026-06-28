@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import itertools
 import shutil
 import sys
@@ -16,6 +15,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.build_camp_maintenance_schedule import load_class_metadata  # noqa: E402
+from scripts.csv_utils import read_csv_rows  # noqa: E402
 from scripts.repair_schedule_quality_hotspots import (  # noqa: E402
     PERIOD_ORDER,
     PERIOD_SLOTS,
@@ -26,7 +26,6 @@ from scripts.repair_schedule_quality_hotspots import (  # noqa: E402
     load_area_meta,
     load_room_meta,
     move_block,
-    read_csv_rows,
     regenerate_outputs,
     room_area,
     sort_rows,
@@ -51,11 +50,6 @@ PERIOD_LABELS = {
     "AM": ("AM1", "上午一", "08:00", "10:00"),
     "PM": ("PM1", "下午一", "14:00", "16:00"),
 }
-
-
-def read_rows(path: Path) -> List[dict]:
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        return [dict(row) for row in csv.DictReader(handle)]
 
 
 def week_slots(week: str) -> List[Tuple[str, str]]:
@@ -366,7 +360,7 @@ def main() -> None:
     args = parser.parse_args()
 
     timestamp = args.timestamp or datetime.now().strftime("%Y%m%d_%H%M%S")
-    rows = read_rows(args.schedule_csv)
+    rows = read_csv_rows(args.schedule_csv)
     class_meta = load_class_metadata(args.data_dir)
     room_meta = load_room_meta(args.data_dir)
     area_meta = load_area_meta(args.data_dir)
