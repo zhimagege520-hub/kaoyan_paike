@@ -1165,29 +1165,47 @@ def parse_product_requirement(
     raw_req: dict,
     schedule_rules: List[ScheduleRule],
 ) -> ProductRequirement:
+    common_fields = requirement_common_fields(raw_req)
+    schedule_filter_fields = requirement_schedule_filter_fields(raw_req, f"产品 {product_id}")
     total_hours = int(raw_req["total_hours"])
     matching_schedule_rules = find_schedule_rules(product_id, raw_req, schedule_rules)
     block_hours = infer_requirement_block_hours(raw_req, total_hours, matching_schedule_rules)
-    validate_positive_hours(total_hours, block_hours, f"产品 {product_id}/{raw_req['subject']}/{raw_req.get('course_module', '')}")
+    validate_positive_hours(
+        total_hours,
+        block_hours,
+        f"产品 {product_id}/{common_fields['subject']}/{common_fields.get('course_module', '')}",
+    )
     return ProductRequirement(
-        subject_category=raw_req.get("subject_category", ""),
-        subject=raw_req["subject"],
-        quarter=raw_req.get("quarter"),
-        stage=raw_req.get("stage"),
-        course_module=raw_req.get("course_module"),
-        course_group=raw_req.get("course_group", raw_req.get("teacher_group")),
+        **common_fields,
         total_hours=total_hours,
         block_hours=block_hours,
-        course_code=blank_marker_to_empty(raw_req.get("course_code")),
-        course_name=blank_marker_to_empty(raw_req.get("course_name")),
         room_ids=parse_id_set(raw_req, "room_ids"),
-        start_date=validate_date(raw_req.get("start_date"), f"产品 {product_id}/start_date"),
-        end_date=validate_date(raw_req.get("end_date"), f"产品 {product_id}/end_date"),
-        allowed_periods=parse_period_set(raw_req.get("allowed_periods"), f"产品 {product_id}/allowed_periods"),
-        allowed_weekdays=parse_weekday_set(raw_req.get("allowed_weekdays"), f"产品 {product_id}/allowed_weekdays"),
-        excluded_weekdays=parse_weekday_set(raw_req.get("excluded_weekdays"), f"产品 {product_id}/excluded_weekdays"),
+        **schedule_filter_fields,
         schedule_rules=tuple(matching_schedule_rules),
     )
+
+
+def requirement_common_fields(raw_req: dict) -> dict:
+    return {
+        "subject_category": raw_req.get("subject_category", ""),
+        "subject": raw_req["subject"],
+        "quarter": raw_req.get("quarter"),
+        "stage": raw_req.get("stage"),
+        "course_module": raw_req.get("course_module"),
+        "course_group": raw_req.get("course_group", raw_req.get("teacher_group")),
+        "course_code": blank_marker_to_empty(raw_req.get("course_code")),
+        "course_name": blank_marker_to_empty(raw_req.get("course_name")),
+    }
+
+
+def requirement_schedule_filter_fields(raw_req: dict, label: str) -> dict:
+    return {
+        "start_date": validate_date(raw_req.get("start_date"), f"{label}/start_date"),
+        "end_date": validate_date(raw_req.get("end_date"), f"{label}/end_date"),
+        "allowed_periods": parse_period_set(raw_req.get("allowed_periods"), f"{label}/allowed_periods"),
+        "allowed_weekdays": parse_weekday_set(raw_req.get("allowed_weekdays"), f"{label}/allowed_weekdays"),
+        "excluded_weekdays": parse_weekday_set(raw_req.get("excluded_weekdays"), f"{label}/excluded_weekdays"),
+    }
 
 
 def positive_int(value: object) -> int:
@@ -1734,25 +1752,20 @@ def parse_direct_requirement(
     class_room_ids: Optional[Set[str]],
     allow_area_field_as_room_ids: bool = False,
 ) -> Requirement:
-    subject = raw_req["subject"]
+    common_fields = requirement_common_fields(raw_req)
+    subject = common_fields["subject"]
+    schedule_filter_fields = requirement_schedule_filter_fields(raw_req, f"班级 {class_id}/{subject}")
     total_hours = int(raw_req["total_hours"])
     block_hours = int(raw_req["block_hours"])
     validate_hours(total_hours, block_hours, f"班级 {class_id}/{subject}")
     teacher_assignment = parse_teacher_assignment(raw_req)
 
     return Requirement(
-        subject_category=raw_req.get("subject_category", ""),
-        subject=subject,
-        quarter=raw_req.get("quarter"),
-        stage=raw_req.get("stage"),
-        course_module=raw_req.get("course_module"),
-        course_group=raw_req.get("course_group", raw_req.get("teacher_group")),
+        **common_fields,
         teacher_id=teacher_assignment.teacher_id,
         teacher_name=teacher_assignment.teacher_name,
         total_hours=total_hours,
         block_hours=block_hours,
-        course_code=blank_marker_to_empty(raw_req.get("course_code")),
-        course_name=blank_marker_to_empty(raw_req.get("course_name")),
         room_ids=direct_requirement_room_ids(
             class_id,
             subject,
@@ -1760,20 +1773,7 @@ def parse_direct_requirement(
             class_room_ids,
             allow_area_field_as_room_ids,
         ),
-        start_date=validate_date(raw_req.get("start_date"), f"班级 {class_id}/{subject}/start_date"),
-        end_date=validate_date(raw_req.get("end_date"), f"班级 {class_id}/{subject}/end_date"),
-        allowed_periods=parse_period_set(
-            raw_req.get("allowed_periods"),
-            f"班级 {class_id}/{subject}/allowed_periods",
-        ),
-        allowed_weekdays=parse_weekday_set(
-            raw_req.get("allowed_weekdays"),
-            f"班级 {class_id}/{subject}/allowed_weekdays",
-        ),
-        excluded_weekdays=parse_weekday_set(
-            raw_req.get("excluded_weekdays"),
-            f"班级 {class_id}/{subject}/excluded_weekdays",
-        ),
+        **schedule_filter_fields,
         schedule_rules=(),
     )
 

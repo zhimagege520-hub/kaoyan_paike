@@ -1390,6 +1390,46 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(requirement.course_code, "ENG001")
         self.assertEqual(requirement.course_name, "")
 
+    def test_parse_product_requirements_preserves_shared_filters_and_legacy_group_field(self) -> None:
+        products = scheduler.parse_products(
+            [
+                {
+                    "id": "P1",
+                    "name": "英语产品",
+                    "requirements": [
+                        {
+                            "subject_category": "公共课",
+                            "subject": "英语",
+                            "quarter": "暑假",
+                            "stage": "基础",
+                            "course_module": "词汇",
+                            "teacher_group": "阅读类",
+                            "total_hours": 4,
+                            "block_hours": 2,
+                            "course_code": "ENG001",
+                            "course_name": "-",
+                            "room_ids": "R1|R2",
+                            "start_date": "2026-07-01",
+                            "end_date": "2026-07-07",
+                            "allowed_periods": "AM|晚上",
+                            "allowed_weekdays": "周一|周三",
+                            "excluded_weekdays": "周日",
+                        }
+                    ],
+                }
+            ]
+        )
+
+        requirement = products["P1"].requirements[0]
+
+        self.assertEqual(requirement.course_group, "阅读类")
+        self.assertEqual(requirement.room_ids, {"R1", "R2"})
+        self.assertEqual(requirement.allowed_periods, {"AM", "EVENING"})
+        self.assertEqual(requirement.allowed_weekdays, {0, 2})
+        self.assertEqual(requirement.excluded_weekdays, {6})
+        self.assertEqual(requirement.course_code, "ENG001")
+        self.assertEqual(requirement.course_name, "")
+
     def test_parse_class_window_constraints_expands_rooms_sorts_and_validates_periods(self) -> None:
         rooms = {
             "R1": scheduler.Room("R1", teaching_area_id="A1"),
