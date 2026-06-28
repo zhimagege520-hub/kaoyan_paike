@@ -18,13 +18,13 @@ if str(ROOT) not in sys.path:
 import scheduler
 from scripts import build_camp_maintenance_schedule as maintenance
 from scripts import repair_wyqc_foundation_gaps as gap_repair
+from scripts.schedule_display import week_start, weekday_label
 from scripts.schedule_outputs import write_day_table_html
 
 
 PUBLIC_SUBJECTS = {"英语", "政治", "数学"}
 SUMMER_START = "2026-07-04"
 SUMMER_END = "2026-08-31"
-WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 MAX_SAME_SUITE_SUBJECT_TEACHER_STREAK = 3
 
 SUITE_WEEK_SUBJECT_QUOTAS: Dict[str, Dict[Tuple[str, str], int]] = {
@@ -82,15 +82,6 @@ SUITE_WEEK_SUBJECT_QUOTAS: Dict[str, Dict[Tuple[str, str], int]] = {
 
 def clean(value: object) -> str:
     return str(value or "").strip()
-
-
-def week_start(date_text: str) -> str:
-    day = Date.fromisoformat(date_text)
-    return (day - timedelta(days=day.weekday())).isoformat()
-
-
-def weekday_label(date_text: str) -> str:
-    return WEEKDAY_LABELS[Date.fromisoformat(date_text).weekday()]
 
 
 def max_consecutive_days(date_values: Iterable[str]) -> int:

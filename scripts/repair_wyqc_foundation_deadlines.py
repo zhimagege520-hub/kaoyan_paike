@@ -18,6 +18,7 @@ if str(ROOT) not in sys.path:
 import scheduler
 from scripts import build_camp_maintenance_schedule as maintenance
 from scripts import repair_wyqc_foundation_gaps as gap_repair
+from scripts.schedule_display import weekday_label
 from scripts.schedule_outputs import write_day_table_html
 
 
@@ -29,7 +30,6 @@ DEFAULT_DEADLINES = {
     "2704": "2026-07-26",
     "2706": "2026-07-26",
 }
-WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
 
 def clean(value: object) -> str:
@@ -252,10 +252,6 @@ def solve_moves(
     if not backtrack():
         raise ValueError("无法在目标截止日前完成基础/强化半天移动")
     return placed
-
-
-def weekday_label(date_text: str) -> str:
-    return WEEKDAY_LABELS[Date.fromisoformat(date_text).weekday()]
 
 
 def apply_moves(

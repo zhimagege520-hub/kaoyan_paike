@@ -15,12 +15,13 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+from scripts.schedule_display import weekday_label
+
 
 DEFAULT_SCHEDULE = Path("outputs/batch_schedule_maintenance.csv")
 DEFAULT_CLASSES = Path("data/classes.csv")
 DEFAULT_OUTPUT_DIR = Path("outputs")
 
-WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 SLOTS = [
     ("AM1", "上午一 08:00-10:00"),
     ("AM2", "上午二 10:20-12:20"),
@@ -248,10 +249,7 @@ def build_matrix_rows(
     headers = [
         "时段",
         "起止时间",
-        *[
-            f"{display_date(date_text)}\n{WEEKDAYS[Date.fromisoformat(date_text).weekday()]}"
-            for date_text in dates
-        ],
+        *[f"{display_date(date_text)}\n{weekday_label(date_text)}" for date_text in dates],
     ]
     rows: List[List[str]] = []
     for slot, label in SLOTS:

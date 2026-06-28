@@ -125,7 +125,12 @@ class ReleaseStaticTest(unittest.TestCase):
 
     def test_schedule_display_owns_shared_calendar_helpers_for_repair_outputs(self) -> None:
         modules = [
+            ROOT / "scripts" / "build_failed_erp_class_schedule_review.py",
+            ROOT / "scripts" / "repair_2726_summer_week_balance.py",
             ROOT / "scripts" / "repair_public_coverage_gaps.py",
+            ROOT / "scripts" / "repair_wyqc_foundation_deadlines.py",
+            ROOT / "scripts" / "repair_wyqc_foundation_gaps.py",
+            ROOT / "scripts" / "repair_wyqc_summer_week_balance.py",
             ROOT / "scripts" / "sync_erp_adjusted_schedule.py",
         ]
         offenders = []
@@ -135,6 +140,8 @@ class ReleaseStaticTest(unittest.TestCase):
                 offenders.append(f"{path.relative_to(ROOT)} does not import schedule_display")
             if re.search(r"(?m)^def (weekday_label|week_start)\(", source):
                 offenders.append(f"{path.relative_to(ROOT)} defines local calendar helper")
+            if re.search(r"(?m)^WEEKDAYS?(?:_LABELS)?\\s*=", source):
+                offenders.append(f"{path.relative_to(ROOT)} defines local weekday labels")
 
         self.assertEqual([], offenders)
 

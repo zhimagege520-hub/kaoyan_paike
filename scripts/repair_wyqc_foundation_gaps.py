@@ -7,7 +7,7 @@ import shutil
 import sys
 from collections import Counter, defaultdict
 from dataclasses import replace
-from datetime import date as Date, datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
@@ -18,7 +18,7 @@ if str(ROOT) not in sys.path:
 import scheduler
 from scripts import audit_schedule_coverage as coverage
 from scripts import build_camp_maintenance_schedule as maintenance
-from scripts.schedule_display import assignment_standard_lesson_count
+from scripts.schedule_display import assignment_standard_lesson_count, week_start
 from scripts.schedule_outputs import write_batch_csv, write_day_table_html
 
 
@@ -408,11 +408,6 @@ def solve_suite(
         f"新增 {len(assignments)} 个 4h 完整半天课节。"
     ]
     return list(current_rows), assignments, lines
-
-
-def week_start(date_text: str) -> str:
-    day = Date.fromisoformat(date_text)
-    return (day - timedelta(days=day.weekday())).isoformat()
 
 
 def solve_half_day_tasks(
