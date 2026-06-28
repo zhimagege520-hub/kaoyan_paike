@@ -36,6 +36,7 @@ class ReleaseStaticTest(unittest.TestCase):
 
         self.assertIn("scripts/audit_schedule_coverage.py", script)
         self.assertIn("scripts/audit_schedule_quality.py", script)
+        self.assertIn("scripts/audit_release_package.py", script)
         self.assertIn("schedule_coverage_audit_verify_run.md", script)
         self.assertIn("schedule_quality_report_verify_run.md", script)
 
