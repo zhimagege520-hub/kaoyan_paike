@@ -2483,6 +2483,83 @@ class SchedulingPipelineTest(unittest.TestCase):
 
         self.assertEqual([candidate.room_id for candidate in candidates], ["R2", "R1"])
 
+    def test_candidate_assignments_filters_slot_blocks_and_keeps_room_order(self) -> None:
+        too_early_slot = scheduler.TimeSlot("S0", "2026-07-05", "AM", "上午一", 1, duration_hours=2)
+        usable_slot = scheduler.TimeSlot("S1", "2026-07-06", "AM", "上午一", 1, duration_hours=2)
+        unavailable_slot = scheduler.TimeSlot("S2", "2026-07-07", "AM", "上午一", 1, duration_hours=2)
+        cls = scheduler.SchoolClass(
+            id="C1",
+            name="暑假班",
+            product_id="P1",
+            product_name="暑假产品",
+            size=50,
+            room_ids=None,
+            start_date="2026-07-06",
+            start_period="AM",
+            end_date="2026-07-07",
+            end_period="AM",
+            first_lesson_date=None,
+            first_lesson_period=None,
+            stage_order={},
+            requirements=[],
+        )
+        task = scheduler.CourseBlock(
+            task_id="T1",
+            class_id="C1",
+            class_name="暑假班",
+            product_id="P1",
+            product_name="暑假产品",
+            class_size=50,
+            subject_category="公共课",
+            subject="英语",
+            quarter=None,
+            stage="基础",
+            course_module=None,
+            course_group=None,
+            teacher_id="TEACHER1",
+            teacher_name="张老师",
+            block_hours=2,
+            room_ids={"R1", "R2"},
+            start_date=None,
+            end_date=None,
+            allowed_periods={"AM"},
+            allowed_weekdays=None,
+            excluded_weekdays=None,
+            schedule_rules=(),
+        )
+        schedule_input = scheduler.ScheduleInput(
+            time_slots=[too_early_slot, usable_slot, unavailable_slot],
+            rooms={
+                "R1": scheduler.Room("R1", capacity=40),
+                "R2": scheduler.Room("R2", capacity=80),
+            },
+            classes={"C1": cls},
+            conflict_groups={},
+            class_conflict_groups={"C1": set()},
+            locked_assignments=[],
+            teacher_unavailability={
+                "TEACHER1": [
+                    scheduler.TeacherUnavailableRule(
+                        teacher_id="TEACHER1",
+                        start_date="2026-07-07",
+                        end_date="2026-07-07",
+                        weekdays=None,
+                        periods={"AM"},
+                        schedule_window_ids=None,
+                    )
+                ]
+            },
+        )
+
+        candidates = scheduler.candidate_assignments(
+            task,
+            schedule_input,
+            [(too_early_slot,), (usable_slot,), (unavailable_slot,)],
+        )
+
+        self.assertEqual([candidate.slots[0].id for candidate in candidates], ["S1", "S1"])
+        self.assertEqual([candidate.room_id for candidate in candidates], ["R2", "R1"])
+
     def test_hanshuying_export_keeps_class_room_and_ignores_product_course_area(self) -> None:
         state = data_admin_server.normalize_payload(
             {

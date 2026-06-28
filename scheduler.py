@@ -2509,6 +2509,65 @@ def sorted_candidate_room_ids(
     )
 
 
+def candidate_slot_blocks_for_task(
+    task: CourseBlock,
+    schedule_input: ScheduleInput,
+    slot_blocks: Optional[List[Tuple[TimeSlot, ...]]] = None,
+) -> List[Tuple[TimeSlot, ...]]:
+    if slot_blocks is not None:
+        return slot_blocks
+    return build_contiguous_slot_blocks(schedule_input.time_slots, task.block_hours)
+
+
+def candidate_room_order_for_slot_block(
+    task: CourseBlock,
+    schedule_input: ScheduleInput,
+    possible_rooms: Set[str],
+    class_window_constraints: List[ClassWindowConstraint],
+    slot_block: Tuple[TimeSlot, ...],
+) -> List[str]:
+    room_ids = candidate_room_ids_for_slot_block(
+        possible_rooms,
+        class_window_constraints,
+        slot_block,
+    )
+    return sorted_candidate_room_ids(room_ids, schedule_input, task.class_size)
+
+
+def candidate_from_room(task: CourseBlock, slot_block: Tuple[TimeSlot, ...], room: Room) -> Candidate:
+    return Candidate(
+        slots=slot_block,
+        teacher_id=task.teacher_id,
+        teacher_name=task.teacher_name,
+        room_id=room.id,
+    )
+
+
+def candidates_for_slot_block(
+    task: CourseBlock,
+    cls: SchoolClass,
+    schedule_input: ScheduleInput,
+    possible_rooms: Set[str],
+    class_window_constraints: List[ClassWindowConstraint],
+    slot_block: Tuple[TimeSlot, ...],
+) -> List[Candidate]:
+    if not candidate_slot_block_matches_task(task, cls, slot_block, schedule_input):
+        return []
+    candidates: List[Candidate] = []
+    room_order = candidate_room_order_for_slot_block(
+        task,
+        schedule_input,
+        possible_rooms,
+        class_window_constraints,
+        slot_block,
+    )
+    for room_id in room_order:
+        room = schedule_input.rooms.get(room_id)
+        if room:
+            candidates.append(candidate_from_room(task, slot_block, room))
+    return candidates
+
+
 def candidate_assignments(
     task: CourseBlock,
     schedule_input: ScheduleInput,
@@ -2519,31 +2578,17 @@ def candidate_assignments(
     class_window_constraints = schedule_input.class_window_constraints.get(task.class_id, [])
     candidates: List[Candidate] = []
 
-    candidate_slot_blocks = slot_blocks if slot_blocks is not None else build_contiguous_slot_blocks(
-        schedule_input.time_slots,
-        task.block_hours,
-    )
-    for slot_block in candidate_slot_blocks:
-        if not candidate_slot_block_matches_task(task, cls, slot_block, schedule_input):
-            continue
-        room_order = sorted_candidate_room_ids(
-            candidate_room_ids_for_slot_block(possible_rooms, class_window_constraints, slot_block),
-            schedule_input,
-            task.class_size,
-        )
-
-        for room_id in room_order:
-            room = schedule_input.rooms.get(room_id)
-            if not room:
-                continue
-            candidates.append(
-                Candidate(
-                    slots=slot_block,
-                    teacher_id=task.teacher_id,
-                    teacher_name=task.teacher_name,
-                    room_id=room.id,
-                )
+    for slot_block in candidate_slot_blocks_for_task(task, schedule_input, slot_blocks):
+        candidates.extend(
+            candidates_for_slot_block(
+                task,
+                cls,
+                schedule_input,
+                possible_rooms,
+                class_window_constraints,
+                slot_block,
             )
+        )
 
     return candidates
 
