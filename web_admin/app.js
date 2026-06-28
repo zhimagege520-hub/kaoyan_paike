@@ -709,29 +709,34 @@ function productCoursePageProducts() {
   return products().filter((product) => productMatchesTagFilters(product, selected.productCourseProductFilters));
 }
 
+function teacherId(teacher) {
+  return String(teacher?.employee_id || teacher?.id || "").trim();
+}
+
 function teacherChoices() {
   const map = new Map();
   for (const teacher of state.teachers || []) {
-    const id = teacher.id || teacher.employee_id;
+    const id = teacherId(teacher);
     if (id) {
       map.set(id, {
         id,
         name: teacher.name || id,
         project: teacher.project || "",
         primary_subject: teacher.primary_subject || "",
-        teacher_type: teacher.employment_type || teacher.teacher_type || "",
+        employment_type: teacher.employment_type || teacher.teacher_type || "",
         employment_status: teacher.employment_status || "",
       });
     }
   }
   for (const teacher of state.lookups?.teachers || []) {
-    if (teacher.id && !map.has(teacher.id)) {
-      map.set(teacher.id, {
-        id: teacher.id,
-        name: teacher.name || teacher.id,
+    const id = teacherId(teacher);
+    if (id && !map.has(id)) {
+      map.set(id, {
+        id,
+        name: teacher.name || id,
         project: teacher.project || "",
         primary_subject: teacher.primary_subject || "",
-        teacher_type: teacher.employment_type || teacher.teacher_type || "",
+        employment_type: teacher.employment_type || teacher.teacher_type || "",
         employment_status: teacher.employment_status || "",
       });
     }
@@ -744,7 +749,7 @@ function teacherById(teacherId) {
 }
 
 function teacherDetailLabel(teacher) {
-  return [teacher.id, teacher.primary_subject, teacher.employment_type || teacher.teacher_type, teacher.project, teacher.employment_status].filter(Boolean).join(" / ");
+  return [teacherId(teacher), teacher.primary_subject, teacher.employment_type || teacher.teacher_type, teacher.project, teacher.employment_status].filter(Boolean).join(" / ");
 }
 
 function teacherNameMatches(name) {
@@ -3266,7 +3271,7 @@ function renderOverview() {
   const warnings = buildWarnings();
   const areasWithoutRooms = state.teaching_areas.filter((item) => !Number(item.active_room_count || 0)).length;
   const roomsWithoutArea = state.rooms.filter((room) => !room.teaching_area_id).length;
-  const teachersMissingCore = (state.teachers || []).filter((teacher) => !String(teacher.id || teacher.employee_id || "").trim() || !teacher.name || !teacher.primary_subject).length;
+  const teachersMissingCore = (state.teachers || []).filter((teacher) => !teacherId(teacher) || !teacher.name || !teacher.primary_subject).length;
   const productsMissingCore = products().filter(
     (product) => !product.project || !product.product_line || !product.sub_product || !product.subject_category || !product.subject || !product.course_nature,
   ).length;
@@ -3714,10 +3719,11 @@ function buildWarnings() {
     }
   }
   for (const teacher of state.teachers || []) {
-    if (!teacher.id && !teacher.employee_id) warnings.push("教师基础信息中存在未填写员工ID的记录");
-    if ((teacher.id || teacher.employee_id) && !teacher.name) warnings.push(`教师 ${teacher.id || teacher.employee_id} 未填写姓名`);
-    if ((teacher.id || teacher.employee_id) && teacher.employment_status && teacher.employment_status !== "在职") {
-      warnings.push(`教师 ${teacher.name || teacher.id || teacher.employee_id} 当前状态为 ${teacher.employment_status}`);
+    const id = teacherId(teacher);
+    if (!id) warnings.push("教师基础信息中存在未填写员工ID的记录");
+    if (id && !teacher.name) warnings.push(`教师 ${id} 未填写姓名`);
+    if (id && teacher.employment_status && teacher.employment_status !== "在职") {
+      warnings.push(`教师 ${teacher.name || id} 当前状态为 ${teacher.employment_status}`);
     }
   }
   for (const cls of state.classes) {
@@ -3915,15 +3921,13 @@ function renderTeachers() {
     .filter(({ teacher }) => {
       if (!keyword) return true;
       return [
-        teacher.id,
+        teacherId(teacher),
         teacher.employee_id,
         teacher.name,
         teacher.gender,
         teacher.project,
         teacher.teacher_role,
-        teacher.identity,
         teacher.employment_type,
-        teacher.teacher_type,
         teacher.primary_subject,
         teacher.subject_type,
         teacher.contract_status,
@@ -3937,12 +3941,12 @@ function renderTeachers() {
     });
   const teacherIdCounts = new Map();
   for (const teacher of teacherRows) {
-    const id = String(teacher.id || teacher.employee_id || "").trim();
+    const id = teacherId(teacher);
     if (!id) continue;
     teacherIdCounts.set(id, (teacherIdCounts.get(id) || 0) + 1);
   }
   const duplicateIdCount = [...teacherIdCounts.values()].filter((count) => count > 1).reduce((sum, count) => sum + count - 1, 0);
-  const missingIdCount = teacherRows.filter((teacher) => !String(teacher.id || teacher.employee_id || "").trim()).length;
+  const missingIdCount = teacherRows.filter((teacher) => !teacherId(teacher)).length;
   const missingNameCount = teacherRows.filter((teacher) => !String(teacher.name || "").trim()).length;
   const missingSubjectCount = teacherRows.filter((teacher) => !String(teacher.primary_subject || "").trim()).length;
   const activeTeacherCount = teacherRows.filter((teacher) => teacher.employment_status === "在职").length;
@@ -4028,7 +4032,7 @@ function teacherBaseTable(rows) {
             .map(
               ({ teacher, index }) => `
                 <tr>
-                  <td><input data-list="teachers" data-index="${index}" data-field="id" value="${html(teacher.id || teacher.employee_id)}" placeholder="员工ID"></td>
+                  <td><input data-list="teachers" data-index="${index}" data-field="employee_id" value="${html(teacherId(teacher))}" placeholder="员工ID"></td>
                   <td><input data-list="teachers" data-index="${index}" data-field="name" value="${html(teacher.name)}" placeholder="教师姓名"></td>
                   <td><select data-list="teachers" data-index="${index}" data-field="gender">${selectOptions(["男", "女", "其他"], teacher.gender, "未填")}</select></td>
                   <td><input data-list="teachers" data-index="${index}" data-field="project" value="${html(teacher.project)}" placeholder="如 考研"></td>
@@ -5410,7 +5414,7 @@ function classSubjectControl(cls) {
 
 function teacherMatchSelector(assignment, index) {
   const matches = teacherNameMatches(assignment.teacher_name);
-  const needsChoice = matches.length > 1 && !matches.some((teacher) => teacher.id === assignment.teacher_id);
+  const needsChoice = matches.length > 1 && !matches.some((teacher) => teacherId(teacher) === assignment.teacher_id);
   if (!needsChoice) return "";
   return `
     <div class="teacher-match">
@@ -5426,11 +5430,12 @@ function teacherMatchSelector(assignment, index) {
 }
 
 function applyAssignmentTeacher(assignment, teacher, row = null) {
-  assignment.teacher_id = teacher.id;
+  const id = teacherId(teacher);
+  assignment.teacher_id = id;
   assignment.teacher_name = teacher.name;
   const idInput = row?.querySelector('input[data-field="teacher_id"]');
   const nameInput = row?.querySelector('input[data-field="teacher_name"]');
-  if (idInput) idInput.value = teacher.id;
+  if (idInput) idInput.value = id;
   if (nameInput) nameInput.value = teacher.name;
 }
 
@@ -5804,17 +5809,14 @@ function addBlackout() {
 }
 
 function addTeacher() {
-  const id = uniqueDraftId("TEACHER", (state.teachers || []).map((teacher) => teacher.id || teacher.employee_id));
+  const id = uniqueDraftId("TEACHER", (state.teachers || []).map((teacher) => teacherId(teacher)));
   state.teachers = state.teachers || [];
   state.teachers.push({
-    id,
     employee_id: id,
     name: "新增教师",
     gender: "",
     project: "考研",
-    identity: "",
     teacher_role: "",
-    teacher_type: "",
     employment_type: "",
     primary_subject: "",
     subject_type: "",
@@ -6529,8 +6531,8 @@ function handleValueChange(target, event = null) {
     }
     if (listName === "teachers") {
       const teacher = state.teachers[rowIndex];
-      if (field === "id") {
-        teacher.employee_id = value;
+      if (field === "employee_id") {
+        delete teacher.id;
         for (const cls of state.classes) {
           for (const assignment of cls.teacher_assignments || []) {
             if (previousValue && assignment.teacher_id === previousValue) assignment.teacher_id = value;
@@ -6538,9 +6540,10 @@ function handleValueChange(target, event = null) {
         }
       }
       if (field === "name") {
+        const id = teacherId(teacher);
         for (const cls of state.classes) {
           for (const assignment of cls.teacher_assignments || []) {
-            if (assignment.teacher_id === teacher.id) assignment.teacher_name = value;
+            if (assignment.teacher_id === id) assignment.teacher_name = value;
           }
         }
       }
@@ -6548,12 +6551,6 @@ function handleValueChange(target, event = null) {
         applyTeacherSubjectType(teacher);
         renderTeachers();
         return;
-      }
-      if (field === "teacher_role") {
-        teacher.identity = value;
-      }
-      if (field === "employment_type") {
-        teacher.teacher_type = value;
       }
     }
     if (listName === "products") {
@@ -6750,7 +6747,7 @@ function handleValueChange(target, event = null) {
       const teacher = teacherById(target.value);
       if (teacher) {
         applyAssignmentTeacher(assignment, teacher, row);
-        showStatus(`已选择 ${teacher.name}（${teacher.id}）。`, "ok");
+        showStatus(`已选择 ${teacher.name}（${teacherId(teacher)}）。`, "ok");
         renderClasses();
       }
       return;
@@ -6805,10 +6802,10 @@ function handleValueChange(target, event = null) {
       const matches = teacherNameMatches(assignment.teacher_name);
       if (matches.length === 1) {
         applyAssignmentTeacher(assignment, matches[0], row);
-        showStatus(`已按姓名匹配到教师ID：${matches[0].id}`, "ok");
+        showStatus(`已按姓名匹配到教师ID：${teacherId(matches[0])}`, "ok");
         if (row?.querySelector(".teacher-match")) renderClasses();
       } else if (matches.length > 1) {
-        if (!matches.some((teacher) => teacher.id === assignment.teacher_id)) assignment.teacher_id = "";
+        if (!matches.some((teacher) => teacherId(teacher) === assignment.teacher_id)) assignment.teacher_id = "";
         showStatus(`存在 ${matches.length} 位同名老师，请在该行选择具体员工ID。`, "warning");
         renderClasses();
       } else {

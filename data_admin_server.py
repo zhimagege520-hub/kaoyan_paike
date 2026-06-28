@@ -1008,15 +1008,16 @@ def normalize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
             room["teaching_area_name"] = area.get("short_name") or area.get("name", "")
             room["campus"] = area.get("campus", "")
 
-    teacher_by_id = {teacher["id"]: teacher for teacher in teachers if teacher["id"]}
+    teacher_by_id = {teacher["employee_id"]: teacher for teacher in teachers if teacher["employee_id"]}
     teacher_ids_by_name: Dict[str, List[str]] = {}
     numeric_teacher_ids_by_name: Dict[str, List[str]] = {}
     for teacher in teachers:
         teacher_name = normalize_text(teacher.get("name"))
-        if teacher_name and teacher.get("id"):
-            teacher_ids_by_name.setdefault(teacher_name, []).append(teacher["id"])
-            if is_employee_id(teacher["id"]):
-                numeric_teacher_ids_by_name.setdefault(teacher_name, []).append(teacher["id"])
+        teacher_id = normalize_text(teacher.get("employee_id"))
+        if teacher_name and teacher_id:
+            teacher_ids_by_name.setdefault(teacher_name, []).append(teacher_id)
+            if is_employee_id(teacher_id):
+                numeric_teacher_ids_by_name.setdefault(teacher_name, []).append(teacher_id)
     for cls in classes:
         for assignment in cls.get("teacher_assignments", []):
             if assignment.get("teacher_id") and not is_employee_id(assignment.get("teacher_id")):
@@ -1032,8 +1033,6 @@ def normalize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
                 assignment["teacher_name"] = teacher.get("name", "")
 
     recompute_area_capacity(teaching_areas, rooms)
-    for index, teacher in enumerate(teachers, start=2):
-        teacher["row"] = index
     for index, item in enumerate(teacher_unavailability, start=2):
         item["row"] = index
     for index, product in enumerate(products, start=2):
@@ -1129,7 +1128,7 @@ def normalize_room(room: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def normalize_teacher(teacher: Dict[str, Any]) -> Dict[str, Any]:
-    teacher_id = normalize_text(teacher.get("id") or teacher.get("employee_id") or teacher.get("teacher_id"))
+    teacher_id = normalize_text(teacher.get("employee_id") or teacher.get("id") or teacher.get("teacher_id"))
     primary_subject = normalize_text(teacher.get("primary_subject"))
     teacher_type_values = {"全职", "兼职", "外聘", "内部"}
     raw_teacher_role = normalize_text(teacher.get("teacher_role") or teacher.get("identity") or teacher.get("教师角色"))
@@ -1139,15 +1138,11 @@ def normalize_teacher(teacher: Dict[str, Any]) -> Dict[str, Any]:
     contract_status = "" if not raw_teacher_type and raw_contract_status in teacher_type_values else raw_contract_status
     derived_subject_type = teacher_subject_type(primary_subject)
     return {
-        "row": normalize_int(teacher.get("row")),
-        "id": teacher_id,
         "employee_id": teacher_id,
         "name": normalize_text(teacher.get("name") or teacher.get("teacher_name")),
         "gender": normalize_text(teacher.get("gender")),
         "project": normalize_text(teacher.get("project")),
-        "identity": normalize_teacher_identity_label(raw_teacher_role),
         "teacher_role": normalize_teacher_identity_label(raw_teacher_role),
-        "teacher_type": teacher_type,
         "employment_type": teacher_type,
         "primary_subject": primary_subject,
         "subject_type": derived_subject_type or normalize_text(teacher.get("subject_type")),
@@ -1949,7 +1944,7 @@ def validate_state(state: Dict[str, Any]) -> None:
 
     validate_unique(state["teaching_areas"], "id", "教学区", errors)
     validate_unique(state["rooms"], "id", "教室", errors)
-    validate_unique(state["teachers"], "id", "教师", errors)
+    validate_unique(state["teachers"], "employee_id", "教师", errors)
     validate_unique(state["products"], "id", "产品", errors)
     validate_unique(state["classes"], "id", "班级", errors)
     validate_unique(state["class_conflict_groups"], "id", "班级互斥关系", errors)

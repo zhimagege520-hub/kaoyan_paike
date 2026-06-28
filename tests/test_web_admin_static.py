@@ -126,6 +126,21 @@ class WebAdminStaticTest(unittest.TestCase):
             source,
         )
 
+    def test_teacher_resource_editor_writes_current_fields_only(self) -> None:
+        source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn("function teacherId(teacher)", source)
+        self.assertIn('data-list="teachers" data-index="${index}" data-field="employee_id"', source)
+        self.assertIn('if (field === "employee_id") {', source)
+        self.assertIn("delete teacher.id;", source)
+        self.assertIn("teacher_role: \"\",", source)
+        self.assertIn("employment_type: \"\",", source)
+        self.assertNotIn('data-list="teachers" data-index="${index}" data-field="id"', source)
+        self.assertNotIn("identity: \"\",", source)
+        self.assertNotIn("teacher_type: \"\",", source)
+        self.assertNotIn("teacher.identity = value;", source)
+        self.assertNotIn("teacher.teacher_type = value;", source)
+
 
 if __name__ == "__main__":
     unittest.main()

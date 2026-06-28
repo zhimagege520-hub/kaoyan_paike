@@ -821,10 +821,11 @@ class SchedulingPipelineTest(unittest.TestCase):
             "teachers": [
                 {
                     "employee_id": "100001",
+                    "id": "LEGACY_ID",
                     "name": "张老师",
                     "project": "考研",
-                    "teacher_role": "教师",
-                    "employment_type": "全职",
+                    "identity": "教师",
+                    "teacher_type": "全职",
                     "primary_subject": "英语",
                     "employment_status": "在职",
                 }
@@ -836,10 +837,16 @@ class SchedulingPipelineTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             data_admin_server.DATA_DIR = Path(tmp) / "data"
             data_admin_server.save_state(payload)
+            teachers_doc = json.loads((data_admin_server.DATA_DIR / "teachers.json").read_text(encoding="utf-8"))
             with (data_admin_server.DATA_DIR / "teachers.csv").open(encoding="utf-8") as handle:
                 header = next(csv.reader(handle))
 
+        saved_row = teachers_doc["teachers"][0]
+        self.assertEqual(data_admin_server.TEACHER_FIELDNAMES, list(saved_row))
         self.assertEqual(data_admin_server.TEACHER_FIELDNAMES, header)
+        self.assertEqual(saved_row["employee_id"], "100001")
+        self.assertEqual(saved_row["teacher_role"], "教师")
+        self.assertEqual(saved_row["employment_type"], "全职")
 
     def test_standard_tables_are_shared_by_admin_pipeline_json_and_csv_exports(self) -> None:
         self.assertIs(TABLE_FIELDNAMES, data_admin_server.STANDARD_TABLE_FIELDNAMES)
