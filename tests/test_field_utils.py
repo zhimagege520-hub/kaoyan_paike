@@ -17,6 +17,7 @@ from scripts.field_utils import (
     parse_bool_default,
     parse_enabled,
     parse_time_minutes,
+    split_delimited_values,
     split_pipe_values,
     split_time_range_text,
 )
@@ -77,7 +78,9 @@ class FieldUtilsTest(unittest.TestCase):
 
     def test_split_pipe_values_trims_and_drops_empty_items(self) -> None:
         self.assertEqual(split_pipe_values("A | | B"), ["A", "B"])
+        self.assertEqual(split_pipe_values("A,B，C;D；E"), ["A", "B", "C", "D", "E"])
         self.assertEqual(split_pipe_values([" A ", "", 0]), ["A", "0"])
+        self.assertEqual(split_delimited_values("数学|英语，政治;语文"), ["数学", "英语", "政治", "语文"])
 
     def test_parse_bool_recognizes_shared_true_values(self) -> None:
         self.assertTrue(parse_bool("启用"))

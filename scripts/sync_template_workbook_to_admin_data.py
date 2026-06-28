@@ -16,7 +16,11 @@ from openpyxl import load_workbook
 
 import data_admin_server
 from scripts.csv_utils import serialize_csv_value, write_csv_rows
-from scripts.field_utils import normalize_text, parse_bool as normalize_bool
+from scripts.field_utils import (
+    normalize_text,
+    parse_bool as normalize_bool,
+    split_delimited_values,
+)
 from scripts.schedule_modes import (
     assignment_actual_scheduled_class_id,
     assignment_inherited_class_id,
@@ -172,13 +176,7 @@ def normalize_time(value: Any) -> str:
 
 
 def normalize_list(value: Any) -> List[str]:
-    if value in (None, ""):
-        return []
-    if isinstance(value, list):
-        values = value
-    else:
-        values = normalize_text(value).split("|")
-    return [normalize_text(item) for item in values if normalize_text(item)]
+    return split_delimited_values(value)
 
 
 def cell_value(field: str, value: Any) -> Any:

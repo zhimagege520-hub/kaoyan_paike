@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 import scheduler
 from scripts.csv_utils import read_csv_rows
-from scripts.field_utils import normalize_date_text
+from scripts.field_utils import normalize_date_text, split_delimited_values
 from scripts.schedule_data import infer_class_subject, infer_class_subject_category
 
 
@@ -15,7 +15,7 @@ SUBJECT_ORDER = {"数学": 0, "英语": 1, "政治": 2, "语文": 3}
 
 
 def split_values(value: str) -> List[str]:
-    return [item.strip() for item in value.split(",") if item.strip()]
+    return split_delimited_values(value)
 
 
 def normalize_date(value: str) -> str:

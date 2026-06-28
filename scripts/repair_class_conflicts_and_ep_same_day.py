@@ -40,6 +40,7 @@ from scripts.repair_schedule_quality_hotspots import (  # noqa: E402
 )
 from scripts.build_camp_maintenance_schedule import load_class_metadata  # noqa: E402
 from scripts.csv_utils import read_csv_rows  # noqa: E402
+from scripts.field_utils import split_delimited_values  # noqa: E402
 
 
 DEFAULT_TARGET_GROUP = "ENROLL_27考研__2770-管综_2776英语_2770政治"
@@ -51,7 +52,7 @@ def load_conflict_group_members(path: Path) -> Dict[str, Set[str]]:
         if clean(row.get("is_active")) not in {"是", "1", "true", "True", "yes"}:
             continue
         group_id = clean(row.get("id"))
-        class_ids = {item.strip() for item in clean(row.get("class_ids")).split("|") if item.strip()}
+        class_ids = set(split_delimited_values(clean(row.get("class_ids"))))
         if group_id and len(class_ids) >= 2:
             members[group_id] = class_ids
     return members

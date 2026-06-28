@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any, Set
 
-from scripts.field_utils import normalize_text
+from scripts.field_utils import normalize_text, split_delimited_values
 
 
 SEASON_WINDOW_ID_TO_NAME = {
@@ -17,11 +17,7 @@ YEAR_SEASON_WINDOW_PATTERN = re.compile(r"^\d{4}\s*年?\s*[-_/]?\s*(寒假|春�
 
 
 def split_window_values(values: Any) -> list[str]:
-    if values is None:
-        return []
-    if isinstance(values, str):
-        return [item.strip() for item in re.split(r"[|,，;；]+", values) if item.strip()]
-    return [normalize_text(item) for item in values if normalize_text(item)]
+    return split_delimited_values(values)
 
 
 def season_window_tokens(value: Any) -> Set[str]:

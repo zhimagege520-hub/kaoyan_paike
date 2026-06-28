@@ -18,7 +18,10 @@ if str(ROOT) not in sys.path:
 
 from scripts.schedule_modes import assignment_reference_class_id, assignment_schedule_mode  # noqa: E402
 from scripts.csv_utils import read_csv_rows, write_csv_rows  # noqa: E402
-from scripts.field_utils import normalize_excel_text as clean  # noqa: E402
+from scripts.field_utils import (  # noqa: E402
+    normalize_excel_text as clean,
+    split_delimited_values as split_values,
+)
 
 
 DEFAULT_SCHEDULE = Path("outputs/batch_schedule_maintenance.csv")
@@ -114,10 +117,6 @@ def normalize_time(value: str) -> str:
         except ValueError:
             pass
     return value
-
-
-def split_values(value: str) -> List[str]:
-    return [item.strip() for item in value.replace(",", "|").replace("，", "|").split("|") if item.strip()]
 
 
 def load_course_code_lookup(path: Path) -> Dict[Tuple[str, ...], str]:

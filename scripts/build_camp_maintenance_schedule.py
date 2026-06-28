@@ -21,6 +21,7 @@ if str(ROOT) not in sys.path:
 
 import scheduler
 from scripts.csv_utils import read_csv_rows
+from scripts.field_utils import split_delimited_values as split_pipe_values
 from scripts.schedule_class_windows import (
     ClassWindowConstraint,
     load_class_window_constraint_items,
@@ -294,10 +295,6 @@ AUTUMN_SPECIAL_SUBJECT_RULES = {
 
 def row_matches_phase(row: dict, phases: Set[str]) -> bool:
     return (row.get("quarter") or "") in phases or (row.get("stage") or "") in phases
-
-
-def split_pipe_values(value: object) -> List[str]:
-    return [item.strip() for item in str(value or "").split("|") if item.strip()]
 
 
 def task_matches_phase(task: scheduler.CourseBlock, phases: Set[str]) -> bool:
@@ -5126,7 +5123,8 @@ def apply_2727_no_math_summer_rule(
                 return item.candidate.room_id
         meta_room = clean(class_metadata.get(class_id, {}).get("preferred_room_ids"))
         if meta_room:
-            return meta_room.split("|")[0]
+            meta_rooms = split_pipe_values(meta_room)
+            return meta_rooms[0] if meta_rooms else ""
         return ""
 
     def add_missing_requirement_to_week(target_week: Date, target_subject: str) -> bool:
@@ -5628,7 +5626,8 @@ def rebuild_2727_no_math_sequence_schedule(
     for class_id, cls in source.classes.items():
         preferred_room = clean(class_metadata.get(class_id, {}).get("preferred_room_ids"))
         if preferred_room:
-            room_by_class[class_id] = preferred_room.split("|")[0]
+            preferred_rooms = split_pipe_values(preferred_room)
+            room_by_class[class_id] = preferred_rooms[0] if preferred_rooms else ""
         elif cls.room_ids:
             room_by_class[class_id] = sorted(cls.room_ids)[0]
         else:

@@ -168,6 +168,37 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertNotIn("datetime.strptime(candidate, fmt)", business_import_source)
         self.assertNotIn("data_admin_server.normalize_text", pipeline_source)
 
+    def test_list_value_splitting_lives_in_shared_field_utils(self) -> None:
+        field_utils_source = (ROOT / "scripts" / "field_utils.py").read_text(encoding="utf-8")
+        scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")
+        schedule_scope_source = (ROOT / "scripts" / "schedule_scope.py").read_text(encoding="utf-8")
+        weekday_utils_source = (ROOT / "scripts" / "weekday_utils.py").read_text(encoding="utf-8")
+        window_utils_source = (ROOT / "scripts" / "window_utils.py").read_text(encoding="utf-8")
+        template_sync_source = (ROOT / "scripts" / "sync_template_workbook_to_admin_data.py").read_text(encoding="utf-8")
+        erp_export_source = (ROOT / "scripts" / "export_erp_lesson_import.py").read_text(encoding="utf-8")
+        erp_lesson_map_source = (ROOT / "scripts" / "build_erp_lesson_id_map.py").read_text(encoding="utf-8")
+        camp_maintenance_source = (ROOT / "scripts" / "build_camp_maintenance_schedule.py").read_text(encoding="utf-8")
+
+        self.assertIn("LIST_VALUE_SEPARATOR_RE", field_utils_source)
+        self.assertIn("def split_delimited_values", field_utils_source)
+        for source in (
+            scheduler_source,
+            schedule_scope_source,
+            weekday_utils_source,
+            window_utils_source,
+            template_sync_source,
+            erp_export_source,
+            erp_lesson_map_source,
+            camp_maintenance_source,
+        ):
+            self.assertIn("split_delimited_values", source)
+
+        self.assertIsNone(re.search(r"(?m)^def split_values\(", erp_export_source))
+        self.assertIsNone(re.search(r"(?m)^def split_values\(", erp_lesson_map_source))
+        self.assertIsNone(re.search(r"(?m)^def split_pipe_values\(", camp_maintenance_source))
+        self.assertNotIn('.replace(",", "|").replace("，", "|").split("|")', erp_export_source)
+        self.assertNotIn('.replace(",", "|").replace("，", "|").split("|")', erp_lesson_map_source)
+
     def test_period_normalization_lives_in_shared_period_utils(self) -> None:
         scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")
         business_import_source = (ROOT / "business_class_import.py").read_text(encoding="utf-8")

@@ -19,6 +19,7 @@ from scripts.build_camp_maintenance_schedule import (  # noqa: E402
     load_class_metadata,
 )
 from scripts.csv_utils import clean_cell as clean, read_csv_rows, write_csv_rows as write_csv_rows_with_fields  # noqa: E402
+from scripts.field_utils import split_delimited_values  # noqa: E402
 from scripts.schedule_class_windows import (  # noqa: E402
     ClassWindowConstraint,
     load_class_window_constraint_items,
@@ -137,7 +138,7 @@ def load_class_conflicts(path: Path) -> Dict[str, Set[str]]:
         if clean(row.get("is_active")) not in {"是", "1", "true", "True", "yes"}:
             continue
         group_id = clean(row.get("id"))
-        class_ids = [item.strip() for item in clean(row.get("class_ids")).split("|") if item.strip()]
+        class_ids = split_delimited_values(clean(row.get("class_ids")))
         if len(class_ids) < 2:
             continue
         for class_id in class_ids:

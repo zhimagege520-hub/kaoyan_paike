@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
 import scheduler
 from scripts import build_camp_maintenance_schedule as maintenance
 from scripts.csv_utils import read_csv_rows, read_csv_with_fieldnames, write_csv_rows as write_csv_rows_with_fields
+from scripts.field_utils import split_delimited_values
 from scripts.schedule_data import load_class_metadata, load_room_names
 from scripts.schedule_display import week_start, weekday_label
 from scripts.schedule_outputs import write_day_table_html
@@ -78,7 +79,8 @@ def sub_product_for_class(class_id: str, class_rows: Dict[str, dict]) -> str:
 
 def room_for_class(class_id: str, class_rows: Dict[str, dict]) -> str:
     preferred = clean(class_rows.get(class_id, {}).get("preferred_room_ids"))
-    return preferred.split("|")[0] if preferred else ""
+    preferred_rooms = split_delimited_values(preferred)
+    return preferred_rooms[0] if preferred_rooms else ""
 
 
 def make_class_conflict_index(data_dir: Path) -> Dict[str, Set[str]]:

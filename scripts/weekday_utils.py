@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import re
 from datetime import date as Date
 from typing import Any, Optional, Set
 
-from scripts.field_utils import normalize_text
+from scripts.field_utils import normalize_text, split_delimited_values
 
 
 WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
@@ -68,11 +67,7 @@ def normalize_weekday(value: Any) -> Optional[int]:
 
 
 def split_weekday_values(values: Any) -> list[str]:
-    if values is None:
-        return []
-    if isinstance(values, str):
-        return [item.strip() for item in re.split(r"[|,，;；]+", values) if item.strip()]
-    return [normalize_text(item) for item in values if normalize_text(item)]
+    return split_delimited_values(values)
 
 
 def parse_weekday_set(values: Any, label: str = "星期") -> Optional[Set[int]]:

@@ -18,6 +18,7 @@ from scripts.field_utils import (
     normalize_time_text as normalize_time_value,
     parse_bool,
     parse_bool_default,
+    split_delimited_values,
 )
 from scripts.period_utils import PERIOD_ORDER, VALID_PERIODS, normalize_period, period_sort_value
 from scripts.schedule_modes import assignment_is_shared
@@ -991,13 +992,7 @@ def parse_room_id_fields(
 
 
 def parse_string_set(values: object) -> Optional[Set[str]]:
-    if values is None:
-        return None
-    if isinstance(values, str):
-        items = [item.strip() for item in values.split("|")]
-    else:
-        items = [str(item).strip() for item in values]  # type: ignore[union-attr]
-    result = {item for item in items if item}
+    result = set(split_delimited_values(values))
     return result or None
 
 
@@ -1234,11 +1229,7 @@ def rule_field_matches(rule_value: str, req_value: object) -> bool:
     req_text = str(req_value or "").strip()
     if not req_text:
         return False
-    choices = [
-        item.strip()
-        for item in rule_value.replace("，", "|").replace(",", "|").replace("；", "|").replace(";", "|").split("|")
-        if item.strip()
-    ]
+    choices = split_delimited_values(rule_value)
     return req_text in choices if choices else rule_value == req_text
 
 

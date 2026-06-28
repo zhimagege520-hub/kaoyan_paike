@@ -8,6 +8,7 @@ from typing import Any, Iterable, List, Optional, Tuple
 TRUE_VALUES = {"1", "true", "yes", "y", "是", "对", "启用", "可用", "纳入", "锁定"}
 FALSE_VALUES = {"0", "false", "no", "n", "否", "错", "停用", "禁用", "不可用", "不纳入"}
 BLANK_MARKERS = {"", "-", "—", "无", "暂无", "NULL", "N/A", "None"}
+LIST_VALUE_SEPARATOR_RE = re.compile(r"[|,，;；]+")
 
 
 def normalize_text(value: Any) -> str:
@@ -136,14 +137,18 @@ def split_time_range_text(value: Any) -> Tuple[str, str]:
     return normalize_time_text(start), normalize_time_text(end)
 
 
-def split_pipe_values(values: Any) -> List[str]:
+def split_delimited_values(values: Any) -> List[str]:
     if values is None:
         return []
     if isinstance(values, str):
-        items: Iterable[Any] = values.split("|")
+        items: Iterable[Any] = LIST_VALUE_SEPARATOR_RE.split(values)
     else:
         items = values
     return [normalize_text(item) for item in items if normalize_text(item)]
+
+
+def split_pipe_values(values: Any) -> List[str]:
+    return split_delimited_values(values)
 
 
 def parse_bool(value: Any) -> bool:

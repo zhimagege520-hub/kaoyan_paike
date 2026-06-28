@@ -20,6 +20,7 @@ from scripts.csv_utils import read_csv_rows, write_csv_rows
 from scripts.field_utils import (
     normalize_excel_text as clean,
     normalize_time_text as normalize_one_time,
+    split_delimited_values as split_values,
     split_time_range_text,
 )
 
@@ -27,10 +28,6 @@ from scripts.field_utils import (
 DEFAULT_SCHEDULE = Path("outputs/batch_schedule_maintenance.csv")
 DEFAULT_OUTPUT_DIR = Path("outputs")
 PUBLIC_SUBJECTS = {"英语", "政治", "数学", "语文"}
-
-
-def split_values(value: str) -> List[str]:
-    return [item.strip() for item in value.replace(",", "|").replace("，", "|").split("|") if item.strip()]
 
 
 def normalize_date(value: object) -> str:
