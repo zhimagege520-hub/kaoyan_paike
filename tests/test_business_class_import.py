@@ -624,17 +624,13 @@ class BusinessClassImportTest(unittest.TestCase):
         self.assertEqual([cls["id"] for cls in result.payload["classes"]], ["C_REG"])
         self.assertTrue(any("合班详情引用的班级未进入本轮排课范围" in warning for warning in result.warnings))
 
-    def test_full_merge_keeps_source_class_as_shared_schedule(self) -> None:
+    def test_business_merge_detail_generates_shared_schedule_assignment(self) -> None:
         tables = {
             "business_classes": table([
                 business_row("C_MAIN", merge_detail="C_MAIN,C_CHILD"),
                 business_row("C_CHILD", merge_detail="C_MAIN,C_CHILD"),
             ]),
             "business_product_mappings": table([{"business_product_id": "100", "canonical_product_id": "P_REG"}]),
-            "merge_course_details": table([
-                {"source_class_id": "C_MAIN", "scheduled_class_id": "C_MAIN", "merge_type": "full"},
-                {"source_class_id": "C_CHILD", "scheduled_class_id": "C_MAIN", "merge_type": "full"},
-            ]),
             "class_teacher_assignments": table([assignment("C_MAIN")]),
         }
 
@@ -650,10 +646,10 @@ class BusinessClassImportTest(unittest.TestCase):
             self.assertNotIn(old_field, shared_assignment)
         self.assertNotIn("requirements", classes["C_CHILD"])
 
-    def test_partial_merge_generates_class_level_requirements(self) -> None:
+    def test_removed_merge_course_details_table_no_longer_drives_partial_requirements(self) -> None:
         tables = {
             "business_classes": table([
-                business_row("C_MAIN"),
+                business_row("C_MAIN", merge_detail="C_MAIN,C_SRC"),
                 business_row("C_SRC", merge_detail="C_MAIN,C_SRC"),
             ]),
             "business_product_mappings": table([{"business_product_id": "100", "canonical_product_id": "P_REG"}]),
@@ -671,53 +667,20 @@ class BusinessClassImportTest(unittest.TestCase):
             "class_teacher_assignments": table([
                 assignment("C_MAIN", "词汇", "T1"),
                 assignment("C_MAIN", "阅读", "T1"),
-                assignment("C_SRC", "词汇", "T2"),
-                assignment("C_SRC", "阅读", "T2"),
             ]),
         }
 
         result = convert_business_tables(tables, base_payload(two_courses=True))
         classes = {cls["id"]: cls for cls in result.payload["classes"]}
 
-        self.assertEqual(
-            sorted(req["course_module"] for req in classes["C_MAIN"]["requirements"]),
-            ["词汇", "阅读"],
-        )
-        self.assertEqual(
-            [req["course_module"] for req in classes["C_SRC"]["requirements"]],
-            ["阅读"],
-        )
+        shared_assignments = classes["C_SRC"]["teacher_assignments"]
+        self.assertEqual({row["class_schedule_mode"] for row in shared_assignments}, {"共享实际排课班级"})
+        self.assertEqual({row["actual_scheduled_class_id"] for row in shared_assignments}, {"C_MAIN"})
+        self.assertNotIn("requirements", classes["C_SRC"])
         for cls in classes.values():
             for assignment_row in cls["teacher_assignments"]:
                 for old_field in ("schedule_mode", "inherit_from_class_id", "teacher_available_slots", "course_module"):
                     self.assertNotIn(old_field, assignment_row)
-            for requirement in cls.get("requirements", []):
-                self.assertNotIn("teacher_available_slots", requirement)
-        with tempfile.TemporaryDirectory() as tmp:
-            data_admin_server.DATA_DIR = Path(tmp) / "data"
-            export = data_admin_server.export_scheduler_input(
-                result.payload,
-                time_slots=[
-                    {
-                        "id": "2026-07-01-AM-1",
-                        "date": "2026-07-01",
-                        "period": "AM",
-                        "name": "上午一",
-                        "order": 1,
-                        "start_time": "08:00",
-                        "end_time": "10:00",
-                        "duration_hours": 2,
-                    }
-                ],
-            )
-            scheduler_input = json.loads(Path(export["path"]).read_text(encoding="utf-8"))
-        exported_classes = {cls["id"]: cls for cls in scheduler_input["classes"]}
-        self.assertEqual(
-            [req["course_module"] for req in exported_classes["C_SRC"]["requirements"]],
-            ["阅读"],
-        )
-        self.assertEqual(exported_classes["C_SRC"]["room_ids"], ["R1"])
-        self.assertNotIn("room_ids", exported_classes["C_SRC"]["requirements"][0])
 
 
 if __name__ == "__main__":

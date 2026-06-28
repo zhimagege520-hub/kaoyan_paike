@@ -437,54 +437,6 @@ def select_product_mapping_for_class(row: Mapping[str, Any], product_mapping: Ma
     return mapping
 
 
-def merge_details_from_rows(
-    rows: Iterable[Mapping[str, Any]],
-    raw_by_class: Mapping[str, Mapping[str, Any]],
-) -> Tuple[Dict[str, List[Dict[str, Any]]], List[str]]:
-    details_by_source: Dict[str, List[Dict[str, Any]]] = {}
-    errors: List[str] = []
-    for row in rows:
-        source_id = row_value(row, "source_class_id", "原班级编码", "class_id")
-        if not source_id:
-            continue
-        raw_source = raw_by_class.get(source_id, {})
-        default_scheduled_id = first_merge_code(raw_source)
-        scheduled_id = row_value(row, "scheduled_class_id", "实际排课班级编码", "target_class_id") or default_scheduled_id
-        merge_type = compact_text(row_value(row, "merge_type", "合班类型")).lower()
-        if merge_type in {"全部", "全量", "fullmerge"}:
-            merge_type = "full"
-        if merge_type in {"部分", "partialmerge"}:
-            merge_type = "partial"
-        if merge_type not in {"full", "partial"}:
-            errors.append(f"共享课表关系 {source_id} 的 merge_type 只能是 full 或 partial")
-            continue
-        if not scheduled_id:
-            errors.append(f"共享课表关系 {source_id} 缺少 scheduled_class_id，且业务表没有合班详情")
-            continue
-        if default_scheduled_id and scheduled_id != default_scheduled_id:
-            errors.append(
-                f"共享课表关系 {source_id} 的 scheduled_class_id={scheduled_id} "
-                f"与合班详情第一个班级 {default_scheduled_id} 不一致"
-            )
-            continue
-        detail = {
-            "source_class_id": source_id,
-            "scheduled_class_id": scheduled_id,
-            "merge_type": merge_type,
-            "subject": row_value(row, "subject", "科目"),
-            "stage": row_value(row, "stage", "阶段"),
-            "course_module": row_value(row, "course_module", "课程模块"),
-            "course_group": row_value(row, "course_group", "课程组"),
-            "start_date": row_value(row, "start_date", "开始日期"),
-            "end_date": row_value(row, "end_date", "结束日期"),
-            "notes": row_value(row, "notes", "备注"),
-        }
-        details_by_source.setdefault(source_id, []).append(detail)
-    if errors:
-        raise BusinessDataError(errors)
-    return details_by_source, errors
-
-
 def apply_default_full_merge_details(
     merge_details: Dict[str, List[Dict[str, Any]]],
     selected_rows: Mapping[str, Mapping[str, Any]],
@@ -880,14 +832,6 @@ def make_requirement(
     return requirement
 
 
-def course_matches_detail(course: Mapping[str, Any], detail: Mapping[str, Any]) -> bool:
-    for key in ("subject", "stage", "course_module", "course_group"):
-        value = normalize_text(detail.get(key))
-        if value and normalize_text(course.get(key)) != value:
-            return False
-    return True
-
-
 def normalize_scheduled_lessons(rows: Iterable[Mapping[str, Any]]) -> Tuple[List[ScheduledLesson], List[str]]:
     lessons: List[ScheduledLesson] = []
     warnings: List[str] = []
@@ -1225,91 +1169,6 @@ def build_teacher_rows(
             "notes": "来自课程老师安排",
         }
     return list(teachers.values())
-
-
-def build_direct_requirements_for_partials(
-    classes: Dict[str, Dict[str, Any]],
-    partial_details: Sequence[Dict[str, Any]],
-    courses_by_product: Mapping[str, List[Dict[str, Any]]],
-    assignments: Mapping[str, Dict[AssignmentKey, Dict[str, Any]]],
-    errors: List[str],
-) -> None:
-    missing_teacher_labels: Dict[str, List[str]] = {}
-    missing_teacher_seen: Dict[str, Set[str]] = {}
-
-    def record_missing_teacher(class_id: str, label: str) -> None:
-        seen = missing_teacher_seen.setdefault(class_id, set())
-        if label in seen:
-            return
-        seen.add(label)
-        missing_teacher_labels.setdefault(class_id, []).append(label)
-
-    affected_class_ids = {
-        detail["source_class_id"] for detail in partial_details
-    } | {
-        detail["scheduled_class_id"] for detail in partial_details
-    }
-    requirement_maps: Dict[str, Dict[Tuple[str, str, str, str], Dict[str, Any]]] = {}
-    for class_id in affected_class_ids:
-        cls = classes.get(class_id)
-        if not cls:
-            errors.append(f"部分合班引用了未进入排课范围的班级: {class_id}")
-            continue
-        class_assignments = assignments.get(class_id, {})
-        product_courses = courses_by_product.get(cls["product_id"], [])
-        reqs: Dict[Tuple[str, str, str, str], Dict[str, Any]] = {}
-        for course in product_courses:
-            key = course_key(course)
-            assignment = resolve_teacher_assignment(course, cls["product_id"], class_assignments, product_courses)
-            if not assignment:
-                record_missing_teacher(class_id, assignment_label(course))
-                continue
-            reqs[key] = make_requirement(course, assignment)
-        requirement_maps[class_id] = reqs
-
-    for detail in partial_details:
-        source_id = detail["source_class_id"]
-        scheduled_id = detail["scheduled_class_id"]
-        source_cls = classes.get(source_id)
-        if not source_cls or scheduled_id not in classes:
-            continue
-        source_courses = courses_by_product.get(source_cls["product_id"], [])
-        matched = [course for course in source_courses if course_matches_detail(course, detail)]
-        if not matched:
-            errors.append(f"部分合班 {source_id}->{scheduled_id} 未匹配到产品课程")
-            continue
-        for course in matched:
-            key = course_key(course)
-            source_requirement = requirement_maps.get(source_id, {}).pop(key, None)
-            if source_requirement is None:
-                continue
-            if key in requirement_maps.setdefault(scheduled_id, {}):
-                continue
-            scheduled_cls = classes.get(scheduled_id, {})
-            scheduled_assignment = resolve_teacher_assignment(
-                course,
-                normalize_text(scheduled_cls.get("product_id")),
-                assignments.get(scheduled_id, {}),
-                courses_by_product.get(normalize_text(scheduled_cls.get("product_id")), []),
-            )
-            source_assignment = resolve_teacher_assignment(
-                course,
-                normalize_text(source_cls.get("product_id")),
-                assignments.get(source_id, {}),
-                source_courses,
-            )
-            assignment = scheduled_assignment or source_assignment
-            if not assignment:
-                record_missing_teacher(scheduled_id, assignment_label(course))
-                continue
-            requirement_maps[scheduled_id][key] = make_requirement(course, assignment, detail)
-
-    for class_id, labels in missing_teacher_labels.items():
-        errors.append(f"班级 {class_id} 缺少课程老师安排: " + "、".join(labels[:20]))
-
-    for class_id, reqs in requirement_maps.items():
-        if class_id in classes:
-            classes[class_id]["requirements"] = list(reqs.values())
 
 
 def current_teacher_assignments_for_class(
@@ -1731,7 +1590,6 @@ def convert_business_tables(
     business_rows = list(tables["business_classes"].rows)
     employee_ids_by_name = teacher_employee_ids_from_business_rows(business_rows)
     product_map_rows = business_product_mapping_rows(tables)
-    merge_rows = empty_rows(tables, "merge_course_details")
     assignment_rows = normalize_assignment_teacher_ids(
         empty_rows(tables, "class_teacher_assignments"),
         employee_ids_by_name,
@@ -1742,8 +1600,7 @@ def convert_business_tables(
     errors: List[str] = []
     product_mapping = product_map_from_rows(product_map_rows)
 
-    raw_by_class = {row_value(row, "班级编码"): row for row in business_rows if row_value(row, "班级编码")}
-    merge_details, _ = merge_details_from_rows(merge_rows, raw_by_class)
+    merge_details: Dict[str, List[Dict[str, Any]]] = {}
     product_meta = product_catalog(base_payload)
     courses_by_product = product_courses_by_id(base_payload)
     uploaded_assignments = assignments_by_class(assignment_rows)
@@ -1846,12 +1703,6 @@ def convert_business_tables(
         for detail in details
         if detail["merge_type"] == "full" and detail["source_class_id"] != detail["scheduled_class_id"]
     }
-    partial_details = [
-        detail
-        for details in merge_details.values()
-        for detail in details
-        if detail["merge_type"] == "partial"
-    ]
     auto_shared_assignments = assignments_by_class(
         shared_assignments_for_full_merges(
             full_sources,
@@ -1874,19 +1725,9 @@ def convert_business_tables(
             errors.append(f"全量合班实际排课班级未进入排课范围: {scheduled_id}")
 
     for class_id, cls in generated_classes.items():
-        if class_id in {detail["source_class_id"] for detail in partial_details} | {detail["scheduled_class_id"] for detail in partial_details}:
-            continue
         missing = class_has_teacher_assignments(class_id, cls["product_id"], courses_by_product.get(cls["product_id"], []), assignments)
         if missing:
             errors.append(f"班级 {class_id} 缺少课程老师安排: " + "、".join(missing[:20]))
-
-    build_direct_requirements_for_partials(
-        generated_classes,
-        partial_details,
-        courses_by_product,
-        assignments,
-        errors,
-    )
 
     apply_historical_remaining_requirements(
         generated_classes,

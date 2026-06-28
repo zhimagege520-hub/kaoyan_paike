@@ -386,6 +386,21 @@ class SchedulingPipelineTest(unittest.TestCase):
             self.assertNotIn("business_product_map", tables)
             self.assertEqual(tables["business_product_mappings"].rows[0]["canonical_product_id"], "P_REG")
 
+    def test_removed_merge_course_details_file_is_not_loaded_as_source_table(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp)
+            write_csv(source / "business_classes.csv", ["班级编码"], [{"班级编码": "C1"}])
+            write_csv(
+                source / "merge_course_details.csv",
+                ["source_class_id", "scheduled_class_id", "merge_type"],
+                [{"source_class_id": "C1", "scheduled_class_id": "C2", "merge_type": "partial"}],
+            )
+
+            tables = load_source_tables(source)
+
+            self.assertIn("business_classes", tables)
+            self.assertNotIn("merge_course_details", tables)
+
     def test_export_scheduler_input_filters_unusable_template_slots(self) -> None:
         state = data_admin_server.normalize_payload(
             {

@@ -41,13 +41,12 @@ TABLES = [
 
 BUSINESS_TABLES = [
     "business_classes",
-    "merge_course_details",
     "scheduled_lessons",
 ]
 
 SOURCE_TABLES = [*TABLES, *BUSINESS_TABLES]
 REPORT_TABLES = [*TABLES, "business_classes", "scheduled_lessons"]
-COMPATIBILITY_REPORT_TABLES = ["merge_course_details"]
+COMPATIBILITY_REPORT_TABLES: List[str] = []
 
 TABLE_ALIASES = {
     "schedulewindows": "schedule_windows",
@@ -166,10 +165,6 @@ TABLE_ALIASES = {
     "业务产品映射表": "business_product_mappings",
     "产品映射": "business_product_mappings",
     "产品映射表": "business_product_mappings",
-    "mergecoursedetails": "merge_course_details",
-    "merge_course_details": "merge_course_details",
-    "合班课程明细": "merge_course_details",
-    "合班课程明细表": "merge_course_details",
     "scheduledlessons": "scheduled_lessons",
     "scheduledlesson": "scheduled_lessons",
     "schedulehistory": "scheduled_lessons",

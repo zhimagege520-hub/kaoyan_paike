@@ -20,7 +20,6 @@ from run_scheduling_pipeline import backup_data_dir, load_source_tables, overlay
 def selected_business_classes(tables: Mapping[str, Any], base_payload: Mapping[str, Any]) -> tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]], Dict[str, List[Dict[str, Any]]], List[str]]:
     business_rows = list(tables["business_classes"].rows)
     product_map_rows = business.business_product_mapping_rows(tables)
-    merge_rows = business.empty_rows(tables, "merge_course_details")
     employee_ids_by_name = business.teacher_employee_ids_from_business_rows(business_rows)
     assignment_rows = business.normalize_assignment_teacher_ids(
         business.empty_rows(tables, "class_teacher_assignments"),
@@ -30,13 +29,6 @@ def selected_business_classes(tables: Mapping[str, Any], base_payload: Mapping[s
     warnings: List[str] = []
     product_mapping = business.product_map_from_rows(product_map_rows)
 
-    raw_by_class = {
-        business.row_value(row, "班级编码"): row
-        for row in business_rows
-        if business.row_value(row, "班级编码")
-    }
-    merge_details, merge_warnings = business.merge_details_from_rows(merge_rows, raw_by_class)
-    warnings.extend(merge_warnings)
     product_meta = business.product_catalog(base_payload)
     courses_by_product = business.product_courses_by_id(base_payload)
 
@@ -110,17 +102,9 @@ def selected_business_classes(tables: Mapping[str, Any], base_payload: Mapping[s
     if errors:
         raise ValueError("\n".join(errors))
 
-    full_sources = {
-        detail["source_class_id"]: detail["scheduled_class_id"]
-        for details in merge_details.values()
-        for detail in details
-        if detail["merge_type"] == "full" and detail["source_class_id"] != detail["scheduled_class_id"]
-    }
     generated_classes: Dict[str, Dict[str, Any]] = {}
     assignments = business.assignments_by_class(assignment_rows)
     for class_id, row in selected_rows.items():
-        if class_id in full_sources:
-            continue
         product_id = selected_product_ids[class_id]
         cls = business.build_class_row(row, product_id, product_meta[product_id])
         cls["teacher_assignments"] = list(assignments.get(class_id, {}).values())
