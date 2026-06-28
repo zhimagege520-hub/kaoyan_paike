@@ -14,6 +14,7 @@ import scheduler
 from generate_time_slots import generate_time_slots, parse_weekdays
 from run_scheduling_pipeline import (
     PipelineError,
+    SOURCE_TABLES,
     TABLES,
     TABLE_FIELDNAMES,
     build_parser,
@@ -22,6 +23,7 @@ from run_scheduling_pipeline import (
     parse_missing_teacher_requirements,
     run_pipeline,
     run_preflight,
+    table_name_for,
     write_missing_teacher_rows_template,
     write_missing_teacher_template,
 )
@@ -410,26 +412,25 @@ class SchedulingPipelineTest(unittest.TestCase):
             self.assertIn("products", tables)
             self.assertEqual(tables["products"].rows[0], {"id": "P1", "name": "考研产品"})
 
-    def test_current_lesson_history_csv_filenames_are_source_tables(self) -> None:
+    def test_current_source_table_csv_filenames_are_auto_recognized(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp)
-            write_csv(
-                source / "locked_scheduled_lessons.csv",
-                ["id", "class_id", "date", "period", "is_locked"],
-                [{"id": "LOCK_1", "class_id": "C1", "date": "2026-07-01", "period": "AM", "is_locked": "是"}],
-            )
-            write_csv(
-                source / "historical_scheduled_lessons.csv",
-                ["id", "class_id", "date", "period"],
-                [{"id": "HIST_1", "class_id": "C1", "date": "2026-06-01", "period": "PM"}],
-            )
+            for table_name in SOURCE_TABLES:
+                fieldnames = TABLE_FIELDNAMES.get(table_name, ["id"])
+                write_csv(
+                    source / f"{table_name}.csv",
+                    [fieldnames[0]],
+                    [{fieldnames[0]: f"{table_name}_row"}],
+                )
+
+            for table_name in SOURCE_TABLES:
+                self.assertEqual(table_name_for(f"{table_name}.csv"), table_name)
 
             tables = load_source_tables(source)
 
-            self.assertIn("locked_scheduled_lessons", tables)
-            self.assertIn("historical_scheduled_lessons", tables)
-            self.assertEqual(tables["locked_scheduled_lessons"].rows[0]["id"], "LOCK_1")
-            self.assertEqual(tables["historical_scheduled_lessons"].rows[0]["id"], "HIST_1")
+            self.assertEqual(set(SOURCE_TABLES), set(tables))
+            self.assertEqual(tables["locked_scheduled_lessons"].rows[0]["id"], "locked_scheduled_lessons_row")
+            self.assertEqual(tables["historical_scheduled_lessons"].rows[0]["id"], "historical_scheduled_lessons_row")
 
     def test_removed_merge_course_details_file_is_not_loaded_as_source_table(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

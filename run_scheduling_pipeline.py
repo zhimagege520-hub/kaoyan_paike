@@ -120,7 +120,6 @@ TABLE_ALIASES = {
     "全局停课日期": "global_blackout_dates",
     "全局停课日期表": "global_blackout_dates",
     "停课日期": "global_blackout_dates",
-    "historicalscheduledlessons": "historical_scheduled_lessons",
     "历史已排课明细": "historical_scheduled_lessons",
     "历史已排课明细表": "historical_scheduled_lessons",
     "erp产品对应": "business_product_mappings",
@@ -155,7 +154,6 @@ TABLE_ALIASES = {
     "已排课表": "scheduled_lessons",
     "已排课": "scheduled_lessons",
     "locked_scheduled_lessons": "locked_scheduled_lessons",
-    "lockedscheduledlessons": "locked_scheduled_lessons",
     "lockedlessons": "locked_scheduled_lessons",
     "lockedschedule": "locked_scheduled_lessons",
     "锁定课表": "locked_scheduled_lessons",
@@ -226,6 +224,10 @@ def normalize_table_name(value: str) -> str:
         .replace("(", "")
         .replace(")", "")
     )
+
+
+for source_table_name in SOURCE_TABLES:
+    TABLE_ALIASES.setdefault(normalize_table_name(source_table_name), source_table_name)
 
 
 def table_name_for(value: str) -> Optional[str]:
