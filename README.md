@@ -52,9 +52,9 @@ python3 run_scheduling_pipeline.py --source incoming
 
 `incoming` 可以是目录，也可以是单个 Excel/CSV 文件。目录中可混放 `.xlsx` 和 `.csv`；Excel sheet 名或 CSV 文件名可使用英文表名或中文表名，例如 `products`、`产品管理表`、`class_teacher_assignments`、`班级老师安排表`。建议先加 `--preflight` 只做上传前校验；校验通过后再去掉该参数正式运行。正式运行时会先把当前 `data/` 备份到 `outputs/backups/`，再生成 `data/scheduler_input_draft.json`、`outputs/schedule_<timestamp>.csv`、`outputs/schedule_<timestamp>.html` 和 `outputs/import_report_<timestamp>.md`。
 
-### 考研 2026-12 业务班级导出
+### 可选：考研 2026-12 业务班级导出适配器
 
-首批上线支持直接上传业务系统导出的班级 CSV，例如 `20260429班级查询导出.csv`。系统会先转换为标准排课数据，再复用完整 pipeline。
+这段是首批考研试运行留下的业务导入适配器，用于直接上传特定业务系统导出的班级 CSV，例如 `20260429班级查询导出.csv`。其他部门复用时，不需要套用这里的固定年份口径；优先按“排课运行维护”页生成的模板表补齐本部门数据，再复用完整 pipeline。
 
 固定口径如下：
 

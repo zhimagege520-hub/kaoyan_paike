@@ -43,6 +43,13 @@ class DocumentationStaticTest(unittest.TestCase):
         self.assertNotIn("157 个可排课日期、785 个可用课节", readme)
         self.assertIn("正式排课范围以 `01_年度排课窗口表`、`02_课节表` 和 `11_班级排课窗口表` 为准", readme)
 
+    def test_release_checklist_does_not_require_private_data(self) -> None:
+        checklist = (ROOT / "docs" / "github-release-checklist.md").read_text(encoding="utf-8")
+
+        self.assertNotIn("--source data --preflight", checklist)
+        self.assertNotIn("372 条缺老师", checklist)
+        self.assertIn("真实 `data/` 不进入 GitHub 发布包", checklist)
+
 
 if __name__ == "__main__":
     unittest.main()
