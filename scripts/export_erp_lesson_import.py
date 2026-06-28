@@ -19,7 +19,10 @@ if str(ROOT) not in sys.path:
 from scripts.schedule_modes import assignment_reference_class_id, assignment_schedule_mode  # noqa: E402
 from scripts.csv_utils import read_csv_rows, write_csv_rows  # noqa: E402
 from scripts.field_utils import (  # noqa: E402
+    display_date_text as display_date,
     normalize_excel_text as clean,
+    normalize_date_text as normalize_date,
+    normalize_time_text as normalize_time,
     split_delimited_values as split_values,
 )
 
@@ -83,40 +86,6 @@ def load_lesson_id_map(path: Optional[Path]) -> Dict[Tuple[str, str, str, str], 
         if class_id and date and start_time and end_time and lesson_id:
             mapping[(class_id, date, start_time, end_time)] = lesson_id
     return mapping
-
-
-def normalize_date(value: str) -> str:
-    if not value:
-        return ""
-    value = value.replace("/", "-")
-    for fmt in ("%Y-%m-%d", "%Y%m%d"):
-        try:
-            return datetime.strptime(value, fmt).strftime("%Y-%m-%d")
-        except ValueError:
-            pass
-    return value
-
-
-def display_date(value: str) -> str:
-    normalized = normalize_date(value)
-    try:
-        return datetime.strptime(normalized, "%Y-%m-%d").strftime("%Y/%m/%d")
-    except ValueError:
-        return value.replace("-", "/")
-
-
-def normalize_time(value: str) -> str:
-    if not value:
-        return ""
-    value = value.strip()
-    if "~" in value:
-        value = value.split("~", 1)[0]
-    for fmt in ("%H:%M", "%H:%M:%S"):
-        try:
-            return datetime.strptime(value, fmt).strftime("%H:%M")
-        except ValueError:
-            pass
-    return value
 
 
 def load_course_code_lookup(path: Path) -> Dict[Tuple[str, ...], str]:

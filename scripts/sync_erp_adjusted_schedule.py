@@ -8,7 +8,7 @@ import shutil
 import sys
 import zipfile
 from collections import Counter, defaultdict
-from datetime import date as Date, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 from xml.etree import ElementTree as ET
@@ -23,7 +23,7 @@ from scripts.build_camp_maintenance_schedule import (  # noqa: E402
     load_class_metadata,
 )
 from scripts.csv_utils import clean_cell as clean, read_csv_rows, write_csv_rows  # noqa: E402
-from scripts.field_utils import split_time_range_text  # noqa: E402
+from scripts.field_utils import normalize_date_text as normalize_date, split_time_range_text  # noqa: E402
 from scripts.period_utils import PERIOD_ORDER, period_from_time_text  # noqa: E402
 from scripts.schedule_conflicts import write_teacher_time_conflicts_csv  # noqa: E402
 from scripts.schedule_data import load_room_name_to_id, load_room_names, load_teacher_name_to_id  # noqa: E402
@@ -63,18 +63,6 @@ TIME_SLOT_MAP = {
     ("16:20", "18:20"): ("PM", "PM2", "下午二"),
     ("19:00", "21:00"): ("EVENING", "EVENING1", "晚上一"),
 }
-
-def normalize_date(value: object) -> str:
-    text = clean(value)
-    if not text:
-        return ""
-    if " " in text:
-        text = text.split(" ", 1)[0]
-    if "/" in text:
-        year, month, day = text.split("/")[:3]
-        return Date(int(year), int(month), int(day)).isoformat()
-    return Date.fromisoformat(text).isoformat()
-
 
 def parse_time_range(value: object) -> Tuple[str, str]:
     start, end = split_time_range_text(clean(value))

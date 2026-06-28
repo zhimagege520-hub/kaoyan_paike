@@ -19,6 +19,7 @@ if str(ROOT) not in sys.path:
 from scripts.csv_utils import read_csv_rows, write_csv_rows
 from scripts.field_utils import (
     normalize_excel_text as clean,
+    normalize_date_text as normalize_date,
     normalize_time_text as normalize_one_time,
     split_delimited_values as split_values,
     split_time_range_text,
@@ -28,20 +29,6 @@ from scripts.field_utils import (
 DEFAULT_SCHEDULE = Path("outputs/batch_schedule_maintenance.csv")
 DEFAULT_OUTPUT_DIR = Path("outputs")
 PUBLIC_SUBJECTS = {"英语", "政治", "数学", "语文"}
-
-
-def normalize_date(value: object) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, datetime):
-        return value.strftime("%Y-%m-%d")
-    text = clean(value).replace("/", "-")
-    for fmt in ("%Y-%m-%d", "%Y%m%d", "%Y-%m-%d %H:%M:%S"):
-        try:
-            return datetime.strptime(text, fmt).strftime("%Y-%m-%d")
-        except ValueError:
-            pass
-    return text[:10]
 
 
 def normalize_time(value: object) -> Tuple[str, str]:

@@ -4,6 +4,7 @@ import unittest
 from datetime import date, datetime
 
 from scripts.field_utils import (
+    display_date_text,
     is_blank_marker,
     normalize_blank_marker,
     normalize_date_text,
@@ -58,6 +59,8 @@ class FieldUtilsTest(unittest.TestCase):
         self.assertEqual(normalize_date_text("20260701"), "2026-07-01")
         self.assertEqual(normalize_date_text("2026-07-01T08:30:00"), "2026-07-01")
         self.assertEqual(normalize_date_text("待确认"), "待确认")
+        self.assertEqual(display_date_text("2026/7/1"), "2026/07/01")
+        self.assertEqual(display_date_text("待确认"), "待确认")
 
     def test_parse_date_value_raises_with_label_for_invalid_values(self) -> None:
         self.assertEqual(parse_date_value("2026/7/1", "开课日期"), date(2026, 7, 1))

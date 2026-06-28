@@ -92,6 +92,15 @@ def normalize_date_text(value: Any) -> str:
     return text
 
 
+def display_date_text(value: Any, separator: str = "/") -> str:
+    text = normalize_date_text(value)
+    try:
+        normalized = Date.fromisoformat(text).isoformat()
+    except ValueError:
+        return normalize_excel_text(value).replace("-", separator)
+    return normalized.replace("-", separator)
+
+
 def parse_date_value(value: Any, label: str = "日期") -> Date:
     text = normalize_date_text(value)
     try:

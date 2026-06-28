@@ -20,7 +20,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.csv_utils import read_csv_rows
-from scripts.field_utils import normalize_excel_text as clean
+from scripts.field_utils import (
+    display_date_text as display_date,
+    normalize_date_text as normalize_date,
+    normalize_excel_text as clean,
+)
 from scripts.schedule_display import weekday_label
 
 
@@ -45,26 +49,6 @@ HEADER_FILL = "D9EAF7"
 FAILED_FILL = "FFF2CC"
 RELATED_FILL = "E2F0D9"
 THIN = Side(style="thin", color="C8D0D8")
-
-
-def normalize_date(value: object) -> str:
-    text = clean(value).replace("/", "-")
-    if not text:
-        return ""
-    for fmt in ("%Y-%m-%d", "%Y%m%d", "%Y-%m-%d %H:%M:%S"):
-        try:
-            return datetime.strptime(text, fmt).date().isoformat()
-        except ValueError:
-            pass
-    return text[:10]
-
-
-def display_date(value: str) -> str:
-    try:
-        dt = Date.fromisoformat(normalize_date(value))
-        return dt.strftime("%Y/%m/%d")
-    except ValueError:
-        return clean(value).replace("-", "/")
 
 
 def read_result_rows(path: Path) -> List[Dict[str, str]]:

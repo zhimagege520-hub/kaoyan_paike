@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import date, datetime, time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
@@ -17,7 +17,9 @@ from openpyxl import load_workbook
 import data_admin_server
 from scripts.csv_utils import serialize_csv_value, write_csv_rows
 from scripts.field_utils import (
+    normalize_date_text,
     normalize_text,
+    normalize_time_text,
     parse_bool as normalize_bool,
     split_delimited_values,
 )
@@ -152,27 +154,11 @@ def normalize_number(value: Any, *, integer: bool) -> int | float | str:
 
 
 def normalize_date(value: Any) -> str:
-    if value in (None, ""):
-        return ""
-    if isinstance(value, datetime):
-        return value.date().isoformat()
-    if isinstance(value, date):
-        return value.isoformat()
-    text = normalize_text(value)
-    if "T00:00:00" in text:
-        return text.split("T", 1)[0]
-    return text
+    return normalize_date_text(value)
 
 
 def normalize_time(value: Any) -> str:
-    if value in (None, ""):
-        return ""
-    if isinstance(value, datetime):
-        return value.time().strftime("%H:%M")
-    if isinstance(value, time):
-        return value.strftime("%H:%M")
-    text = normalize_text(value)
-    return text[:5] if len(text) >= 5 and text[2:3] == ":" else text
+    return normalize_time_text(value)
 
 
 def normalize_list(value: Any) -> List[str]:
