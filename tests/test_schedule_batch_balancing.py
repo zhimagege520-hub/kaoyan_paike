@@ -49,6 +49,7 @@ from scripts.schedule_class_windows import (
 )
 from scripts.schedule_outputs import (
     BATCH_SCHEDULE_CSV_FIELDNAMES,
+    build_day_table_payload,
     write_batch_csv,
     write_day_table_html,
 )
@@ -1622,6 +1623,65 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
                 "course_name": "英语词汇",
             }
         ]
+        class_metadata = {
+            "KYJSJ2773": {
+                "suite_code": "2773",
+                "product_id": "P1",
+                "sub_product": "半年营",
+            }
+        }
+        window_constraints = {
+            "KYJSJ2773": [
+                ClassWindowConstraint(
+                    class_window_id="KYJSJ2773_2026暑假",
+                    class_id="KYJSJ2773",
+                    class_name="测试班",
+                    product_id="P1",
+                    schedule_window_id="2026暑假",
+                    season_window_id="WINDOW_SUMMER",
+                    season_name="暑假",
+                    schedule_window_name="2026暑假",
+                    earliest_date="2026-07-01",
+                    earliest_period="AM",
+                    latest_date="2026-08-31",
+                    latest_period="PM",
+                    teaching_area_ids=frozenset({"A1", "A3"}),
+                    room_ids=frozenset({"R1", "R3"}),
+                    preferred_room_is_required=True,
+                    notes="暑假窗口",
+                ),
+                ClassWindowConstraint(
+                    class_window_id="KYJSJ2773_2026秋季",
+                    class_id="KYJSJ2773",
+                    class_name="测试班",
+                    product_id="P1",
+                    schedule_window_id="2026秋季",
+                    season_window_id="WINDOW_AUTUMN",
+                    season_name="秋季",
+                    schedule_window_name="2026秋季",
+                    earliest_date="2026-09-01",
+                    earliest_period="EVENING",
+                    latest_date="2026-12-01",
+                    latest_period="EVENING",
+                    teaching_area_ids=frozenset({"A2"}),
+                    room_ids=frozenset({"R2"}),
+                    preferred_room_is_required=False,
+                    notes="秋季窗口",
+                ),
+            ]
+        }
+        room_names = {"R1": "101教室", "R3": "103教室"}
+        expected_payload = build_day_table_payload(
+            [assignment],
+            "测试课表",
+            ["AM"],
+            room_names,
+            "2026-07-01",
+            "2026-07-01",
+            class_metadata,
+            window_constraints,
+            product_course_tags,
+        )
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             out_path = Path(tmp_dir) / "schedule.html"
@@ -1630,56 +1690,11 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
                 out_path,
                 "测试课表",
                 ["AM"],
-                {"R1": "101教室", "R3": "103教室"},
+                room_names,
                 "2026-07-01",
                 "2026-07-01",
-                {
-                    "KYJSJ2773": {
-                        "suite_code": "2773",
-                        "product_id": "P1",
-                        "sub_product": "半年营",
-                    }
-                },
-                {
-                    "KYJSJ2773": [
-                        ClassWindowConstraint(
-                            class_window_id="KYJSJ2773_2026暑假",
-                            class_id="KYJSJ2773",
-                            class_name="测试班",
-                            product_id="P1",
-                            schedule_window_id="2026暑假",
-                            season_window_id="WINDOW_SUMMER",
-                            season_name="暑假",
-                            schedule_window_name="2026暑假",
-                            earliest_date="2026-07-01",
-                            earliest_period="AM",
-                            latest_date="2026-08-31",
-                            latest_period="PM",
-                            teaching_area_ids=frozenset({"A1", "A3"}),
-                            room_ids=frozenset({"R1", "R3"}),
-                            preferred_room_is_required=True,
-                            notes="暑假窗口",
-                        ),
-                        ClassWindowConstraint(
-                            class_window_id="KYJSJ2773_2026秋季",
-                            class_id="KYJSJ2773",
-                            class_name="测试班",
-                            product_id="P1",
-                            schedule_window_id="2026秋季",
-                            season_window_id="WINDOW_AUTUMN",
-                            season_name="秋季",
-                            schedule_window_name="2026秋季",
-                            earliest_date="2026-09-01",
-                            earliest_period="EVENING",
-                            latest_date="2026-12-01",
-                            latest_period="EVENING",
-                            teaching_area_ids=frozenset({"A2"}),
-                            room_ids=frozenset({"R2"}),
-                            preferred_room_is_required=False,
-                            notes="秋季窗口",
-                        ),
-                    ]
-                },
+                class_metadata,
+                window_constraints,
                 product_course_tags,
             )
             html_text = out_path.read_text(encoding="utf-8")
@@ -1688,6 +1703,7 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
         payload_text = html_text.split(marker, 1)[1].split("</script>", 1)[0]
         payload = json.loads(payload_text)
 
+        self.assertEqual(payload, expected_payload)
         self.assertEqual(payload["title"], "测试课表")
         self.assertEqual(payload["dates"], ["2026-07-01"])
         self.assertEqual([slot["id"] for slot in payload["slotRows"]], ["AM1", "AM2"])

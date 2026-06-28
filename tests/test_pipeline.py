@@ -4,6 +4,7 @@ import csv
 import json
 import tempfile
 import unittest
+from collections import Counter
 from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
@@ -408,6 +409,27 @@ class SchedulingPipelineTest(unittest.TestCase):
 
             self.assertIn("products", tables)
             self.assertEqual(tables["products"].rows[0], {"id": "P1", "name": "考研产品"})
+
+    def test_current_lesson_history_csv_filenames_are_source_tables(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp)
+            write_csv(
+                source / "locked_scheduled_lessons.csv",
+                ["id", "class_id", "date", "period", "is_locked"],
+                [{"id": "LOCK_1", "class_id": "C1", "date": "2026-07-01", "period": "AM", "is_locked": "是"}],
+            )
+            write_csv(
+                source / "historical_scheduled_lessons.csv",
+                ["id", "class_id", "date", "period"],
+                [{"id": "HIST_1", "class_id": "C1", "date": "2026-06-01", "period": "PM"}],
+            )
+
+            tables = load_source_tables(source)
+
+            self.assertIn("locked_scheduled_lessons", tables)
+            self.assertIn("historical_scheduled_lessons", tables)
+            self.assertEqual(tables["locked_scheduled_lessons"].rows[0]["id"], "LOCK_1")
+            self.assertEqual(tables["historical_scheduled_lessons"].rows[0]["id"], "HIST_1")
 
     def test_removed_merge_course_details_file_is_not_loaded_as_source_table(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -861,6 +883,9 @@ class SchedulingPipelineTest(unittest.TestCase):
     def test_standard_tables_are_shared_by_admin_pipeline_json_and_csv_exports(self) -> None:
         self.assertIs(TABLE_FIELDNAMES, data_admin_server.STANDARD_TABLE_FIELDNAMES)
         self.assertEqual(list(data_admin_server.STANDARD_TABLE_FIELDNAMES), TABLES)
+        for table_name, fieldnames in data_admin_server.STANDARD_TABLE_FIELDNAMES.items():
+            duplicates = [field for field, count in Counter(fieldnames).items() if count > 1]
+            self.assertEqual([], duplicates, table_name)
         payload = {
             "products": [],
             "product_courses": [],

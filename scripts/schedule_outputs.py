@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Set
+from typing import Any, Dict, List, Optional, Sequence
 
 import scheduler
 from scripts.csv_utils import write_csv_rows
@@ -97,9 +97,8 @@ def window_constraint_payload(
     }
 
 
-def write_day_table_html(
+def build_day_table_payload(
     assignments: Sequence[scheduler.Assignment],
-    out_path: Path,
     title: str,
     periods: Sequence[str],
     room_names: Dict[str, str],
@@ -108,8 +107,7 @@ def write_day_table_html(
     class_metadata: Dict[str, Dict[str, str]],
     window_constraints: Dict[str, Any],
     product_course_tags: Optional[List[Dict[str, str]]] = None,
-) -> None:
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+) -> Dict[str, Any]:
     assigned_dates = sorted({assignment.candidate.slots[0].date for assignment in assignments})
     if start_date and end_date:
         dates = date_range(start_date, end_date)
@@ -121,13 +119,10 @@ def write_day_table_html(
     product_course_tags = product_course_tags if product_course_tags is not None else load_product_course_tags(Path("data"))
 
     rows = []
-    suites_in_schedule: Set[str] = set()
     for assignment in assignments:
         slots = assignment.candidate.slots
         class_meta = class_metadata.get(assignment.task.class_id, {})
         suite_code = display_suite_code(assignment.task.class_id, class_meta)
-        if suite_code:
-            suites_in_schedule.add(suite_code)
         for lesson in assignment_standard_lesson_slots(slots, periods):
             course_tag = assignment_course_tag(assignment, class_metadata, product_course_tags)
             rows.append(
@@ -180,7 +175,7 @@ def write_day_table_html(
         constraints = raw_constraints if isinstance(raw_constraints, list) else [raw_constraints]
         for constraint in constraints:
             constraint_rows.append(window_constraint_payload(key, constraint, class_metadata, room_names))
-    payload = {
+    return {
         "title": title,
         "periods": [{"id": period, "label": PERIOD_LABELS.get(period, period)} for period in periods],
         "slotRows": standard_display_slots(periods),
@@ -189,6 +184,32 @@ def write_day_table_html(
         "constraints": constraint_rows,
         "subjectColors": colors,
     }
+
+
+def write_day_table_html(
+    assignments: Sequence[scheduler.Assignment],
+    out_path: Path,
+    title: str,
+    periods: Sequence[str],
+    room_names: Dict[str, str],
+    start_date: Optional[str],
+    end_date: Optional[str],
+    class_metadata: Dict[str, Dict[str, str]],
+    window_constraints: Dict[str, Any],
+    product_course_tags: Optional[List[Dict[str, str]]] = None,
+) -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = build_day_table_payload(
+        assignments=assignments,
+        title=title,
+        periods=periods,
+        room_names=room_names,
+        start_date=start_date,
+        end_date=end_date,
+        class_metadata=class_metadata,
+        window_constraints=window_constraints,
+        product_course_tags=product_course_tags,
+    )
     payload_json = json.dumps(payload, ensure_ascii=False).replace("<", "\\u003c")
     template = """<!doctype html>
 <html lang="zh-CN">
