@@ -45,6 +45,16 @@ def date_range(start: str, end: str) -> List[str]:
     return dates
 
 
+def week_start(date_text: str) -> str:
+    day = Date.fromisoformat(date_text)
+    return (day - timedelta(days=day.weekday())).isoformat()
+
+
+def week_dates(week: str) -> List[str]:
+    start = Date.fromisoformat(week)
+    return [(start + timedelta(days=offset)).isoformat() for offset in range(7)]
+
+
 def subject_colors(subjects: Iterable[str]) -> Dict[str, str]:
     colors: Dict[str, str] = {}
     fallback_index = 0

@@ -21,6 +21,7 @@ from scripts.schedule_data import (
     load_class_metadata as load_raw_class_metadata,
     load_room_metadata as load_raw_room_metadata,
 )
+from scripts.schedule_display import week_dates, week_start
 
 
 PUBLIC_SUBJECTS = {"英语", "政治", "数学", "语文"}
@@ -56,11 +57,6 @@ class Halfday:
     hours: float
 
 
-def week_start(date_text: str) -> str:
-    day = Date.fromisoformat(date_text)
-    return (day - timedelta(days=day.weekday())).isoformat()
-
-
 def week_range(start: str, end: str) -> List[str]:
     first = Date.fromisoformat(week_start(start))
     last = Date.fromisoformat(week_start(end))
@@ -70,11 +66,6 @@ def week_range(start: str, end: str) -> List[str]:
         weeks.append(current.isoformat())
         current += timedelta(days=7)
     return weeks
-
-
-def week_dates(week: str) -> List[str]:
-    start = Date.fromisoformat(week)
-    return [(start + timedelta(days=offset)).isoformat() for offset in range(7)]
 
 
 def comparable_weeks(active_weeks: Sequence[str], start: str, end: str) -> List[str]:

@@ -6,7 +6,7 @@ import shutil
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from datetime import date as Date, datetime, timedelta
+from datetime import date as Date, datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
@@ -31,6 +31,7 @@ from scripts.schedule_data import (  # noqa: E402
     load_room_metadata as load_raw_room_metadata,
     load_room_names,
 )
+from scripts.schedule_display import date_range, week_dates, week_start, weekday_label  # noqa: E402
 from scripts.schedule_outputs import write_day_table_html  # noqa: E402
 
 
@@ -65,7 +66,6 @@ PERIOD_SLOTS = {
     "PM": [("PM1", "下午一", "14:00", "16:00"), ("PM2", "下午二", "16:20", "18:20")],
     "EVENING": [("EVENING1", "晚上一", "19:00", "21:00")],
 }
-WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 FAR_REGION_PAIRS = {
     ("新站", "滨湖"),
     ("滨湖", "新站"),
@@ -113,28 +113,6 @@ def load_window_constraints(data_dir: Path) -> Dict[str, List[ClassWindowConstra
 
 def write_csv_rows(path: Path, rows: Sequence[dict]) -> None:
     write_csv_rows_with_fields(path, FIELDNAMES, rows)
-
-
-def weekday_label(date_text: str) -> str:
-    return WEEKDAYS[Date.fromisoformat(date_text).weekday()]
-
-
-def week_start(date_text: str) -> str:
-    day = Date.fromisoformat(date_text)
-    return (day - timedelta(days=day.weekday())).isoformat()
-
-
-def date_range(start: str, end: str) -> Iterable[str]:
-    current = Date.fromisoformat(start)
-    final = Date.fromisoformat(end)
-    while current <= final:
-        yield current.isoformat()
-        current += timedelta(days=1)
-
-
-def week_dates(week: str) -> List[str]:
-    start = Date.fromisoformat(week)
-    return [(start + timedelta(days=offset)).isoformat() for offset in range(7)]
 
 
 def sort_rows(rows: Iterable[dict]) -> List[dict]:
