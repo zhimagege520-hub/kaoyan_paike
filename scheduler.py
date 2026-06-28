@@ -895,24 +895,55 @@ def locked_lesson_slots(
     slot_ids = parse_string_set(raw.get("slot_ids"))
     slot_by_id = slot_by_id or {slot.id: slot for slot in time_slots}
     if slot_ids:
-        unknown = slot_ids - set(slot_by_id)
-        if unknown:
-            raise ValueError(f"锁定课表 {raw.get('id', '')} 包含不存在的课节: {sorted(unknown)}")
-        return tuple(sorted((slot_by_id[slot_id] for slot_id in slot_ids), key=slot_sort_key))
+        return locked_lesson_slots_by_ids(raw, slot_ids, slot_by_id)
 
     lesson_date = raw.get("date")
-    start_time = normalize_time_value(raw.get("start_time"))
-    end_time = normalize_time_value(raw.get("end_time"))
     if lesson_date not in slot_dates:
         return ()
+    start_time, end_time = locked_lesson_time_range(raw)
+    day_slots = locked_lesson_day_slots(time_slots, str(lesson_date), day_slots_by_date)
+    matched_slots = contiguous_slots_matching_time_range(day_slots, start_time, end_time)
+    if matched_slots:
+        return matched_slots
+    raise ValueError(f"锁定课表 {raw.get('id', '')} 无法匹配当前课节: {lesson_date} {start_time}-{end_time}")
+
+
+def locked_lesson_slots_by_ids(
+    raw: dict,
+    slot_ids: Set[str],
+    slot_by_id: Dict[str, TimeSlot],
+) -> Tuple[TimeSlot, ...]:
+    unknown = slot_ids - set(slot_by_id)
+    if unknown:
+        raise ValueError(f"锁定课表 {raw.get('id', '')} 包含不存在的课节: {sorted(unknown)}")
+    return tuple(sorted((slot_by_id[slot_id] for slot_id in slot_ids), key=slot_sort_key))
+
+
+def locked_lesson_time_range(raw: dict) -> Tuple[str, str]:
+    start_time = normalize_time_value(raw.get("start_time"))
+    end_time = normalize_time_value(raw.get("end_time"))
     if not start_time or not end_time:
         raise ValueError(f"锁定课表 {raw.get('id', '')} 在当前课节范围内，需要填写 start_time 和 end_time")
+    return start_time, end_time
 
+
+def locked_lesson_day_slots(
+    time_slots: List[TimeSlot],
+    lesson_date: str,
+    day_slots_by_date: Optional[Dict[str, List[TimeSlot]]] = None,
+) -> List[TimeSlot]:
     if day_slots_by_date is None:
         day_slots = [slot for slot in time_slots if slot.date == lesson_date]
         day_slots.sort(key=slot_sort_key)
-    else:
-        day_slots = day_slots_by_date.get(lesson_date, [])
+        return day_slots
+    return day_slots_by_date.get(lesson_date, [])
+
+
+def contiguous_slots_matching_time_range(
+    day_slots: List[TimeSlot],
+    start_time: str,
+    end_time: str,
+) -> Tuple[TimeSlot, ...]:
     for start_index, slot in enumerate(day_slots):
         if normalize_time_value(slot.start_time) != start_time:
             continue
@@ -925,7 +956,7 @@ def locked_lesson_slots(
             previous_order = candidate.order
             if normalize_time_value(candidate.end_time) == end_time:
                 return tuple(current)
-    raise ValueError(f"锁定课表 {raw.get('id', '')} 无法匹配当前课节: {lesson_date} {start_time}-{end_time}")
+    return ()
 
 
 def normalize_time_value(value: object) -> str:

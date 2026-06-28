@@ -3550,6 +3550,43 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(assignment.task.course_name, "阅读")
         self.assertTrue(assignment.task.is_locked)
 
+    def test_locked_lesson_slots_match_contiguous_time_range_and_reject_order_gaps(self) -> None:
+        slots = [
+            scheduler.TimeSlot("S1", "2026-07-01", "AM", "上午一", 1, "08:00", "10:00", 2),
+            scheduler.TimeSlot("S2", "2026-07-01", "AM", "上午二", 2, "10:20", "12:20", 2),
+            scheduler.TimeSlot("S_GAP", "2026-07-01", "AM", "上午三", 4, "12:40", "14:40", 2),
+            scheduler.TimeSlot("S_OTHER", "2026-07-02", "AM", "上午一", 1, "08:00", "10:00", 2),
+        ]
+        slot_dates, slot_by_id, day_slots_by_date = scheduler.locked_lesson_slot_indexes(slots)
+
+        matched = scheduler.locked_lesson_slots(
+            {"id": "LOCK_RANGE", "date": "2026-07-01", "start_time": "8:00", "end_time": "12:20"},
+            slots,
+            slot_dates,
+            slot_by_id,
+            day_slots_by_date,
+        )
+
+        self.assertEqual([slot.id for slot in matched], ["S1", "S2"])
+        self.assertEqual(
+            scheduler.locked_lesson_slots(
+                {"id": "OUT_OF_RANGE", "date": "2026-07-03"},
+                slots,
+                slot_dates,
+                slot_by_id,
+                day_slots_by_date,
+            ),
+            (),
+        )
+        with self.assertRaisesRegex(ValueError, "无法匹配当前课节"):
+            scheduler.locked_lesson_slots(
+                {"id": "LOCK_GAP", "date": "2026-07-01", "start_time": "08:00", "end_time": "14:40"},
+                slots,
+                slot_dates,
+                slot_by_id,
+                day_slots_by_date,
+            )
+
     def test_locked_lessons_block_room_slots_but_not_existing_teachers(self) -> None:
         payload = {
             "time_slots": [
