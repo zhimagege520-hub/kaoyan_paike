@@ -19,6 +19,7 @@ from types import SimpleNamespace
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from urllib.parse import unquote, urlparse
 
+from scripts.field_utils import normalize_text, parse_bool as normalize_bool, split_pipe_values as split_id_list
 from scripts.schedule_modes import (
     assignment_is_shared,
     assignment_reference_class_id,
@@ -412,14 +413,6 @@ def csv_text(rows: List[Dict[str, Any]], fieldnames: List[str]) -> str:
     return "\ufeff" + handle.getvalue()
 
 
-def split_id_list(values: Any) -> List[str]:
-    if values is None:
-        return []
-    if isinstance(values, str):
-        return [item.strip() for item in values.split("|") if item.strip()]
-    return [str(item).strip() for item in values if str(item).strip()]
-
-
 def unique_list(values: Iterable[str]) -> List[str]:
     seen: Set[str] = set()
     result: List[str] = []
@@ -429,14 +422,6 @@ def unique_list(values: Iterable[str]) -> List[str]:
             seen.add(text)
             result.append(text)
     return result
-
-
-def normalize_bool(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (int, float)):
-        return value != 0
-    return str(value).strip().lower() in {"true", "1", "yes", "y", "是", "启用", "可用"}
 
 
 def normalize_int(value: Any, default: int = 0) -> int:
@@ -455,12 +440,6 @@ def normalize_float(value: Any, default: float = 0.0) -> float:
         return round(float(value), 3)
     except (TypeError, ValueError):
         return default
-
-
-def normalize_text(value: Any) -> str:
-    if value is None:
-        return ""
-    return str(value).strip()
 
 
 def normalize_date_text(value: Any) -> str:

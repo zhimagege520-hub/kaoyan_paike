@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Set, Tuple
 
+from scripts.field_utils import parse_bool, parse_bool_default
 from scripts.schedule_modes import assignment_is_shared
 
 
@@ -550,18 +551,6 @@ def parse_time_slots(raw_slots: List[dict]) -> List[TimeSlot]:
 
     slots.sort(key=slot_sort_key)
     return slots
-
-
-def parse_bool(value: object) -> bool:
-    if isinstance(value, bool):
-        return value
-    return str(value or "").strip().lower() in {"1", "true", "yes", "y", "是", "对"}
-
-
-def parse_bool_default(value: object, default: bool) -> bool:
-    if value in ("", None):
-        return default
-    return parse_bool(value)
 
 
 def class_window_room_constraint(raw: dict, rooms: Mapping[str, Room]) -> Tuple[Optional[Set[str]], bool]:

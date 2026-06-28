@@ -2,15 +2,13 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from scripts.field_utils import normalize_text
+
 
 SHARED_SCHEDULE_MODES = {"共享课表", "shared", "inherit", "inherited", "合班共享"}
 SHARED_KEYWORDS = ("共享", "继承")
 MERGE_PRIMARY_KEYWORDS = ("合班", "主班")
 INDEPENDENT_KEYWORDS = ("本班", "独立")
-
-
-def normalize_text(value: Any) -> str:
-    return str(value or "").strip()
 
 
 def normalize_class_schedule_mode(

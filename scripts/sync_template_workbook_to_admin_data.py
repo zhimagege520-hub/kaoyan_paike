@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 
 from openpyxl import load_workbook
 
+from scripts.field_utils import normalize_text, parse_bool as normalize_bool
 from scripts.schedule_modes import (
     assignment_actual_scheduled_class_id,
     assignment_inherited_class_id,
@@ -155,23 +156,6 @@ DATE_FIELDS = {
     "latest_date",
 }
 TIME_FIELDS = {"start_time", "end_time"}
-
-
-def normalize_text(value: Any) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, str):
-        return value.strip()
-    return str(value).strip()
-
-
-def normalize_bool(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (int, float)):
-        return value != 0
-    text = normalize_text(value).lower()
-    return text in {"true", "1", "yes", "y", "是", "启用", "可用", "纳入", "锁定"}
 
 
 def normalize_number(value: Any, *, integer: bool) -> int | float | str:

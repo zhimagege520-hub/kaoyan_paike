@@ -6,11 +6,9 @@ from typing import Dict, Iterable, List, Mapping, Optional, Set
 
 import scheduler
 from scripts.csv_utils import read_csv_rows
+from scripts.field_utils import parse_enabled, split_pipe_values
 from scripts.schedule_data import load_room_metadata
 from scripts.schedule_scope import normalize_date
-
-
-FALSE_VALUES = {"否", "0", "false", "False", "no", "N", "n"}
 
 
 @dataclass(frozen=True)
@@ -39,16 +37,12 @@ class ClassWindowConstraint:
         return ""
 
 
-def split_pipe_values(value: str) -> Set[str]:
-    return {item.strip() for item in (value or "").split("|") if item.strip()}
-
-
 def normalize_period(value: str, default: str) -> str:
     return (value or default).strip().upper()
 
 
 def is_enabled(value: str) -> bool:
-    return (value or "").strip() not in FALSE_VALUES
+    return parse_enabled(value, default=True)
 
 
 def class_window_matches(
