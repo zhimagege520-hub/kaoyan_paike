@@ -33,6 +33,10 @@ run "$PYTHON_BIN" -m py_compile \
   generate_time_slots.py \
   schedule_publish_server.py
 
+while IFS= read -r script_path; do
+  run "$PYTHON_BIN" -m py_compile "$script_path"
+done < <(find scripts -name "*.py" -print | sort)
+
 run "$PYTHON_BIN" -m unittest discover -v
 
 run "$PYTHON_BIN" scheduler.py \

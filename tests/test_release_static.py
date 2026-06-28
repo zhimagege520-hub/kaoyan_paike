@@ -39,6 +39,12 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIn("schedule_coverage_audit_verify_run.md", script)
         self.assertIn("schedule_quality_report_verify_run.md", script)
 
+    def test_release_verification_compiles_all_python_scripts(self) -> None:
+        script = (ROOT / "scripts" / "verify_release.sh").read_text(encoding="utf-8")
+
+        self.assertIn('find scripts -name "*.py"', script)
+        self.assertIn("-m py_compile \"$script_path\"", script)
+
     def test_release_path_modules_use_csv_utils_for_csv_io(self) -> None:
         modules = [
             ROOT / "business_class_import.py",
