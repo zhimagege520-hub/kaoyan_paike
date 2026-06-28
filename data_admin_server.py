@@ -2291,29 +2291,14 @@ def standard_rows(rows: List[Dict[str, Any]], fieldnames: List[str], extra_field
 
 def standard_table_rows(state: Dict[str, Any], *, csv_export: bool = False) -> Dict[str, List[Dict[str, Any]]]:
     class_extra_fieldnames: Iterable[str] = () if csv_export else CLASS_JSON_EXTRA_FIELDNAMES
-    class_rows = standard_rows(state["classes"], CLASS_FIELDNAMES, class_extra_fieldnames)
-    assignment_rows = class_teacher_assignment_rows(state)
-    return {
-        "schedule_windows": standard_rows(state["schedule_windows"], SCHEDULE_WINDOW_FIELDNAMES),
-        "time_slots": standard_rows(state["time_slots"], TIME_SLOT_FIELDNAMES),
-        "teaching_areas": standard_rows(state["teaching_areas"], TEACHING_AREA_FIELDNAMES),
-        "rooms": standard_rows(state["rooms"], ROOM_FIELDNAMES),
-        "teachers": standard_rows(state["teachers"], TEACHER_FIELDNAMES),
-        "teacher_unavailability": standard_rows(state["teacher_unavailability"], TEACHER_UNAVAILABILITY_FIELDNAMES),
-        "products": standard_rows(state["products"], PRODUCT_FIELDNAMES),
-        "product_courses": standard_rows(state["product_courses"], PRODUCT_COURSE_FIELDNAMES),
-        "product_schedule_rules": standard_rows(state["product_schedule_rules"], PRODUCT_RULE_FIELDNAMES),
-        "classes": class_rows,
-        "class_window_boundaries": standard_rows(state["class_window_boundaries"], CLASS_WINDOW_BOUNDARY_FIELDNAMES),
-        "class_teacher_assignments": standard_rows(assignment_rows, TEACHER_ASSIGNMENT_FIELDNAMES),
-        "class_conflict_groups": standard_rows(state["class_conflict_groups"], CLASS_CONFLICT_GROUP_FIELDNAMES),
-        "locked_scheduled_lessons": standard_rows(state["locked_scheduled_lessons"], LOCKED_SCHEDULED_LESSON_FIELDNAMES),
-        "teaching_area_links": standard_rows(state["teaching_area_links"], TEACHING_AREA_LINK_FIELDNAMES),
-        "global_blackout_dates": standard_rows(state["global_blackout_dates"], GLOBAL_BLACKOUT_FIELDNAMES),
-        "historical_scheduled_lessons": standard_rows(state["historical_scheduled_lessons"], HISTORICAL_SCHEDULED_LESSON_FIELDNAMES),
-        "erp_standard_products": standard_rows(state["erp_standard_products"], ERP_STANDARD_PRODUCT_FIELDNAMES),
-        "business_product_mappings": standard_rows(state["business_product_mappings"], BUSINESS_PRODUCT_MAPPING_FIELDNAMES),
-    }
+    source_rows = {table_name: list(state.get(table_name, [])) for table_name in STANDARD_TABLE_FIELDNAMES}
+    source_rows["class_teacher_assignments"] = class_teacher_assignment_rows(state)
+
+    output: Dict[str, List[Dict[str, Any]]] = {}
+    for table_name, fieldnames in STANDARD_TABLE_FIELDNAMES.items():
+        extra_fieldnames = class_extra_fieldnames if table_name == "classes" else ()
+        output[table_name] = standard_rows(source_rows[table_name], fieldnames, extra_fieldnames)
+    return output
 
 
 def write_csvs(state: Dict[str, Any]) -> None:

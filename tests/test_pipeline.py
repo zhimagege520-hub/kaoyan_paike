@@ -1132,6 +1132,14 @@ class SchedulingPipelineTest(unittest.TestCase):
             loaded = data_admin_server.load_state()
             for table_name in data_admin_server.STANDARD_TABLE_FIELDNAMES:
                 self.assertIn(table_name, loaded)
+            self.assertEqual(
+                list(data_admin_server.STANDARD_TABLE_FIELDNAMES),
+                list(data_admin_server.standard_table_rows(loaded)),
+            )
+            self.assertEqual(
+                list(data_admin_server.STANDARD_TABLE_FIELDNAMES),
+                list(data_admin_server.standard_table_rows(loaded, csv_export=True)),
+            )
 
     def test_load_state_attaches_flat_class_teacher_assignment_table(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
