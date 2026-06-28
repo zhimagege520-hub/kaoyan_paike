@@ -1390,6 +1390,58 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(requirement.course_code, "ENG001")
         self.assertEqual(requirement.course_name, "")
 
+    def test_parse_class_window_constraints_expands_rooms_sorts_and_validates_periods(self) -> None:
+        rooms = {
+            "R1": scheduler.Room("R1", teaching_area_id="A1"),
+            "R2": scheduler.Room("R2", teaching_area_id="A1"),
+            "R3": scheduler.Room("R3", teaching_area_id="A2"),
+        }
+
+        by_class = scheduler.parse_class_window_constraints(
+            [
+                {"class_id": "C1", "class_window_id": "DISABLED", "is_class_window_included": "否"},
+                {"class_window_id": "MISSING_CLASS", "earliest_date": "2026-07-01"},
+                {
+                    "class_id": "C1",
+                    "class_window_id": "W2",
+                    "earliest_date": "2026-07-10",
+                    "latest_date": "2026-07-12",
+                    "preferred_teaching_area_ids": "A2",
+                    "schedule_window_id": "2026暑假",
+                },
+                {
+                    "class_id": "C1",
+                    "class_window_id": "W1",
+                    "start_date": "2026-07-01",
+                    "start_period": "pm",
+                    "end_date": "2026-07-02",
+                    "end_period": "evening",
+                    "preferred_room_ids": "R1|R2",
+                    "schedule_window_name": "暑假",
+                },
+            ],
+            rooms,
+        )
+
+        constraints = by_class["C1"]
+
+        self.assertEqual([constraint.class_window_id for constraint in constraints], ["W1", "W2"])
+        self.assertEqual(constraints[0].start_period, "PM")
+        self.assertEqual(constraints[0].end_period, "EVENING")
+        self.assertEqual(constraints[0].season_name, "暑假")
+        self.assertEqual(constraints[0].room_ids, {"R1", "R2"})
+        self.assertTrue(constraints[0].has_room_constraint)
+        self.assertEqual(constraints[1].start_period, "AM")
+        self.assertEqual(constraints[1].end_period, "EVENING")
+        self.assertEqual(constraints[1].room_ids, {"R3"})
+        self.assertTrue(constraints[1].has_room_constraint)
+
+        with self.assertRaisesRegex(ValueError, "earliest_period"):
+            scheduler.parse_class_window_constraints(
+                [{"class_id": "C1", "earliest_period": "MIDDAY"}],
+                rooms,
+            )
+
     def test_teacher_assignment_fallback_requires_same_course_group(self) -> None:
         base_requirement = scheduler.ProductRequirement(
             subject_category="公共课",

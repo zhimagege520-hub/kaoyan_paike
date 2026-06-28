@@ -629,39 +629,51 @@ def class_window_room_constraint(raw: dict, rooms: Mapping[str, Room]) -> Tuple[
     return None, explicit_empty_room_constraint
 
 
-def parse_class_window_constraints(raw_constraints: List[dict], rooms: Mapping[str, Room]) -> Dict[str, List[ClassWindowConstraint]]:
-    by_class: Dict[str, List[ClassWindowConstraint]] = {}
-    for raw in raw_constraints:
-        if not parse_bool_default(raw.get("is_class_window_included"), True):
-            continue
-        class_id = str(raw.get("class_id") or "").strip()
-        if not class_id:
-            continue
-        room_ids, has_room_constraint = class_window_room_constraint(raw, rooms)
-        constraint = ClassWindowConstraint(
-            class_id=class_id,
-            class_window_id=str(raw.get("class_window_id") or "").strip(),
-            start_date=validate_date(
-                raw.get("earliest_date") or raw.get("start_date"),
-                f"班级窗口 {class_id}/earliest_date",
-            ),
-            start_period=(raw.get("earliest_period") or raw.get("start_period") or "AM").strip().upper(),
-            end_date=validate_date(
-                raw.get("latest_date") or raw.get("end_date"),
-                f"班级窗口 {class_id}/latest_date",
-            ),
-            end_period=(raw.get("latest_period") or raw.get("end_period") or "EVENING").strip().upper(),
-            schedule_window_id=str(raw.get("schedule_window_id") or "").strip() or None,
-            season_window_id=str(raw.get("season_window_id") or "").strip() or None,
-            season_name=str(raw.get("season_name") or raw.get("schedule_window_name") or "").strip() or None,
-            room_ids=room_ids,
-            has_room_constraint=has_room_constraint,
-        )
-        for label, period in (("earliest_period", constraint.start_period), ("latest_period", constraint.end_period)):
-            if period and period not in VALID_PERIODS:
-                raise ValueError(f"班级窗口 {class_id} 的 {label} 只能填写 AM、PM 或 EVENING")
-        by_class.setdefault(class_id, []).append(constraint)
+def parse_class_window_period(
+    raw: dict,
+    class_id: str,
+    primary_field: str,
+    legacy_field: str,
+    default: str,
+) -> str:
+    period = str(raw.get(primary_field) or raw.get(legacy_field) or default).strip().upper()
+    if period and period not in VALID_PERIODS:
+        raise ValueError(f"班级窗口 {class_id} 的 {primary_field} 只能填写 AM、PM 或 EVENING")
+    return period
 
+
+def parse_class_window_constraint(
+    raw: dict,
+    rooms: Mapping[str, Room],
+) -> Optional[ClassWindowConstraint]:
+    if not parse_bool_default(raw.get("is_class_window_included"), True):
+        return None
+    class_id = str(raw.get("class_id") or "").strip()
+    if not class_id:
+        return None
+    room_ids, has_room_constraint = class_window_room_constraint(raw, rooms)
+    return ClassWindowConstraint(
+        class_id=class_id,
+        class_window_id=str(raw.get("class_window_id") or "").strip(),
+        start_date=validate_date(
+            raw.get("earliest_date") or raw.get("start_date"),
+            f"班级窗口 {class_id}/earliest_date",
+        ),
+        start_period=parse_class_window_period(raw, class_id, "earliest_period", "start_period", "AM"),
+        end_date=validate_date(
+            raw.get("latest_date") or raw.get("end_date"),
+            f"班级窗口 {class_id}/latest_date",
+        ),
+        end_period=parse_class_window_period(raw, class_id, "latest_period", "end_period", "EVENING"),
+        schedule_window_id=str(raw.get("schedule_window_id") or "").strip() or None,
+        season_window_id=str(raw.get("season_window_id") or "").strip() or None,
+        season_name=str(raw.get("season_name") or raw.get("schedule_window_name") or "").strip() or None,
+        room_ids=room_ids,
+        has_room_constraint=has_room_constraint,
+    )
+
+
+def sort_class_window_constraints(by_class: Dict[str, List[ClassWindowConstraint]]) -> None:
     for constraints in by_class.values():
         constraints.sort(
             key=lambda constraint: (
@@ -671,6 +683,17 @@ def parse_class_window_constraints(raw_constraints: List[dict], rooms: Mapping[s
                 constraint.class_window_id,
             )
         )
+
+
+def parse_class_window_constraints(raw_constraints: List[dict], rooms: Mapping[str, Room]) -> Dict[str, List[ClassWindowConstraint]]:
+    by_class: Dict[str, List[ClassWindowConstraint]] = {}
+    for raw in raw_constraints:
+        constraint = parse_class_window_constraint(raw, rooms)
+        if not constraint:
+            continue
+        by_class.setdefault(constraint.class_id, []).append(constraint)
+
+    sort_class_window_constraints(by_class)
     return by_class
 
 
