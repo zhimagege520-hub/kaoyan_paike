@@ -870,6 +870,77 @@ class SchedulingPipelineTest(unittest.TestCase):
                 if table_name in data_admin_server.TABLES_WITH_EMPTY_WARNINGS:
                     self.assertEqual([], document["warnings"], table_name)
 
+    def test_saved_json_rows_are_limited_to_current_table_fields(self) -> None:
+        payload = {
+            "schedule_windows": [{"schedule_window_id": "2026暑假", "season_name": "暑假", "row": 99}],
+            "time_slots": [{"id": "S1", "date": "2026-07-01", "row": 99}],
+            "teaching_areas": [{"id": "A1", "name": "教学区1", "row": 99}],
+            "rooms": [{"id": "R1", "name": "101", "teaching_area_id": "A1", "is_active": "是", "row": 99}],
+            "teachers": [{"employee_id": "100001", "name": "张老师", "identity": "教师", "teacher_type": "全职", "row": 99}],
+            "teacher_unavailability": [{"unavailable_id": "U1", "employee_id": "100001", "row": 99}],
+            "products": [{"id": "P1", "name": "产品1", "row": 99}],
+            "product_courses": [{"product_id": "P1", "stage": "基础", "course_module": "词汇", "row": 99}],
+            "product_schedule_rules": [
+                {
+                    "rule_id": "RULE1",
+                    "rule_name": "旧规则名",
+                    "scope_type": "product_ids",
+                    "product_id": "P1",
+                    "product_ids": "P1",
+                    "product_name_keywords": "产品",
+                    "block_hours": 4,
+                    "block_hours_override": 4,
+                    "row": 99,
+                }
+            ],
+            "classes": [
+                {
+                    "id": "C1",
+                    "name": "班级1",
+                    "product_id": "P1",
+                    "selected_stages": "基础",
+                    "stages": "旧阶段别名",
+                    "is_schedule_locked": "是",
+                    "is_manual_schedule_locked": "是",
+                    "teacher_assignments": [{"subject": "英语", "teacher_id": "100001", "teacher_name": "张老师"}],
+                    "requirements": [{"subject": "英语", "total_hours": 2}],
+                },
+                {"id": "C2", "name": "班级2", "product_id": "P1"},
+            ],
+            "class_window_boundaries": [{"class_window_id": "CW1", "class_id": "C1", "preferred_room_ids": "R1", "row": 99}],
+            "class_conflict_groups": [{"id": "G1", "class_ids": "C1|C2", "is_active": "是", "source": "旧来源", "row": 99}],
+            "locked_scheduled_lessons": [{"id": "L1", "class_id": "C1", "room_id": "R1", "row": 99}],
+            "teaching_area_links": [{"id": "LINK1", "from_teaching_area_id": "A1", "to_teaching_area_id": "A1", "row": 99}],
+            "global_blackout_dates": [{"id": "B1", "name": "停课", "row": 99}],
+            "historical_scheduled_lessons": [{"id": "H1", "class_id": "C1", "room_id": "R1", "is_locked": "是", "row": 99}],
+            "erp_standard_products": [{"erp_product_key": "ERP1", "row": 99}],
+            "business_product_mappings": [{"local_product_id": "P1", "canonical_product_id": "OLD", "row": 99}],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            data_admin_server.DATA_DIR = Path(tmp) / "data"
+            data_admin_server.save_state(payload)
+            for table_name, fieldnames in data_admin_server.STANDARD_TABLE_FIELDNAMES.items():
+                document = json.loads((data_admin_server.DATA_DIR / f"{table_name}.json").read_text(encoding="utf-8"))
+                allowed = set(fieldnames)
+                if table_name == "classes":
+                    allowed.update(data_admin_server.CLASS_JSON_EXTRA_FIELDNAMES)
+                for row in document[table_name]:
+                    self.assertLessEqual(set(row), allowed, table_name)
+
+            classes_doc = json.loads((data_admin_server.DATA_DIR / "classes.json").read_text(encoding="utf-8"))
+            class_row = next(row for row in classes_doc["classes"] if row["id"] == "C1")
+            self.assertIn("teacher_assignments", class_row)
+            self.assertIn("requirements", class_row)
+            self.assertNotIn("stages", class_row)
+            self.assertNotIn("is_schedule_locked", class_row)
+
+            rules_doc = json.loads((data_admin_server.DATA_DIR / "product_schedule_rules.json").read_text(encoding="utf-8"))
+            rule_row = rules_doc["product_schedule_rules"][0]
+            for old_field in ("rule_name", "scope_type", "product_ids", "product_name_keywords", "block_hours_override", "row"):
+                self.assertNotIn(old_field, rule_row)
+            self.assertEqual(rule_row["product_id"], "P1")
+            self.assertEqual(rule_row["block_hours"], 4)
+
     def test_global_blackout_fieldnames_are_shared_by_admin_and_pipeline(self) -> None:
         self.assertEqual(data_admin_server.GLOBAL_BLACKOUT_FIELDNAMES, TABLE_FIELDNAMES["global_blackout_dates"])
         payload = {

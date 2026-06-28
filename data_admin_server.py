@@ -2039,31 +2039,45 @@ def save_state(payload: Dict[str, Any]) -> Dict[str, Any]:
     return {"ok": True, "updated_at": updated_at, "counts": {key: len(value) for key, value in state.items()}}
 
 
+CLASS_JSON_EXTRA_FIELDNAMES = ["requirements", "teacher_assignments"]
+
+
+def standard_row(row: Dict[str, Any], fieldnames: List[str], extra_fieldnames: Iterable[str] = ()) -> Dict[str, Any]:
+    output = {field: row[field] for field in fieldnames if field in row}
+    for field in extra_fieldnames:
+        if field in row:
+            output[field] = row[field]
+    return output
+
+
+def standard_rows(rows: List[Dict[str, Any]], fieldnames: List[str], extra_fieldnames: Iterable[str] = ()) -> List[Dict[str, Any]]:
+    return [standard_row(row, fieldnames, extra_fieldnames) for row in rows]
+
+
 def standard_table_rows(state: Dict[str, Any], *, csv_export: bool = False) -> Dict[str, List[Dict[str, Any]]]:
-    class_rows: List[Dict[str, Any]] = []
+    class_extra_fieldnames: Iterable[str] = () if csv_export else CLASS_JSON_EXTRA_FIELDNAMES
+    class_rows = standard_rows(state["classes"], CLASS_FIELDNAMES, class_extra_fieldnames)
     assignment_rows = class_teacher_assignment_rows(state)
-    for cls in state["classes"]:
-        class_rows.append({key: value for key, value in cls.items() if key not in {"teacher_assignments", "requirements"}})
     return {
-        "schedule_windows": state["schedule_windows"],
-        "time_slots": state["time_slots"],
-        "teaching_areas": state["teaching_areas"],
-        "rooms": state["rooms"],
-        "teachers": state["teachers"],
-        "teacher_unavailability": state["teacher_unavailability"],
-        "products": state["products"],
-        "product_courses": state["product_courses"],
-        "product_schedule_rules": state["product_schedule_rules"],
-        "classes": class_rows if csv_export else state["classes"],
-        "class_window_boundaries": state["class_window_boundaries"],
-        "class_teacher_assignments": assignment_rows,
-        "class_conflict_groups": state["class_conflict_groups"],
-        "locked_scheduled_lessons": state["locked_scheduled_lessons"],
-        "teaching_area_links": state["teaching_area_links"],
-        "global_blackout_dates": state["global_blackout_dates"],
-        "historical_scheduled_lessons": state["historical_scheduled_lessons"],
-        "erp_standard_products": state["erp_standard_products"],
-        "business_product_mappings": state["business_product_mappings"],
+        "schedule_windows": standard_rows(state["schedule_windows"], SCHEDULE_WINDOW_FIELDNAMES),
+        "time_slots": standard_rows(state["time_slots"], TIME_SLOT_FIELDNAMES),
+        "teaching_areas": standard_rows(state["teaching_areas"], TEACHING_AREA_FIELDNAMES),
+        "rooms": standard_rows(state["rooms"], ROOM_FIELDNAMES),
+        "teachers": standard_rows(state["teachers"], TEACHER_FIELDNAMES),
+        "teacher_unavailability": standard_rows(state["teacher_unavailability"], TEACHER_UNAVAILABILITY_FIELDNAMES),
+        "products": standard_rows(state["products"], PRODUCT_FIELDNAMES),
+        "product_courses": standard_rows(state["product_courses"], PRODUCT_COURSE_FIELDNAMES),
+        "product_schedule_rules": standard_rows(state["product_schedule_rules"], PRODUCT_RULE_FIELDNAMES),
+        "classes": class_rows,
+        "class_window_boundaries": standard_rows(state["class_window_boundaries"], CLASS_WINDOW_BOUNDARY_FIELDNAMES),
+        "class_teacher_assignments": standard_rows(assignment_rows, TEACHER_ASSIGNMENT_FIELDNAMES),
+        "class_conflict_groups": standard_rows(state["class_conflict_groups"], CLASS_CONFLICT_GROUP_FIELDNAMES),
+        "locked_scheduled_lessons": standard_rows(state["locked_scheduled_lessons"], LOCKED_SCHEDULED_LESSON_FIELDNAMES),
+        "teaching_area_links": standard_rows(state["teaching_area_links"], TEACHING_AREA_LINK_FIELDNAMES),
+        "global_blackout_dates": standard_rows(state["global_blackout_dates"], GLOBAL_BLACKOUT_FIELDNAMES),
+        "historical_scheduled_lessons": standard_rows(state["historical_scheduled_lessons"], HISTORICAL_SCHEDULED_LESSON_FIELDNAMES),
+        "erp_standard_products": standard_rows(state["erp_standard_products"], ERP_STANDARD_PRODUCT_FIELDNAMES),
+        "business_product_mappings": standard_rows(state["business_product_mappings"], BUSINESS_PRODUCT_MAPPING_FIELDNAMES),
     }
 
 
