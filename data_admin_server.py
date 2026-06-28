@@ -410,6 +410,11 @@ STANDARD_TABLE_FIELDNAMES: Dict[str, List[str]] = {
     "erp_standard_products": ERP_STANDARD_PRODUCT_FIELDNAMES,
 }
 TABLES_WITH_EMPTY_WARNINGS = {"products", "product_courses", "product_schedule_rules"}
+STATE_TABLE_ALIASES: Dict[str, Tuple[str, ...]] = {
+    "class_conflict_groups": ("conflict_groups",),
+    "locked_scheduled_lessons": ("scheduled_lessons",),
+    "teaching_area_links": ("links",),
+}
 
 
 def today_text() -> str:
@@ -676,66 +681,92 @@ def infer_unique_value(values: Iterable[Any]) -> str:
     return unique_values[0] if len(unique_values) == 1 else ""
 
 
-def load_state() -> Dict[str, Any]:
-    schedule_windows_doc = read_json(DATA_DIR / "schedule_windows.json", {"schedule_windows": []})
-    time_slots_doc = read_json(DATA_DIR / "time_slots.json", {"time_slots": []})
-    teaching_areas_doc = read_json(DATA_DIR / "teaching_areas.json", {"teaching_areas": []})
-    rooms_doc = read_json(DATA_DIR / "rooms.json", {"rooms": []})
-    teachers_doc = read_json(DATA_DIR / "teachers.json", {"teachers": []})
-    teacher_unavailability_doc = read_json(DATA_DIR / "teacher_unavailability.json", {"teacher_unavailability": []})
-    product_meta_doc = read_json(DATA_DIR / "products.json", {"products": []})
-    products_doc = read_json(DATA_DIR / "product_courses.json", {"product_courses": []})
-    rules_doc = read_json(DATA_DIR / "product_schedule_rules.json", {"product_schedule_rules": []})
-    classes_doc = read_json(DATA_DIR / "classes.json", {"classes": []})
-    class_window_boundaries_doc = read_json(DATA_DIR / "class_window_boundaries.json", {"class_window_boundaries": []})
-    class_conflict_groups_doc = read_json(DATA_DIR / "class_conflict_groups.json", {"class_conflict_groups": []})
-    locked_lessons_doc = read_json(DATA_DIR / "locked_scheduled_lessons.json", {"locked_scheduled_lessons": []})
-    links_doc = read_json(DATA_DIR / "teaching_area_links.json", {"teaching_area_links": []})
-    blackouts_doc = read_json(DATA_DIR / "global_blackout_dates.json", {"global_blackout_dates": []})
-    historical_lessons_doc = read_json(DATA_DIR / "historical_scheduled_lessons.json", {"historical_scheduled_lessons": []})
-    erp_standard_products_doc = read_json(DATA_DIR / "erp_standard_products.json", {"erp_standard_products": []})
-    business_product_mappings_doc = read_json(DATA_DIR / "business_product_mappings.json", {"business_product_mappings": []})
+def state_table_doc_default(table_name: str) -> Dict[str, Any]:
+    return {table_name: []}
 
-    schedule_windows = schedule_windows_doc.get("schedule_windows", [])
-    time_slots = time_slots_doc.get("time_slots", [])
-    teaching_areas = teaching_areas_doc.get("teaching_areas", [])
-    rooms = rooms_doc.get("rooms", [])
-    teachers = teachers_doc.get("teachers", [])
-    teacher_unavailability = teacher_unavailability_doc.get("teacher_unavailability", [])
-    products = merge_products(product_meta_doc.get("products", []), products_doc.get("product_courses", []))
-    product_courses = products_doc.get("product_courses", [])
-    product_rules = rules_doc.get("product_schedule_rules", [])
-    classes = classes_doc.get("classes", [])
-    class_window_boundaries = class_window_boundaries_doc.get("class_window_boundaries", [])
-    class_conflict_groups = class_conflict_groups_doc.get("class_conflict_groups", class_conflict_groups_doc.get("conflict_groups", []))
-    locked_scheduled_lessons = locked_lessons_doc.get("locked_scheduled_lessons", locked_lessons_doc.get("scheduled_lessons", []))
-    links = links_doc.get("teaching_area_links", links_doc.get("links", []))
-    blackouts = blackouts_doc.get("global_blackout_dates", [])
-    historical_scheduled_lessons = historical_lessons_doc.get("historical_scheduled_lessons", [])
-    erp_standard_products = erp_standard_products_doc.get("erp_standard_products", [])
-    business_product_mappings = business_product_mappings_doc.get("business_product_mappings", [])
+
+def state_table_rows_from_doc(table_name: str, document: Dict[str, Any]) -> List[Dict[str, Any]]:
+    for key in (table_name, *STATE_TABLE_ALIASES.get(table_name, ())):
+        rows = document.get(key)
+        if isinstance(rows, list):
+            return rows
+    return []
+
+
+def read_state_table_rows(table_name: str) -> List[Dict[str, Any]]:
+    document = read_json(DATA_DIR / f"{table_name}.json", state_table_doc_default(table_name))
+    return state_table_rows_from_doc(table_name, document)
+
+
+def load_standard_table_rows() -> Dict[str, List[Dict[str, Any]]]:
+    return {table_name: read_state_table_rows(table_name) for table_name in STANDARD_TABLE_FIELDNAMES}
+
+
+def attach_class_teacher_assignment_table(
+    classes: List[Dict[str, Any]],
+    assignment_rows: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    if not assignment_rows:
+        return classes
+
+    assignments_by_class: Dict[str, List[Dict[str, Any]]] = {}
+    for assignment in assignment_rows:
+        class_id = normalize_text(assignment.get("class_id"))
+        if not class_id:
+            continue
+        assignments_by_class.setdefault(class_id, []).append(
+            normalize_teacher_assignment({"class_id": class_id, **assignment})
+        )
+
+    updated_classes = []
+    for cls in classes:
+        class_id = normalize_text(cls.get("id") or cls.get("class_id"))
+        if class_id in assignments_by_class:
+            updated_classes.append({**cls, "teacher_assignments": assignments_by_class[class_id]})
+        else:
+            updated_classes.append(cls)
+    return updated_classes
+
+
+def load_state() -> Dict[str, Any]:
+    table_rows = load_standard_table_rows()
+    product_courses = table_rows["product_courses"]
+    products = merge_products(table_rows["products"], product_courses)
+    classes = attach_class_teacher_assignment_table(
+        table_rows["classes"],
+        table_rows["class_teacher_assignments"],
+    )
+    class_teacher_assignments = class_teacher_assignment_rows({"classes": classes})
 
     return {
         "updated_at": today_text(),
-        "schedule_windows": schedule_windows,
-        "time_slots": time_slots,
-        "teaching_areas": teaching_areas,
-        "rooms": rooms,
-        "teachers": teachers,
-        "teacher_unavailability": teacher_unavailability,
+        "schedule_windows": table_rows["schedule_windows"],
+        "time_slots": table_rows["time_slots"],
+        "teaching_areas": table_rows["teaching_areas"],
+        "rooms": table_rows["rooms"],
+        "teachers": table_rows["teachers"],
+        "teacher_unavailability": table_rows["teacher_unavailability"],
         "products": products,
         "product_courses": product_courses,
-        "product_schedule_rules": product_rules,
+        "product_schedule_rules": table_rows["product_schedule_rules"],
         "classes": classes,
-        "class_window_boundaries": class_window_boundaries,
-        "class_conflict_groups": class_conflict_groups,
-        "locked_scheduled_lessons": locked_scheduled_lessons,
-        "teaching_area_links": links,
-        "global_blackout_dates": blackouts,
-        "historical_scheduled_lessons": historical_scheduled_lessons,
-        "erp_standard_products": erp_standard_products,
-        "business_product_mappings": business_product_mappings,
-        "lookups": build_lookups(teaching_areas, rooms, products, teachers, product_courses, classes),
+        "class_window_boundaries": table_rows["class_window_boundaries"],
+        "class_teacher_assignments": class_teacher_assignments,
+        "class_conflict_groups": table_rows["class_conflict_groups"],
+        "locked_scheduled_lessons": table_rows["locked_scheduled_lessons"],
+        "teaching_area_links": table_rows["teaching_area_links"],
+        "global_blackout_dates": table_rows["global_blackout_dates"],
+        "historical_scheduled_lessons": table_rows["historical_scheduled_lessons"],
+        "business_product_mappings": table_rows["business_product_mappings"],
+        "erp_standard_products": table_rows["erp_standard_products"],
+        "lookups": build_lookups(
+            table_rows["teaching_areas"],
+            table_rows["rooms"],
+            products,
+            table_rows["teachers"],
+            product_courses,
+            classes,
+        ),
     }
 
 
@@ -1005,56 +1036,84 @@ def normalize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     return normalized
 
 
-def normalized_payload_tables(payload: Dict[str, Any]) -> Dict[str, Any]:
-    schedule_windows = [normalize_schedule_window(item) for item in payload.get("schedule_windows", [])]
-    time_slots = [normalize_time_slot(item) for item in payload.get("time_slots", [])]
-    teaching_areas = [normalize_teaching_area(area) for area in payload.get("teaching_areas", [])]
-    rooms = [normalize_room(room) for room in payload.get("rooms", [])]
-    teachers = [normalize_teacher(teacher) for teacher in payload.get("teachers", [])]
-    teacher_unavailability = [normalize_teacher_unavailability(item) for item in payload.get("teacher_unavailability", [])]
-    product_courses = [normalize_product_course(course) for course in payload.get("product_courses", [])]
-    products = merge_products(payload.get("products", []), product_courses)
-    rules = [normalize_product_rule(rule) for rule in payload.get("product_schedule_rules", [])]
-    classes = [normalize_class(cls) for cls in payload.get("classes", [])]
-    class_window_boundaries = [normalize_class_window_boundary(item) for item in payload.get("class_window_boundaries", [])]
-    class_conflict_groups = [normalize_class_conflict_group(group) for group in payload.get("class_conflict_groups", [])]
-    locked_scheduled_lessons = [
-        normalize_locked_scheduled_lesson(lesson)
-        for lesson in payload.get("locked_scheduled_lessons", payload.get("scheduled_lessons", []))
-    ]
-    links = [normalize_area_link(link) for link in payload.get("teaching_area_links", [])]
-    blackouts = [normalize_blackout_date(item) for item in payload.get("global_blackout_dates", [])]
-    historical_scheduled_lessons = [
-        normalize_locked_scheduled_lesson(lesson)
-        for lesson in payload.get("historical_scheduled_lessons", [])
-    ]
-    erp_standard_products = [
-        normalize_erp_standard_product(item)
-        for item in payload.get("erp_standard_products", [])
-    ]
-    business_product_mappings = [
-        normalize_business_product_mapping(item)
-        for item in payload.get("business_product_mappings", [])
-    ]
+def normalized_resource_tables(payload: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
     return {
-        "schedule_windows": schedule_windows,
-        "time_slots": time_slots,
-        "teaching_areas": teaching_areas,
-        "rooms": rooms,
-        "teachers": teachers,
-        "teacher_unavailability": teacher_unavailability,
-        "products": products,
+        "schedule_windows": [normalize_schedule_window(item) for item in payload.get("schedule_windows", [])],
+        "time_slots": [normalize_time_slot(item) for item in payload.get("time_slots", [])],
+        "teaching_areas": [normalize_teaching_area(area) for area in payload.get("teaching_areas", [])],
+        "rooms": [normalize_room(room) for room in payload.get("rooms", [])],
+        "teachers": [normalize_teacher(teacher) for teacher in payload.get("teachers", [])],
+        "teacher_unavailability": [
+            normalize_teacher_unavailability(item)
+            for item in payload.get("teacher_unavailability", [])
+        ],
+    }
+
+
+def normalized_product_tables(payload: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+    product_courses = [normalize_product_course(course) for course in payload.get("product_courses", [])]
+    return {
+        "products": merge_products(payload.get("products", []), product_courses),
         "product_courses": product_courses,
-        "product_schedule_rules": rules,
+        "product_schedule_rules": [
+            normalize_product_rule(rule)
+            for rule in payload.get("product_schedule_rules", [])
+        ],
+    }
+
+
+def normalized_class_tables(payload: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+    class_rows = attach_class_teacher_assignment_table(
+        list(payload.get("classes", [])),
+        list(payload.get("class_teacher_assignments", [])),
+    )
+    classes = [normalize_class(cls) for cls in class_rows]
+    return {
         "classes": classes,
-        "class_window_boundaries": class_window_boundaries,
-        "class_conflict_groups": class_conflict_groups,
-        "locked_scheduled_lessons": locked_scheduled_lessons,
-        "teaching_area_links": links,
-        "global_blackout_dates": blackouts,
-        "historical_scheduled_lessons": historical_scheduled_lessons,
-        "erp_standard_products": erp_standard_products,
-        "business_product_mappings": business_product_mappings,
+        "class_window_boundaries": [
+            normalize_class_window_boundary(item)
+            for item in payload.get("class_window_boundaries", [])
+        ],
+        "class_teacher_assignments": class_teacher_assignment_rows({"classes": classes}),
+        "class_conflict_groups": [
+            normalize_class_conflict_group(group)
+            for group in payload.get("class_conflict_groups", [])
+        ],
+    }
+
+
+def normalized_auxiliary_tables(payload: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+    return {
+        "locked_scheduled_lessons": [
+            normalize_locked_scheduled_lesson(lesson)
+            for lesson in payload.get("locked_scheduled_lessons", payload.get("scheduled_lessons", []))
+        ],
+        "teaching_area_links": [normalize_area_link(link) for link in payload.get("teaching_area_links", [])],
+        "global_blackout_dates": [
+            normalize_blackout_date(item)
+            for item in payload.get("global_blackout_dates", [])
+        ],
+        "historical_scheduled_lessons": [
+            normalize_locked_scheduled_lesson(lesson)
+            for lesson in payload.get("historical_scheduled_lessons", [])
+        ],
+        "business_product_mappings": [
+            normalize_business_product_mapping(item)
+            for item in payload.get("business_product_mappings", [])
+        ],
+        "erp_standard_products": [
+            normalize_erp_standard_product(item)
+            for item in payload.get("erp_standard_products", [])
+        ],
+    }
+
+
+def normalized_payload_tables(payload: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        **normalized_resource_tables(payload),
+        **normalized_product_tables(payload),
+        **normalized_class_tables(payload),
+        **normalized_auxiliary_tables(payload),
     }
 
 

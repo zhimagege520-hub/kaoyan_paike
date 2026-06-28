@@ -1128,6 +1128,56 @@ class SchedulingPipelineTest(unittest.TestCase):
                 self.assertEqual(len(document[table_name]), document["record_count"], table_name)
                 if table_name in data_admin_server.TABLES_WITH_EMPTY_WARNINGS:
                     self.assertEqual([], document["warnings"], table_name)
+            loaded = data_admin_server.load_state()
+            for table_name in data_admin_server.STANDARD_TABLE_FIELDNAMES:
+                self.assertIn(table_name, loaded)
+
+    def test_load_state_attaches_flat_class_teacher_assignment_table(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            data_admin_server.DATA_DIR = Path(tmp) / "data"
+            data_admin_server.DATA_DIR.mkdir(parents=True)
+            (data_admin_server.DATA_DIR / "classes.json").write_text(
+                json.dumps(
+                    {
+                        "classes": [
+                            {
+                                "id": "C1",
+                                "name": "英语1班",
+                                "product_id": "P1",
+                                "teacher_assignments": [],
+                            }
+                        ]
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            (data_admin_server.DATA_DIR / "class_teacher_assignments.json").write_text(
+                json.dumps(
+                    {
+                        "class_teacher_assignments": [
+                            {
+                                "class_id": "C1",
+                                "class_name": "英语1班",
+                                "subject": "英语",
+                                "stage": "基础",
+                                "course_group": "阅读类",
+                                "teacher_id": "100001",
+                                "teacher_name": "张老师",
+                            }
+                        ]
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+
+            state = data_admin_server.load_state()
+
+        self.assertEqual(state["classes"][0]["teacher_assignments"][0]["teacher_id"], "100001")
+        self.assertEqual(state["classes"][0]["teacher_assignments"][0]["course_group"], "阅读类")
+        self.assertEqual(state["class_teacher_assignments"][0]["class_id"], "C1")
+        self.assertEqual(state["class_teacher_assignments"][0]["teacher_name"], "张老师")
 
     def test_saved_json_rows_are_limited_to_current_table_fields(self) -> None:
         payload = {
