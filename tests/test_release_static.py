@@ -3,10 +3,31 @@ from __future__ import annotations
 import re
 import unittest
 from pathlib import Path
+from typing import Iterable
 
 
 ROOT = Path(__file__).resolve().parents[1]
 PERSONAL_PATH_MARKERS = ("/Users/" + "plzhz", "Down" + "loads" + "/")
+TEXT_RELEASE_SUFFIXES = {".csv", ".html", ".js", ".json", ".md", ".py", ".sh", ".txt", ".yml"}
+
+
+def release_text_files() -> Iterable[Path]:
+    top_level_files = [
+        ROOT / ".env.example",
+        ROOT / ".gitignore",
+        ROOT / "LAUNCH_CHECKLIST.md",
+        ROOT / "PUBLIC_SCHEDULE_DEPLOY.md",
+        ROOT / "README.md",
+        ROOT / "SCHEDULING_RULES_REVIEW_20260524.md",
+    ]
+    for path in top_level_files:
+        yield path
+    for directory in (".github", "cloudflare_schedule_publish", "docs", "examples", "scripts", "share", "tests", "web_admin"):
+        for path in sorted((ROOT / directory).rglob("*")):
+            if path.is_file() and path.suffix in TEXT_RELEASE_SUFFIXES:
+                yield path
+    for path in sorted(ROOT.glob("*.py")):
+        yield path
 
 
 class ReleaseStaticTest(unittest.TestCase):
@@ -47,6 +68,23 @@ class ReleaseStaticTest(unittest.TestCase):
 
         self.assertIn('find scripts -name "*.py"', script)
         self.assertIn("-m py_compile \"$script_path\"", script)
+
+    def test_release_surface_does_not_reintroduce_summer_lodging_constraints(self) -> None:
+        forbidden_terms = [
+            "camp_" + "lodging_" + "constraints",
+            "schedule_" + "lodging",
+            "summer_" + "room_" + "constraint",
+            "暑假" + "住宿" + "上课" + "约束",
+            "住宿" + "上课" + "约束",
+        ]
+        offenders = []
+        for path in release_text_files():
+            source = path.read_text(encoding="utf-8")
+            matches = [term for term in forbidden_terms if term in source]
+            if matches:
+                offenders.append(f"{path.relative_to(ROOT)}: {', '.join(matches)}")
+
+        self.assertEqual([], offenders)
 
     def test_ci_runs_release_verification(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
