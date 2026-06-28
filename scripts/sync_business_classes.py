@@ -64,23 +64,23 @@ def selected_business_classes(tables: Mapping[str, Any], base_payload: Mapping[s
 
         business_product_id = business.row_value(row, "课程产品编号")
         mapped = business.select_product_mapping_for_class(row, product_mapping)
-        canonical_product_id = mapped.get("canonical_product_id", "")
-        mapped_product_ids = list(mapped.get("canonical_product_ids", []))
-        include, _ = business.include_decision(row, canonical_product_id)
+        local_product_id = mapped.get("local_product_id", "")
+        mapped_product_ids = list(mapped.get("local_product_ids", []))
+        include, _ = business.include_decision(row, local_product_id)
         if not include:
             skipped_product_system += 1
             continue
-        if not canonical_product_id:
+        if not local_product_id:
             skipped_mapping += 1
             continue
 
         missing_products = [product_id for product_id in mapped_product_ids if product_id not in product_meta]
         if missing_products:
-            errors.append(f"产品映射指向不存在的系统产品: 班级 {class_id} / {'|'.join(missing_products)}")
+            errors.append(f"产品映射指向不存在的本地产品: 班级 {class_id} / {'|'.join(missing_products)}")
             continue
         missing_courses = [product_id for product_id in mapped_product_ids if not courses_by_product.get(product_id)]
         if missing_courses:
-            errors.append(f"系统产品缺少产品课程课时: 班级 {class_id} / {'|'.join(missing_courses)}")
+            errors.append(f"本地产品缺少产品课程课时: 班级 {class_id} / {'|'.join(missing_courses)}")
             continue
 
         effective_id = business.effective_product_id(business_product_id, mapped_product_ids)

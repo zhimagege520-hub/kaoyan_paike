@@ -307,11 +307,7 @@ def weekday_name(value: date) -> str:
     return names[value.weekday()]
 
 
-def canonical_product_ids(value: Any) -> List[str]:
-    return [entry["id"] for entry in canonical_product_entries(value)]
-
-
-def canonical_product_entries(value: Any) -> List[Dict[str, str]]:
+def local_product_entries(value: Any) -> List[Dict[str, str]]:
     ids: List[str] = []
     entries: List[Dict[str, str]] = []
     for item in split_codes(value):
@@ -330,9 +326,9 @@ def product_map_from_rows(rows: Iterable[Mapping[str, Any]]) -> Dict[str, Dict[s
     for row in rows:
         business_id = row_value(row, "business_product_id", "erp_course_code", "课程产品编号", "product_id")
         business_name = row_value(row, "business_product_name", "erp_course_name", "课程产品名称", "product_name")
-        canonical_text = row_value(row, "canonical_product_id", "local_product_id", "系统产品ID", "标准产品ID", "canonical_id")
+        local_product_text = row_value(row, "local_product_id", "canonical_product_id", "系统产品ID", "标准产品ID", "canonical_id")
         product_system = row_value(row, "product_system", "产品体系")
-        product_entries = canonical_product_entries(canonical_text)
+        product_entries = local_product_entries(local_product_text)
         product_ids = [entry["id"] for entry in product_entries]
         class_name_keywords = split_codes(row_value(row, "class_name_keywords", "class_name_keyword", "班级名称关键词", "班级关键词"))
         if business_id and not product_ids and product_system == PRODUCT_SYSTEM_BILLING:
@@ -342,34 +338,34 @@ def product_map_from_rows(rows: Iterable[Mapping[str, Any]]) -> Dict[str, Dict[s
         if not business_id or not product_ids:
             errors.append(f"产品映射缺少 business_product_id 或 local_product_id: {dict(row)}")
             continue
-        canonical_id = product_ids[0] if len(product_ids) == 1 else "|".join(product_ids)
+        local_product_id = product_ids[0] if len(product_ids) == 1 else "|".join(product_ids)
         rule = {
             "business_product_id": business_id,
             "business_product_name": business_name,
-            "canonical_product_id": canonical_id,
-            "canonical_product_ids": product_ids,
-            "canonical_product_entries": product_entries,
+            "local_product_id": local_product_id,
+            "local_product_ids": product_ids,
+            "local_product_entries": product_entries,
             "class_name_keywords": class_name_keywords,
             "notes": row_value(row, "notes", "备注"),
         }
         existing = mapping.get(business_id)
-        if existing and not class_name_keywords and not any(item.get("class_name_keywords") for item in existing.get("rules", [])) and existing["canonical_product_ids"] != product_ids:
+        if existing and not class_name_keywords and not any(item.get("class_name_keywords") for item in existing.get("rules", [])) and existing["local_product_ids"] != product_ids:
             errors.append(
-                f"业务产品 {business_id} 存在多个系统产品映射: "
-                f"{existing['canonical_product_id']} / {canonical_id}"
+                f"业务产品 {business_id} 存在多个本地产品映射: "
+                f"{existing['local_product_id']} / {local_product_id}"
             )
             continue
         if existing:
             existing.setdefault("rules", []).append(rule)
-            if not existing.get("canonical_product_entries"):
-                existing["canonical_product_entries"] = product_entries
+            if not existing.get("local_product_entries"):
+                existing["local_product_entries"] = product_entries
             continue
         mapping[business_id] = {
             "business_product_id": business_id,
             "business_product_name": business_name,
-            "canonical_product_id": canonical_id,
-            "canonical_product_ids": product_ids,
-            "canonical_product_entries": product_entries,
+            "local_product_id": local_product_id,
+            "local_product_ids": product_ids,
+            "local_product_entries": product_entries,
             "rules": [rule],
             "notes": row_value(row, "notes", "备注"),
         }
@@ -394,10 +390,10 @@ def select_product_mapping_for_class(row: Mapping[str, Any], product_mapping: Ma
         return keyword_matches[0]
     if len(keyword_matches) > 1:
         keyword_matches.sort(key=lambda rule: max((len(keyword) for keyword in rule.get("class_name_keywords", []) if keyword in class_name), default=0), reverse=True)
-        if keyword_matches[0].get("canonical_product_ids") != keyword_matches[1].get("canonical_product_ids"):
+        if keyword_matches[0].get("local_product_ids") != keyword_matches[1].get("local_product_ids"):
             return keyword_matches[0]
 
-    entries = list(mapping.get("canonical_product_entries", []))
+    entries = list(mapping.get("local_product_entries", []))
     product_keyword_pairs = [
         ("无忧秋", ("无忧秋",)),
         ("无忧春", ("无忧春",)),
@@ -430,9 +426,9 @@ def select_product_mapping_for_class(row: Mapping[str, Any], product_mapping: Ma
         entry = matched[0]
         return {
             **mapping,
-            "canonical_product_id": entry["id"],
-            "canonical_product_ids": [entry["id"]],
-            "canonical_product_entries": [entry],
+            "local_product_id": entry["id"],
+            "local_product_ids": [entry["id"]],
+            "local_product_entries": [entry],
         }
     return mapping
 
@@ -1024,7 +1020,7 @@ def merge_rows_by_id(
     return [*anonymous, *[merged[key] for key in sorted(merged)]]
 
 
-def include_decision(row: Mapping[str, Any], canonical_product_id: str = "") -> Tuple[bool, str]:
+def include_decision(row: Mapping[str, Any], local_product_id: str = "") -> Tuple[bool, str]:
     product_system = row_value(row, "产品体系")
     if product_system == PRODUCT_SYSTEM_BILLING:
         return False, "计费体系强制排除"
@@ -1038,7 +1034,7 @@ def include_decision(row: Mapping[str, Any], canonical_product_id: str = "") -> 
 
 def build_class_row(
     row: Mapping[str, Any],
-    canonical_product_id: str,
+    local_product_id: str,
     product_meta: Mapping[str, Any],
 ) -> Dict[str, Any]:
     actual_start = parse_business_date(row.get("实际开课日期"), f"班级 {row_value(row, '班级编码')}/实际开课日期")
@@ -1050,7 +1046,7 @@ def build_class_row(
     return {
         "id": row_value(row, "班级编码"),
         "name": class_name,
-        "product_id": canonical_product_id,
+        "product_id": local_product_id,
         "project": "考研",
         "product_line": normalize_text(product_meta.get("product_line")),
         "sub_product": normalize_text(product_meta.get("sub_product")),
@@ -1650,9 +1646,9 @@ def convert_business_tables(
 
         business_product_id = row_value(row, "课程产品编号")
         mapped = select_product_mapping_for_class(row, product_mapping)
-        canonical_product_id = mapped.get("canonical_product_id", "")
-        mapped_product_ids = list(mapped.get("canonical_product_ids", []))
-        include, reason = include_decision(row, canonical_product_id)
+        local_product_id = mapped.get("local_product_id", "")
+        mapped_product_ids = list(mapped.get("local_product_ids", []))
+        include, reason = include_decision(row, local_product_id)
         if not include:
             text = f"{class_id} {row_value(row, '班级名称（外）')} ({reason})"
             if row_value(row, "产品体系") == PRODUCT_SYSTEM_BILLING:
@@ -1660,16 +1656,16 @@ def convert_business_tables(
             else:
                 excluded_other.append(text)
             continue
-        if not canonical_product_id:
+        if not local_product_id:
             errors.append(f"未命中产品映射: 班级 {class_id} / 业务产品 {business_product_id} {row_value(row, '课程产品名称')}")
             continue
         missing_products = [product_id for product_id in mapped_product_ids if product_id not in product_meta]
         if missing_products:
-            errors.append(f"产品映射指向不存在的系统产品: 班级 {class_id} / {'|'.join(missing_products)}")
+            errors.append(f"产品映射指向不存在的本地产品: 班级 {class_id} / {'|'.join(missing_products)}")
             continue
         missing_courses = [product_id for product_id in mapped_product_ids if not courses_by_product.get(product_id)]
         if missing_courses:
-            errors.append(f"系统产品缺少产品课程课时: 班级 {class_id} / {'|'.join(missing_courses)}")
+            errors.append(f"本地产品缺少产品课程课时: 班级 {class_id} / {'|'.join(missing_courses)}")
             continue
         effective_id = effective_product_id(business_product_id, mapped_product_ids)
         if len(mapped_product_ids) > 1 and effective_id not in product_meta:
@@ -1715,8 +1711,8 @@ def convert_business_tables(
 
     generated_classes: Dict[str, Dict[str, Any]] = {}
     for class_id, row in selected_rows.items():
-        canonical_product_id = selected_product_ids[class_id]
-        generated_classes[class_id] = build_class_row(row, canonical_product_id, product_meta[canonical_product_id])
+        local_product_id = selected_product_ids[class_id]
+        generated_classes[class_id] = build_class_row(row, local_product_id, product_meta[local_product_id])
 
     for source_id, scheduled_id in full_sources.items():
         if source_id not in selected_rows:

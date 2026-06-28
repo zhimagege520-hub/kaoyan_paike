@@ -12,6 +12,7 @@ from business_class_import import (
     BusinessDataError,
     assignments_by_class,
     convert_business_tables,
+    product_map_from_rows,
     product_courses_by_id,
     resolve_teacher_assignment,
 )
@@ -263,6 +264,31 @@ class BusinessClassImportTest(unittest.TestCase):
         self.assertEqual(table_name_for("scheduled_lessons.csv"), "scheduled_lessons")
         self.assertEqual(table_name_for("已排课明细.csv"), "scheduled_lessons")
         self.assertEqual(table_name_for("历史课表.xlsx"), "scheduled_lessons")
+
+    def test_product_mapping_uses_local_product_keys_with_legacy_input_alias(self) -> None:
+        mapping = product_map_from_rows(
+            [
+                {
+                    "business_product_id": "100",
+                    "business_product_name": "ERP产品A",
+                    "local_product_id": "P_LOCAL:本地产品|P_EXTRA:补充产品",
+                    "canonical_product_id": "P_OLD",
+                },
+                {
+                    "business_product_id": "101",
+                    "business_product_name": "ERP产品B",
+                    "canonical_product_id": "P_LEGACY:旧字段兼容产品",
+                },
+            ]
+        )
+
+        self.assertEqual(mapping["100"]["local_product_id"], "P_LOCAL|P_EXTRA")
+        self.assertEqual(mapping["100"]["local_product_ids"], ["P_LOCAL", "P_EXTRA"])
+        self.assertEqual(mapping["100"]["local_product_entries"][0]["label"], "本地产品")
+        self.assertEqual(mapping["101"]["local_product_id"], "P_LEGACY")
+        self.assertNotIn("canonical_product_id", mapping["100"])
+        self.assertNotIn("canonical_product_ids", mapping["100"])
+        self.assertNotIn("canonical_product_entries", mapping["100"])
 
     def test_history_lessons_deduct_remaining_hours_and_learn_teacher(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
