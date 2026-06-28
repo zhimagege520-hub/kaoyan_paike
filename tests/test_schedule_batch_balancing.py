@@ -47,7 +47,11 @@ from scripts.schedule_class_windows import (
     load_class_window_constraints,
     suite_window_constraints_from_class_windows,
 )
-from scripts.schedule_outputs import write_batch_csv, write_day_table_html
+from scripts.schedule_outputs import (
+    BATCH_SCHEDULE_CSV_FIELDNAMES,
+    write_batch_csv,
+    write_day_table_html,
+)
 from scripts.schedule_scope import class_ids_for_suite_codes, filtered_schedule_input
 from scripts.schedule_first_lesson import (
     assignments_preserve_first_lesson_modules,
@@ -1512,8 +1516,10 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
                 product_course_tags=product_course_tags,
             )
             with out_path.open(newline="", encoding="utf-8") as handle:
-                rows = list(csv.DictReader(handle))
+                reader = csv.DictReader(handle)
+                rows = list(reader)
 
+        self.assertEqual(reader.fieldnames, BATCH_SCHEDULE_CSV_FIELDNAMES)
         self.assertEqual([row["lesson_slot"] for row in rows], ["AM1", "AM2"])
         self.assertEqual([row["slot_label"] for row in rows], ["上午一", "上午二"])
         self.assertEqual({row["weekday"] for row in rows}, {"周三"})

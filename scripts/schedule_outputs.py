@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import csv
 import html
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Set
 
 import scheduler
+from scripts.csv_utils import write_csv_rows
 from scripts.schedule_data import (
     assignment_course_tag,
     load_class_metadata,
@@ -21,6 +21,30 @@ from scripts.schedule_display import (
     weekday_label,
 )
 
+
+BATCH_SCHEDULE_CSV_FIELDNAMES = [
+    "date",
+    "weekday",
+    "period",
+    "lesson_slot",
+    "slot_label",
+    "start_time",
+    "end_time",
+    "class_id",
+    "class_name",
+    "subject",
+    "quarter",
+    "stage",
+    "course_module",
+    "course_group",
+    "course_code",
+    "course_name",
+    "teacher_id",
+    "teacher_name",
+    "room_id",
+    "room_name",
+    "duration_hours",
+]
 
 DISPLAY_SUITE_OVERRIDES = {
     "KYJSJ2773": "2775",
@@ -1102,60 +1126,33 @@ def write_batch_csv(
 ) -> None:
     class_metadata = class_metadata if class_metadata is not None else load_class_metadata(Path("data"))
     product_course_tags = product_course_tags if product_course_tags is not None else load_product_course_tags(Path("data"))
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    with out_path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(
-            handle,
-            fieldnames=[
-                "date",
-                "weekday",
-                "period",
-                "lesson_slot",
-                "slot_label",
-                "start_time",
-                "end_time",
-                "class_id",
-                "class_name",
-                "subject",
-                "quarter",
-                "stage",
-                "course_module",
-                "course_group",
-                "course_code",
-                "course_name",
-                "teacher_id",
-                "teacher_name",
-                "room_id",
-                "room_name",
-                "duration_hours",
-            ],
-        )
-        writer.writeheader()
-        for assignment in assignments:
-            course_tag = assignment_course_tag(assignment, class_metadata, product_course_tags)
-            for lesson in assignment_standard_lesson_slots(assignment.candidate.slots, ["AM", "PM", "EVENING"]):
-                writer.writerow(
-                    {
-                        "date": lesson["date"],
-                        "weekday": weekday_label(str(lesson["date"])),
-                        "period": lesson["period"],
-                        "lesson_slot": lesson["slot_id"],
-                        "slot_label": lesson["slot_label"],
-                        "start_time": lesson["start_time"],
-                        "end_time": lesson["end_time"],
-                        "class_id": assignment.task.class_id,
-                        "class_name": assignment.task.class_name,
-                        "subject": assignment.task.subject,
-                        "quarter": assignment.task.quarter or "",
-                        "stage": assignment.task.stage or "",
-                        "course_module": assignment.task.course_module or "",
-                        "course_group": assignment.task.course_group or "",
-                        "course_code": course_tag.get("course_code", ""),
-                        "course_name": course_tag.get("course_name", ""),
-                        "teacher_id": assignment.candidate.teacher_id,
-                        "teacher_name": assignment.candidate.teacher_name,
-                        "room_id": assignment.candidate.room_id,
-                        "room_name": room_names.get(assignment.candidate.room_id, assignment.candidate.room_id),
-                        "duration_hours": lesson["duration_hours"],
-                    }
-                )
+    rows = []
+    for assignment in assignments:
+        course_tag = assignment_course_tag(assignment, class_metadata, product_course_tags)
+        for lesson in assignment_standard_lesson_slots(assignment.candidate.slots, ["AM", "PM", "EVENING"]):
+            rows.append(
+                {
+                    "date": lesson["date"],
+                    "weekday": weekday_label(str(lesson["date"])),
+                    "period": lesson["period"],
+                    "lesson_slot": lesson["slot_id"],
+                    "slot_label": lesson["slot_label"],
+                    "start_time": lesson["start_time"],
+                    "end_time": lesson["end_time"],
+                    "class_id": assignment.task.class_id,
+                    "class_name": assignment.task.class_name,
+                    "subject": assignment.task.subject,
+                    "quarter": assignment.task.quarter or "",
+                    "stage": assignment.task.stage or "",
+                    "course_module": assignment.task.course_module or "",
+                    "course_group": assignment.task.course_group or "",
+                    "course_code": course_tag.get("course_code", ""),
+                    "course_name": course_tag.get("course_name", ""),
+                    "teacher_id": assignment.candidate.teacher_id,
+                    "teacher_name": assignment.candidate.teacher_name,
+                    "room_id": assignment.candidate.room_id,
+                    "room_name": room_names.get(assignment.candidate.room_id, assignment.candidate.room_id),
+                    "duration_hours": lesson["duration_hours"],
+                }
+            )
+    write_csv_rows(out_path, BATCH_SCHEDULE_CSV_FIELDNAMES, rows, encoding="utf-8", extrasaction="raise")

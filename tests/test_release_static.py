@@ -45,6 +45,7 @@ class ReleaseStaticTest(unittest.TestCase):
             ROOT / "scripts" / "schedule_data.py",
             ROOT / "scripts" / "schedule_class_windows.py",
             ROOT / "scripts" / "schedule_conflicts.py",
+            ROOT / "scripts" / "schedule_outputs.py",
             ROOT / "scripts" / "schedule_scope.py",
         ]
         offenders = []
