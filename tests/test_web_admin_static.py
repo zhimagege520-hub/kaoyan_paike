@@ -67,10 +67,30 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertNotIn("RULE_LONG_CAMP_OPEN_NORMAL", body)
         self.assertIn('season_window_id: season.season_window_id || ""', body)
         self.assertIn("window_name: windowName", body)
-        self.assertIn('start_date: ""', body)
-        self.assertIn('end_date: ""', body)
+        self.assertNotIn("rule_name:", body)
+        self.assertNotIn("scope_type:", body)
+        self.assertNotIn("product_ids:", body)
+        self.assertNotIn("product_name_keywords:", body)
+        self.assertNotIn('start_date: ""', body)
+        self.assertNotIn('end_date: ""', body)
+        self.assertNotIn("block_hours_override:", body)
         self.assertIn("same_half_day_4h_same_teacher_required: blockHours >= 4", body)
         self.assertIn('"RULE_WYQ_WINTER_WEEKEND_DAY"', body)
+
+    def test_product_rule_editor_writes_current_fields_only(self) -> None:
+        source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('data-field="product_id"', source)
+        self.assertIn('data-field="season_window_id"', source)
+        self.assertIn('data-field="block_hours"', source)
+        self.assertNotIn('data-field="rule_name"', source)
+        self.assertNotIn('data-field="scope_type"', source)
+        self.assertNotIn('data-field="product_name_keywords"', source)
+        self.assertNotIn("产品 / 关键词", source)
+        self.assertNotIn("匹配方式", source)
+        self.assertNotIn("rule.product_ids =", source)
+        self.assertNotIn("rule.scope_type =", source)
+        self.assertNotIn("rule.block_hours_override =", source)
 
     def test_time_slot_summary_uses_current_slot_range(self) -> None:
         source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")

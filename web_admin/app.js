@@ -796,18 +796,6 @@ function seasonWindowIdFromName(windowName) {
   return seasonWindowSelectOptions().find((item) => item.label === windowName)?.value || "";
 }
 
-function ruleScopeTypes() {
-  return [
-    { id: "keywords", name: "产品名称包含" },
-    { id: "product_ids", name: "指定产品" },
-    { id: "all", name: "全部产品" },
-  ];
-}
-
-function ruleScopeSelectOptions() {
-  return ruleScopeTypes().map((item) => ({ value: item.id, label: item.name }));
-}
-
 function productName(productId) {
   return products().find((product) => product.id === productId)?.name || productId || "";
 }
@@ -1818,7 +1806,6 @@ function syncProductId(oldId, newId) {
   }
   for (const rule of state.product_schedule_rules) {
     if (rule.product_id === oldId) rule.product_id = newId;
-    rule.product_ids = arrayValues(rule.product_ids).map((id) => (id === oldId ? newId : id));
   }
   for (const cls of state.classes) {
     if (cls.product_id === oldId) cls.product_id = newId;
@@ -1846,8 +1833,8 @@ function deleteProductAtIndex(index) {
     if (rule.product_id === product.id) {
       rule.product_id = "";
       rule.product_name = "";
+      rule.sub_product = "";
     }
-    rule.product_ids = arrayValues(rule.product_ids).filter((id) => id !== product.id);
   }
   for (const cls of linkedClasses) {
     cls.product_id = "";
@@ -3282,10 +3269,11 @@ function renderOverview() {
   const classesMissingTeachers = state.classes.filter((cls) => !cls.teacher_assignments?.length).length;
   const rulesCount = (state.product_schedule_rules || []).length;
   const rulesMissingWindow = (state.product_schedule_rules || []).filter((rule) => {
-    return !(rule.season_window_id || rule.window_name)
+    return !rule.product_id
+      || !(rule.season_window_id || rule.window_name)
       || !arrayValues(rule.allowed_periods).length
       || !arrayValues(rule.allowed_weekdays).length
-      || !Number(rule.block_hours || rule.block_hours_override || 0);
+      || !Number(rule.block_hours || 0);
   }).length;
   const blackoutCount = (state.global_blackout_dates || []).filter((item) => item.is_active !== false).length;
   const activeConflictGroups = (state.class_conflict_groups || []).filter(conflictGroupIsActive).length;
@@ -4466,10 +4454,11 @@ function ruleSeasonWindowName(rule) {
 }
 
 function ruleMissingRequiredFields(rule) {
-  return !ruleSeasonWindowId(rule)
+  return !rule.product_id
+    || !ruleSeasonWindowId(rule)
     || !arrayValues(rule.allowed_periods).length
     || !arrayValues(rule.allowed_weekdays).length
-    || !Number(rule.block_hours || rule.block_hours_override || 0);
+    || !Number(rule.block_hours || 0);
 }
 
 function ruleWindowFilterOptions(rows) {
@@ -4485,11 +4474,10 @@ function ruleDeliveryFilterOptions(rows) {
 function ruleSearchText(rule) {
   return [
     rule.rule_id,
-    rule.rule_name,
     rule.product_id,
     productName(rule.product_id),
-    ...arrayValues(rule.product_ids).map((id) => `${id} ${productName(id)}`),
-    ...arrayValues(rule.product_name_keywords),
+    rule.product_name,
+    rule.sub_product,
     ruleSeasonWindowName(rule),
     rule.delivery_mode,
     ...arrayValues(rule.allowed_weekdays),
@@ -4510,33 +4498,6 @@ function ruleRowsForDisplay(rows) {
       if (selected.ruleIssueFilter === "complete") return !ruleMissingRequiredFields(rule);
       return true;
     });
-}
-
-function ruleScopeType(rule) {
-  if (rule.scope_type) return rule.scope_type;
-  if (rule.product_id || arrayValues(rule.product_ids).length) return "product_ids";
-  if (arrayValues(rule.product_name_keywords).length) return "keywords";
-  return "product_ids";
-}
-
-function ruleScopeControl(rule, index) {
-  const scopeType = ruleScopeType(rule);
-  const selectedProductId = rule.product_id || arrayValues(rule.product_ids)[0] || "";
-  if (scopeType === "all") {
-    return `<div class="rule-scope-stack"><span class="field-caption">适用于全部产品</span></div>`;
-  }
-  if (scopeType === "keywords") {
-    return `
-      <div class="rule-scope-stack">
-        <input data-list="product_schedule_rules" data-index="${index}" data-field="product_name_keywords" value="${html(listText(rule.product_name_keywords))}" placeholder="关键词|关键词">
-      </div>
-    `;
-  }
-  return `
-    <div class="rule-scope-stack">
-      <select data-list="product_schedule_rules" data-index="${index}" data-field="product_id">${selectOptions(products(), selectedProductId, "选择产品")}</select>
-    </div>
-  `;
 }
 
 function ruleGuideHtml() {
@@ -4606,8 +4567,6 @@ function ruleTable(rowEntries) {
       <table>
         <colgroup>
           <col style="width: 82px">
-          <col style="width: 220px">
-          <col style="width: 126px">
           <col style="width: 300px">
           <col style="width: 128px">
           <col style="width: 104px">
@@ -4627,7 +4586,6 @@ function ruleTable(rowEntries) {
         </colgroup>
         <thead>
           <tr class="column-group-row">
-            <th colspan="2">规则</th>
             <th colspan="2">适用产品</th>
             <th colspan="2">窗口与授课</th>
             <th colspan="2">可排时间</th>
@@ -4637,9 +4595,7 @@ function ruleTable(rowEntries) {
           </tr>
           <tr>
             <th>状态</th>
-            <th>规则名称</th>
-            <th>匹配方式</th>
-            <th>产品 / 关键词</th>
+            <th>产品</th>
             <th>季节窗口</th>
             <th>授课形式</th>
             <th>可排星期</th>
@@ -4666,16 +4622,15 @@ function ruleTable(rowEntries) {
                 <tr class="${missing ? "missing" : "complete"}">
                   <td><span class="rule-status-pill ${missing ? "missing" : "complete"}">${html(missing ? "待补齐" : "已完整")}</span></td>
                   <td>
-                    <input data-list="product_schedule_rules" data-index="${index}" data-field="rule_name" value="${html(rule.rule_name || rule.rule_id)}" placeholder="规则名称">
+                    <select data-list="product_schedule_rules" data-index="${index}" data-field="product_id">${selectOptions(products(), rule.product_id, "选择产品")}</select>
+                    ${rule.product_name ? `<span class="field-caption">${html(rule.product_name)}</span>` : ""}
                     ${ruleId ? `<span class="field-caption">${html(ruleId)}</span>` : ""}
                   </td>
-                  <td><select data-list="product_schedule_rules" data-index="${index}" data-field="scope_type">${selectLabeledOptions(ruleScopeSelectOptions(), ruleScopeType(rule), "匹配方式")}</select></td>
-                  <td>${ruleScopeControl(rule, index)}</td>
                   <td><select data-list="product_schedule_rules" data-index="${index}" data-field="season_window_id">${selectLabeledOptions(seasonWindowSelectOptions(), ruleSeasonWindowId(rule), "季节")}</select></td>
                   <td><select data-list="product_schedule_rules" data-index="${index}" data-field="delivery_mode">${selectOptions(["面授", "直播", "混合"], rule.delivery_mode, "形式")}</select></td>
                   <td>${listCheckboxOptions("product_schedule_rules", index, "allowed_weekdays", weekdays(), rule.allowed_weekdays)}</td>
                   <td>${listCheckboxOptions("product_schedule_rules", index, "allowed_periods", schedulePeriods(), rule.allowed_periods)}</td>
-                  <td><input type="number" step="0.5" data-list="product_schedule_rules" data-index="${index}" data-field="block_hours" value="${html(rule.block_hours || rule.block_hours_override || "")}" placeholder="小时"></td>
+                  <td><input type="number" step="0.5" data-list="product_schedule_rules" data-index="${index}" data-field="block_hours" value="${html(rule.block_hours || "")}" placeholder="小时"></td>
                   <td><input type="number" data-list="product_schedule_rules" data-index="${index}" data-field="lessons_per_block" value="${html(rule.lessons_per_block || "")}" placeholder="节数"></td>
                   <td><input type="number" step="0.5" data-list="product_schedule_rules" data-index="${index}" data-field="max_hours_per_class_per_day" value="${html(rule.max_hours_per_class_per_day || "")}" placeholder="小时"></td>
                   <td><input type="number" data-list="product_schedule_rules" data-index="${index}" data-field="max_blocks_per_class_per_day" value="${html(rule.max_blocks_per_class_per_day || "")}" placeholder="次数"></td>
@@ -5768,10 +5723,7 @@ function addRule() {
   selected.ruleIssueFilter = "";
   state.product_schedule_rules.push({
     rule_id: `RULE_${Date.now()}`,
-    rule_name: "新增排课规则",
-    scope_type: "product_ids",
     product_id: "",
-    product_ids: [],
     product_name: "",
     sub_product: "",
     season_window_id: "",
@@ -5788,7 +5740,6 @@ function addRule() {
     max_weekly_hours: "",
     same_half_day_block_required: true,
     same_half_day_4h_same_teacher_required: false,
-    block_hours_override: 2,
     notes: "",
   });
   render();
@@ -5837,31 +5788,24 @@ function defaultScheduleRuleTemplates() {
   const tueFri = ["周二", "周三", "周四", "周五"];
   const satSun = ["周六", "周日"];
   const wedSatSun = ["周三", "周六", "周日"];
+  const productMatches = (keywords) => products().filter((product) => {
+    const productText = [product.id, product.name, product.product_line, product.sub_product, product.subject, product.course_nature].filter(Boolean).join(" ");
+    return keywords.some((keyword) => productText.includes(keyword));
+  });
   const rule = (id, name, keywords, windowName, periods, weekdaysValue, hours, notes, extra = {}) => {
     const season = seasonWindowDefaults[windowName] || {};
     const blockHours = Number(hours || 0);
-    return {
-      rule_id: id,
-      rule_name: name,
-      scope_type: "keywords",
-      product_id: "",
-      product_ids: [],
-      product_name: "",
-      product_name_keywords: keywords,
-      subject: "",
-      stage: "",
-      course_module: "",
-      course_group: "",
+    return productMatches(keywords).map((product) => ({
+      rule_id: `${id}_${product.id}`,
+      product_id: product.id || "",
+      product_name: product.name || product.id || "",
+      sub_product: product.sub_product || "",
       season_window_id: season.season_window_id || "",
       window_name: windowName,
       effective_after_class_start: true,
       delivery_mode: periods.includes("EVENING") && periods.length === 1 ? "直播" : "面授",
-      start_date: "",
-      end_date: "",
       allowed_periods: periods,
       allowed_weekdays: weekdaysValue,
-      excluded_weekdays: [],
-      exception_weekdays: [],
       block_hours: blockHours,
       lessons_per_block: blockHours >= 4 ? 2 : 1,
       max_hours_per_class_per_day: blockHours >= 4 ? 4 : blockHours,
@@ -5870,10 +5814,9 @@ function defaultScheduleRuleTemplates() {
       max_weekly_hours: "",
       same_half_day_block_required: blockHours >= 4,
       same_half_day_4h_same_teacher_required: blockHours >= 4,
-      block_hours_override: "",
-      notes,
+      notes: `${name}；${notes}`,
       ...extra,
-    };
+    }));
   };
 
   return [
@@ -5889,13 +5832,19 @@ function defaultScheduleRuleTemplates() {
     rule("RULE_WYS_AUTUMN_WED_WEEKEND_DAY", "无忧暑：秋季周三/周末白天", ["无忧暑"], "秋季", day, wedSatSun, 4, "秋季每周三、周六、周日白天排课。"),
     rule("RULE_SJY_SUMMER_DAY", "暑假营：暑假白天", ["暑假营"], "暑假", day, monSat, 4, "暑假每周一到周六白天排课。"),
     rule("RULE_SJY_AUTUMN_EVENING", "暑假营：秋季晚上", ["暑假营"], "秋季", evening, tueFri, 2, "秋季每周二到周五晚上排课。"),
-  ];
+  ].flat();
 }
 
 function loadScheduleRuleTemplates() {
   if (state.product_schedule_rules.length && !confirm("会用当前整理后的规则模板替换现有产品排课规则，是否继续？")) return;
-  state.product_schedule_rules = defaultScheduleRuleTemplates();
-  showStatus("已载入整理后的产品排课规则模板，记得点击“保存数据修改”。", "ok");
+  const templates = defaultScheduleRuleTemplates();
+  state.product_schedule_rules = templates;
+  showStatus(
+    templates.length
+      ? `已按当前产品展开 ${templates.length} 条产品窗口规则，记得点击“保存数据修改”。`
+      : "没有找到可匹配的产品，未生成产品窗口规则。",
+    templates.length ? "ok" : "warning",
+  );
   render();
 }
 
@@ -6503,9 +6452,6 @@ function handleValueChange(target, event = null) {
         : target.type === "number"
           ? Number(target.value || 0)
           : target.value;
-    if (listName === "product_schedule_rules" && field === "product_name_keywords") {
-      value = arrayValues(value);
-    }
     if (listName === "business_product_mappings" && field === "class_name_keywords") {
       value = arrayValues(value);
     }
@@ -6607,17 +6553,12 @@ function handleValueChange(target, event = null) {
     }
     if (target.dataset.list === "product_schedule_rules" && target.dataset.field === "product_id") {
       const rule = state.product_schedule_rules[Number(target.dataset.index)];
-      rule.product_name = productName(rule.product_id);
-      rule.product_ids = rule.product_id ? [rule.product_id] : [];
-      rule.scope_type = "product_ids";
-      rule.product_name_keywords = [];
-    }
-    if (target.dataset.list === "product_schedule_rules" && target.dataset.field === "product_name_keywords") {
-      const rule = state.product_schedule_rules[Number(target.dataset.index)];
-      rule.scope_type = "keywords";
-      rule.product_id = "";
-      rule.product_ids = [];
-      rule.product_name = "";
+      const product = productById(rule.product_id);
+      rule.product_name = product?.name || productName(rule.product_id);
+      rule.sub_product = product?.sub_product || "";
+      delete rule.product_ids;
+      delete rule.scope_type;
+      delete rule.product_name_keywords;
     }
     if (target.dataset.list === "product_schedule_rules" && target.dataset.field === "season_window_id") {
       const rule = state.product_schedule_rules[Number(target.dataset.index)];
@@ -6625,26 +6566,7 @@ function handleValueChange(target, event = null) {
     }
     if (target.dataset.list === "product_schedule_rules" && target.dataset.field === "block_hours") {
       const rule = state.product_schedule_rules[Number(target.dataset.index)];
-      rule.block_hours_override = rule.block_hours;
-    }
-    if (target.dataset.list === "product_schedule_rules" && target.dataset.field === "scope_type") {
-      const rule = state.product_schedule_rules[Number(target.dataset.index)];
-      if (rule.scope_type === "all") {
-        rule.product_id = "";
-        rule.product_ids = [];
-        rule.product_name = "";
-        rule.product_name_keywords = [];
-      }
-      if (rule.scope_type === "keywords") {
-        rule.product_id = "";
-        rule.product_ids = [];
-        rule.product_name = "";
-      }
-      if (rule.scope_type === "product_ids") {
-        rule.product_name_keywords = [];
-      }
-      renderRules();
-      return;
+      delete rule.block_hours_override;
     }
     if (target.dataset.list === "product_courses") {
       const course = state.product_courses[Number(target.dataset.index)];
