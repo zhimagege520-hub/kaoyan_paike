@@ -1298,9 +1298,16 @@ function normalizeScheduleMode(value, inheritFromClassId = "", actualScheduledCl
   return text || "独立排课";
 }
 
+function assignmentScheduleModeValue(assignment) {
+  if (String(assignment.class_schedule_mode || "").trim() || String(assignment.actual_scheduled_class_id || "").trim()) {
+    return assignment.class_schedule_mode || "";
+  }
+  return assignment.schedule_mode || assignment.assignment_mode || "";
+}
+
 function assignmentScheduleMode(assignment, cls = currentClass()) {
   return normalizeScheduleMode(
-    assignment.class_schedule_mode || assignment.schedule_mode,
+    assignmentScheduleModeValue(assignment),
     assignment.inherit_from_class_id,
     assignment.actual_scheduled_class_id,
     cls?.id || assignment.class_id || "",

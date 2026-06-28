@@ -26,9 +26,13 @@ class WebAdminStaticTest(unittest.TestCase):
     def test_class_teacher_mode_frontend_prefers_current_fields(self) -> None:
         source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
 
-        self.assertIn("assignment.class_schedule_mode || assignment.schedule_mode", source)
+        self.assertIn("function assignmentScheduleModeValue", source)
+        self.assertIn('String(assignment.actual_scheduled_class_id || "").trim()', source)
+        self.assertIn("return assignment.schedule_mode || assignment.assignment_mode || \"\";", source)
+        self.assertIn("assignmentScheduleModeValue(assignment)", source)
         self.assertIn("assignment.actual_scheduled_class_id || assignment.inherit_from_class_id", source)
         self.assertIn("assignmentScheduleMode(exactExisting, cls)", source)
+        self.assertNotIn("assignment.class_schedule_mode || assignment.schedule_mode", source)
         self.assertNotIn("assignment.schedule_mode || assignment.class_schedule_mode", source)
         self.assertNotIn("exactExisting.schedule_mode || exactExisting.class_schedule_mode", source)
 
