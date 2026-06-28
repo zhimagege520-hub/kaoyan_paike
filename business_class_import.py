@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import re
-import csv
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 import data_admin_server
+from scripts.csv_utils import write_csv_rows
 
 
 BUSINESS_PROJECT = "考研/考博"
@@ -1427,12 +1427,7 @@ def lesson_to_row(lesson: ScheduledLesson) -> Dict[str, Any]:
 
 
 def write_rows_csv(path: Path, rows: Sequence[Mapping[str, Any]], fieldnames: Sequence[str]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({field: row.get(field, "") for field in fieldnames})
+    write_csv_rows(path, fieldnames, rows, encoding="utf-8")
 
 
 def product_course_hour_rows(lessons: Sequence[ScheduledLesson]) -> List[Dict[str, Any]]:

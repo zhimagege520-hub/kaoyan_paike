@@ -576,6 +576,7 @@ class BusinessClassImportTest(unittest.TestCase):
 
             self.assertEqual([cls["id"] for cls in result.payload["classes"]], ["C_27"])
             learned_path = output_dir / "learned_class_teacher_assignments_20260430_140000.csv"
+            self.assertFalse(learned_path.read_bytes().startswith(b"\xef\xbb\xbf"))
             learned = learned_path.read_text(encoding="utf-8")
             self.assertIn("C_26", learned)
             with learned_path.open(encoding="utf-8") as handle:

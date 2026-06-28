@@ -41,6 +41,7 @@ class ReleaseStaticTest(unittest.TestCase):
 
     def test_release_path_modules_use_csv_utils_for_csv_io(self) -> None:
         modules = [
+            ROOT / "business_class_import.py",
             ROOT / "formal_template.py",
             ROOT / "scheduler.py",
             ROOT / "run_scheduling_pipeline.py",
