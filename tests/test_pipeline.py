@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 from collections import Counter
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
@@ -1653,6 +1654,62 @@ class SchedulingPipelineTest(unittest.TestCase):
 
         self.assertEqual(message, "班级 C1 的产品 P1 缺少课程老师安排: 英语/基础/阅读类、政治/基础/毛史类")
         self.assertEqual(message.count("英语/基础/阅读类"), 1)
+
+    def test_aggregate_class_requirements_merges_partial_modules_without_losing_constraints(self) -> None:
+        rule = scheduler.ScheduleRule(
+            subject="英语",
+            stage="基础",
+            course_module=None,
+            course_group="阅读类",
+            start_date=None,
+            end_date=None,
+            allowed_periods={"AM"},
+            allowed_weekdays=None,
+            excluded_weekdays=None,
+            block_hours=4,
+            season_window_ids={"WINDOW_SUMMER"},
+        )
+        first = scheduler.Requirement(
+            subject_category="公共课",
+            subject="英语",
+            quarter="暑假",
+            stage="基础",
+            course_module="词汇",
+            course_group="阅读类",
+            teacher_id="T1",
+            teacher_name="张老师",
+            total_hours=2,
+            block_hours=4,
+            course_code="ENG_WORD",
+            course_name="词汇",
+            room_ids={"R1", "R2"},
+            start_date="2026-07-01",
+            end_date="2026-07-31",
+            allowed_periods={"AM"},
+            allowed_weekdays={0, 2},
+            excluded_weekdays={6},
+            schedule_rules=(rule,),
+        )
+        second = replace(first, course_module="语法", course_code="ENG_GRAMMAR", course_name="语法")
+        regular = replace(first, subject="政治", course_module="毛史", course_group="毛史类", total_hours=4, course_code="POL", course_name="政治")
+
+        requirements = scheduler.aggregate_class_requirements("C1", "P1", [first, second, regular])
+
+        self.assertEqual(len(requirements), 2)
+        merged = next(requirement for requirement in requirements if requirement.subject == "英语")
+
+        self.assertEqual(merged.course_module, "词汇+语法")
+        self.assertEqual(merged.total_hours, 4)
+        self.assertEqual(merged.block_hours, 4)
+        self.assertEqual(merged.course_code, "ENG_GRAMMAR|ENG_WORD")
+        self.assertEqual(merged.course_name, "词汇|语法")
+        self.assertEqual(merged.teacher_id, "T1")
+        self.assertEqual(merged.room_ids, {"R1", "R2"})
+        self.assertEqual(merged.allowed_periods, {"AM"})
+        self.assertEqual(merged.allowed_weekdays, {0, 2})
+        self.assertEqual(merged.excluded_weekdays, {6})
+        self.assertEqual(merged.schedule_rules, (rule,))
+        self.assertIn(regular, requirements)
 
     def test_parse_class_window_constraints_expands_rooms_sorts_and_validates_periods(self) -> None:
         rooms = {

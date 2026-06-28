@@ -1779,30 +1779,57 @@ def aggregate_class_requirements(
     product_id: str,
     requirements: List[Requirement],
 ) -> List[Requirement]:
+    grouped = grouped_partial_requirements(class_id, product_id, requirements)
+    consumed, aggregated = aggregate_partial_requirement_groups(class_id, product_id, grouped)
+    return unconsumed_requirements(requirements, consumed) + aggregated
+
+
+def grouped_partial_requirements(
+    class_id: str,
+    product_id: str,
+    requirements: List[Requirement],
+) -> Dict[Tuple, List[Requirement]]:
     grouped: Dict[Tuple, List[Requirement]] = {}
     for requirement in requirements:
         if requirement.total_hours % requirement.block_hours == 0:
             validate_hours(requirement.total_hours, requirement.block_hours, requirement_label(class_id, product_id, requirement))
             continue
         grouped.setdefault(aggregation_key(requirement), []).append(requirement)
+    return grouped
 
+
+def aggregate_partial_requirement_groups(
+    class_id: str,
+    product_id: str,
+    grouped: Dict[Tuple, List[Requirement]],
+) -> Tuple[Set[int], List[Requirement]]:
     consumed: Set[int] = set()
     aggregated: List[Requirement] = []
     for group in grouped.values():
-        if len(group) < 2:
-            requirement = group[0]
-            raise ValueError(f"{requirement_label(class_id, product_id, requirement)} 的 total_hours 必须能被 block_hours 整除")
-        total_hours = sum(requirement.total_hours for requirement in group)
-        block_hours = group[0].block_hours
-        label = f"班级 {class_id}/产品 {product_id}/{group[0].subject}/{group[0].stage or ''}/{group[0].course_group or ''}"
-        validate_hours(total_hours, block_hours, label)
+        total_hours = validate_partial_requirement_group(class_id, product_id, group)
         for requirement in group:
             consumed.add(id(requirement))
         aggregated.append(merge_requirements_for_group(group, total_hours))
+    return consumed, aggregated
 
-    result = [requirement for requirement in requirements if id(requirement) not in consumed]
-    result.extend(aggregated)
-    return result
+
+def validate_partial_requirement_group(
+    class_id: str,
+    product_id: str,
+    group: List[Requirement],
+) -> int:
+    if len(group) < 2:
+        requirement = group[0]
+        raise ValueError(f"{requirement_label(class_id, product_id, requirement)} 的 total_hours 必须能被 block_hours 整除")
+    total_hours = sum(requirement.total_hours for requirement in group)
+    block_hours = group[0].block_hours
+    label = f"班级 {class_id}/产品 {product_id}/{group[0].subject}/{group[0].stage or ''}/{group[0].course_group or ''}"
+    validate_hours(total_hours, block_hours, label)
+    return total_hours
+
+
+def unconsumed_requirements(requirements: List[Requirement], consumed: Set[int]) -> List[Requirement]:
+    return [requirement for requirement in requirements if id(requirement) not in consumed]
 
 
 def requirement_label(class_id: str, product_id: str, requirement: Requirement) -> str:
