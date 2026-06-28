@@ -1390,6 +1390,64 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(requirement.course_code, "ENG001")
         self.assertEqual(requirement.course_name, "")
 
+    def test_teacher_assignment_fallback_requires_same_course_group(self) -> None:
+        base_requirement = scheduler.ProductRequirement(
+            subject_category="公共课",
+            subject="英语",
+            quarter=None,
+            stage="基础",
+            course_module="词汇",
+            course_group="阅读类",
+            total_hours=2,
+            block_hours=2,
+        )
+        reinforced_requirement = scheduler.ProductRequirement(
+            subject_category="公共课",
+            subject="英语",
+            quarter=None,
+            stage="强化",
+            course_module="阅读",
+            course_group="阅读类",
+            total_hours=2,
+            block_hours=2,
+        )
+        writing_requirement = scheduler.ProductRequirement(
+            subject_category="公共课",
+            subject="英语",
+            quarter=None,
+            stage="强化",
+            course_module="写作",
+            course_group="写作类",
+            total_hours=2,
+            block_hours=2,
+        )
+        assignments = {
+            ("英语", "基础", "", "阅读类"): scheduler.TeacherAssignment(
+                product_id="P1",
+                subject="英语",
+                stage="基础",
+                course_module=None,
+                course_group="阅读类",
+                teacher_id="T_BASE",
+                teacher_name="基础老师",
+            )
+        }
+        requirements = [base_requirement, reinforced_requirement, writing_requirement]
+
+        reinforced_assignment = scheduler.resolve_teacher_assignment_for_requirement(
+            reinforced_requirement,
+            assignments,
+            requirements,
+        )
+        writing_assignment = scheduler.resolve_teacher_assignment_for_requirement(
+            writing_requirement,
+            assignments,
+            requirements,
+        )
+
+        self.assertEqual(reinforced_assignment.teacher_id if reinforced_assignment else "", "T_BASE")
+        self.assertIsNone(writing_assignment)
+
     def test_schedule_fallback_backtracking_uses_search_state_assignments(self) -> None:
         payload = {
             "time_slots": [

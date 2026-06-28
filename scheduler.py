@@ -1785,34 +1785,52 @@ def resolve_teacher_assignment_for_requirement(
     assignments: Dict[Tuple[str, str, str, str], TeacherAssignment],
     product_requirements: List[ProductRequirement],
 ) -> Optional[TeacherAssignment]:
-    subject = requirement.subject
-    stage = requirement.stage or ""
-    quarter = requirement.quarter or ""
-    module = requirement.course_module or ""
-    group = requirement.course_group or ""
-    stage_keys = []
-    for value in (stage, quarter, ""):
-        if value not in stage_keys:
-            stage_keys.append(value)
-    exact_keys = []
-    for stage_key in stage_keys:
-        exact_keys.extend(
-            [
-                (subject, stage_key, module, group),
-                (subject, stage_key, "", group),
-                ("", stage_key, module, group),
-                ("", stage_key, "", group),
-                (subject, stage_key, module, ""),
-                (subject, stage_key, "", ""),
-                ("", stage_key, "", ""),
-            ]
-        )
-    for key in exact_keys:
+    for key in teacher_assignment_exact_keys(requirement):
         assignment = assignments.get(key)
         if assignment:
             return assignment
+    return fallback_teacher_assignment_from_prior_stage(requirement, assignments, product_requirements)
 
+
+def teacher_assignment_stage_keys(requirement: ProductRequirement) -> List[str]:
+    stage_keys: List[str] = []
+    for value in (requirement.stage or "", requirement.quarter or "", ""):
+        if value not in stage_keys:
+            stage_keys.append(value)
+    return stage_keys
+
+
+def teacher_assignment_exact_keys(requirement: ProductRequirement) -> List[Tuple[str, str, str, str]]:
+    subject = requirement.subject
+    module = requirement.course_module or ""
+    group = requirement.course_group or ""
+    exact_keys: List[Tuple[str, str, str, str]] = []
+    seen: Set[Tuple[str, str, str, str]] = set()
+    for stage_key in teacher_assignment_stage_keys(requirement):
+        for key in (
+            (subject, stage_key, module, group),
+            (subject, stage_key, "", group),
+            ("", stage_key, module, group),
+            ("", stage_key, "", group),
+            (subject, stage_key, module, ""),
+            (subject, stage_key, "", ""),
+            ("", stage_key, "", ""),
+        ):
+            if key not in seen:
+                exact_keys.append(key)
+                seen.add(key)
+    return exact_keys
+
+
+def fallback_teacher_assignment_from_prior_stage(
+    requirement: ProductRequirement,
+    assignments: Dict[Tuple[str, str, str, str], TeacherAssignment],
+    product_requirements: List[ProductRequirement],
+) -> Optional[TeacherAssignment]:
     stage_rank = stage_rank_for_requirements(product_requirements)
+    subject = requirement.subject
+    stage = requirement.stage or ""
+    group = requirement.course_group or ""
     current_rank = stage_rank.get(stage, len(stage_rank))
     fallback_candidates: List[Tuple[int, int, int, TeacherAssignment]] = []
     for (assignment_subject, assignment_stage, assignment_module, assignment_group), assignment in assignments.items():
