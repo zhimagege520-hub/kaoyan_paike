@@ -13,6 +13,7 @@ import scheduler
 from generate_time_slots import generate_time_slots, parse_weekdays
 from run_scheduling_pipeline import (
     PipelineError,
+    TABLE_FIELDNAMES,
     build_parser,
     load_source_tables,
     missing_teacher_rows_for_requirements,
@@ -712,6 +713,32 @@ class SchedulingPipelineTest(unittest.TestCase):
             self.assertNotIn(old_field, header)
         self.assertIn("class_schedule_mode", header)
         self.assertIn("actual_scheduled_class_id", header)
+
+    def test_teacher_fieldnames_are_shared_by_admin_and_pipeline(self) -> None:
+        self.assertEqual(data_admin_server.TEACHER_FIELDNAMES, TABLE_FIELDNAMES["teachers"])
+        payload = {
+            "teachers": [
+                {
+                    "employee_id": "100001",
+                    "name": "张老师",
+                    "project": "考研",
+                    "teacher_role": "教师",
+                    "employment_type": "全职",
+                    "primary_subject": "英语",
+                    "employment_status": "在职",
+                }
+            ],
+            "products": [],
+            "product_courses": [],
+            "classes": [],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            data_admin_server.DATA_DIR = Path(tmp) / "data"
+            data_admin_server.save_state(payload)
+            with (data_admin_server.DATA_DIR / "teachers.csv").open(encoding="utf-8") as handle:
+                header = next(csv.reader(handle))
+
+        self.assertEqual(data_admin_server.TEACHER_FIELDNAMES, header)
 
     def test_business_product_mapping_saves_current_local_product_field_only(self) -> None:
         payload = {

@@ -187,19 +187,6 @@ TABLE_ALIASES = {
     "固定课表": "locked_scheduled_lessons",
 }
 
-TEACHER_FIELDNAMES = [
-    "employee_id",
-    "name",
-    "gender",
-    "project",
-    "primary_subject",
-    "subject_type",
-    "teacher_role",
-    "employment_type",
-    "contract_status",
-    "employment_status",
-    "notes",
-]
 BLACKOUT_FIELDNAMES = ["id", "name", "start_date", "end_date", "is_active", "notes"]
 
 TABLE_FIELDNAMES = {
@@ -207,7 +194,7 @@ TABLE_FIELDNAMES = {
     "time_slots": data_admin_server.TIME_SLOT_FIELDNAMES,
     "teaching_areas": data_admin_server.TEACHING_AREA_FIELDNAMES,
     "rooms": data_admin_server.ROOM_FIELDNAMES,
-    "teachers": TEACHER_FIELDNAMES,
+    "teachers": data_admin_server.TEACHER_FIELDNAMES,
     "teacher_unavailability": data_admin_server.TEACHER_UNAVAILABILITY_FIELDNAMES,
     "products": data_admin_server.PRODUCT_FIELDNAMES,
     "product_courses": data_admin_server.PRODUCT_COURSE_FIELDNAMES,

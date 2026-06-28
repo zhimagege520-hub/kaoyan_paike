@@ -129,6 +129,19 @@ ROOM_FIELDNAMES = [
     "data_source",
     "notes",
 ]
+TEACHER_FIELDNAMES = [
+    "employee_id",
+    "name",
+    "gender",
+    "project",
+    "teacher_role",
+    "employment_type",
+    "primary_subject",
+    "subject_type",
+    "contract_status",
+    "employment_status",
+    "notes",
+]
 TEACHING_AREA_LINK_FIELDNAMES = [
     "id",
     "from_teaching_area_id",
@@ -2189,19 +2202,7 @@ def write_csvs(state: Dict[str, Any]) -> None:
     write_csv(
         DATA_DIR / "teachers.csv",
         state["teachers"],
-        [
-            "employee_id",
-            "name",
-            "gender",
-            "project",
-            "teacher_role",
-            "employment_type",
-            "primary_subject",
-            "subject_type",
-            "contract_status",
-            "employment_status",
-            "notes",
-        ],
+        TEACHER_FIELDNAMES,
     )
     write_csv(
         DATA_DIR / "teacher_unavailability.csv",
