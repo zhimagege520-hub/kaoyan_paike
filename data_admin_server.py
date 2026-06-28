@@ -1663,78 +1663,110 @@ def resolve_exact_teacher_assignment(
 
 
 def sync_class_teacher_assignments(state: Dict[str, Any], class_ids: Optional[Set[str]] = None) -> Dict[str, int]:
+    courses_by_product = product_courses_by_product(state)
+    stats = {"classes": 0, "assignments": 0}
+    for cls in state.get("classes", []):
+        if class_ids is not None and normalize_text(cls.get("id")) not in class_ids:
+            continue
+        if sync_class_teacher_assignment_rows(state, cls, courses_by_product):
+            stats["classes"] += 1
+            stats["assignments"] += len(cls.get("teacher_assignments", []))
+    return stats
+
+
+def product_courses_by_product(state: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
     courses_by_product: Dict[str, List[Dict[str, Any]]] = {}
     for course in state.get("product_courses", []):
         product_id = normalize_text(course.get("product_id"))
         if product_id:
             courses_by_product.setdefault(product_id, []).append(course)
+    return courses_by_product
 
-    stats = {"classes": 0, "assignments": 0}
-    for cls in state.get("classes", []):
-        class_id = normalize_text(cls.get("id"))
-        if class_ids is not None and class_id not in class_ids:
-            continue
-        product_id = normalize_text(cls.get("product_id"))
-        if not product_id:
-            continue
 
-        class_subject = normalize_text(cls.get("subject"))
-        selected_stages = set(split_id_list(cls.get("stages")))
-        product_courses = [
-            course
-            for course in courses_by_product.get(product_id, [])
-            if (not class_subject or normalize_text(course.get("subject")) == class_subject)
-            and (not selected_stages or normalize_text(course.get("stage")) in selected_stages)
-        ]
-        if not product_courses:
-            continue
+def sync_class_teacher_assignment_rows(
+    state: Dict[str, Any],
+    cls: Dict[str, Any],
+    courses_by_product: Dict[str, List[Dict[str, Any]]],
+) -> bool:
+    class_id = normalize_text(cls.get("id"))
+    product_id = normalize_text(cls.get("product_id"))
+    if not product_id:
+        return False
 
-        current: Dict[AssignmentKey, Dict[str, Any]] = {}
-        for raw_assignment in cls.get("teacher_assignments", []):
-            assignment = normalize_teacher_assignment(raw_assignment)
-            choose_current_assignment(current, teacher_assignment_key(assignment, product_id), assignment)
-            raw_key = teacher_assignment_key(assignment)
-            if raw_key[0] != product_id:
-                choose_current_assignment(current, raw_key, assignment)
-                choose_current_assignment(current, ("", raw_key[1], raw_key[2], raw_key[3]), assignment)
+    product_courses = product_courses_for_class(cls, courses_by_product.get(product_id, []))
+    if not product_courses:
+        return False
 
-        grouped_courses: Dict[AssignmentKey, Dict[str, Any]] = {}
-        for course in product_courses:
-            key = teacher_assignment_key(course, product_id)
-            grouped_courses.setdefault(key, course)
+    current = current_teacher_assignment_map(cls, product_id)
+    cls["teacher_assignments"] = [
+        synced_teacher_assignment_row(state, class_id, product_id, course, current, product_courses)
+        for course in grouped_product_courses(product_courses, product_id).values()
+    ]
+    return True
 
-        synced_assignments: List[Dict[str, Any]] = []
-        for key, course in grouped_courses.items():
-            existing = resolve_synced_teacher_assignment(course, product_id, current, product_courses)
-            exact_existing = resolve_exact_teacher_assignment(course, product_id, current)
-            schedule_mode = assignment_schedule_mode(exact_existing, class_id=class_id)
-            is_shared = schedule_mode == "共享课表"
-            reference_class_id = assignment_reference_class_id(exact_existing) if is_shared else ""
-            synced_assignments.append(
-                current_teacher_assignment_row(
-                    {
-                        "class_id": class_id,
-                        "product_id": product_id,
-                        "product_name": normalize_text(course.get("product_name")) or product_name_from_state(state, product_id),
-                        "subject": normalize_text(course.get("subject")),
-                        "stage": normalize_text(course.get("stage")),
-                        "course_group": normalize_text(course.get("course_group")),
-                        "class_schedule_mode": class_schedule_mode_display_name(schedule_mode),
-                        "actual_scheduled_class_id": reference_class_id if is_shared else class_id,
-                        "teacher_id": "" if is_shared else normalize_text(existing.get("teacher_id")),
-                        "teacher_name": "" if is_shared else normalize_text(existing.get("teacher_name")),
-                        "assignment_extra_time_requirement": ""
-                        if is_shared
-                        else normalize_text(existing.get("assignment_extra_time_requirement")),
-                        "notes": normalize_text(exact_existing.get("notes") or existing.get("notes")),
-                    },
-                    class_id=class_id,
-                )
-            )
-        cls["teacher_assignments"] = synced_assignments
-        stats["classes"] += 1
-        stats["assignments"] += len(synced_assignments)
-    return stats
+
+def product_courses_for_class(cls: Dict[str, Any], product_courses: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    class_subject = normalize_text(cls.get("subject"))
+    selected_stages = set(split_id_list(cls.get("stages") or cls.get("selected_stages")))
+    return [
+        course
+        for course in product_courses
+        if (not class_subject or normalize_text(course.get("subject")) == class_subject)
+        and (not selected_stages or normalize_text(course.get("stage")) in selected_stages)
+    ]
+
+
+def current_teacher_assignment_map(cls: Dict[str, Any], product_id: str) -> Dict[AssignmentKey, Dict[str, Any]]:
+    current: Dict[AssignmentKey, Dict[str, Any]] = {}
+    for raw_assignment in cls.get("teacher_assignments", []):
+        assignment = normalize_teacher_assignment(raw_assignment)
+        choose_current_assignment(current, teacher_assignment_key(assignment, product_id), assignment)
+        raw_key = teacher_assignment_key(assignment)
+        if raw_key[0] != product_id:
+            choose_current_assignment(current, raw_key, assignment)
+            choose_current_assignment(current, ("", raw_key[1], raw_key[2], raw_key[3]), assignment)
+    return current
+
+
+def grouped_product_courses(product_courses: List[Dict[str, Any]], product_id: str) -> Dict[AssignmentKey, Dict[str, Any]]:
+    grouped_courses: Dict[AssignmentKey, Dict[str, Any]] = {}
+    for course in product_courses:
+        grouped_courses.setdefault(teacher_assignment_key(course, product_id), course)
+    return grouped_courses
+
+
+def synced_teacher_assignment_row(
+    state: Dict[str, Any],
+    class_id: str,
+    product_id: str,
+    course: Dict[str, Any],
+    current: Dict[AssignmentKey, Dict[str, Any]],
+    product_courses: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    existing = resolve_synced_teacher_assignment(course, product_id, current, product_courses)
+    exact_existing = resolve_exact_teacher_assignment(course, product_id, current)
+    schedule_mode = assignment_schedule_mode(exact_existing, class_id=class_id)
+    is_shared = schedule_mode == "共享课表"
+    reference_class_id = assignment_reference_class_id(exact_existing) if is_shared else ""
+    return current_teacher_assignment_row(
+        {
+            "class_id": class_id,
+            "product_id": product_id,
+            "product_name": normalize_text(course.get("product_name")) or product_name_from_state(state, product_id),
+            "subject": normalize_text(course.get("subject")),
+            "stage": normalize_text(course.get("stage")),
+            "course_group": normalize_text(course.get("course_group")),
+            "class_schedule_mode": class_schedule_mode_display_name(schedule_mode),
+            "actual_scheduled_class_id": reference_class_id if is_shared else class_id,
+            "teacher_id": "" if is_shared else normalize_text(existing.get("teacher_id")),
+            "teacher_name": "" if is_shared else normalize_text(existing.get("teacher_name")),
+            "assignment_extra_time_requirement": ""
+            if is_shared
+            else normalize_text(existing.get("assignment_extra_time_requirement")),
+            "notes": normalize_text(exact_existing.get("notes") or existing.get("notes")),
+        },
+        class_id=class_id,
+    )
 
 
 def product_name_from_state(state: Dict[str, Any], product_id: str) -> str:

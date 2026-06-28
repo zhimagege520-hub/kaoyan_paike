@@ -3156,6 +3156,44 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(assignments[("基础", "阅读类")]["teacher_id"], "T1")
         self.assertEqual(assignments[("强化", "阅读类")]["teacher_id"], "T1")
 
+    def test_sync_class_teacher_assignments_uses_selected_stages_and_class_filter(self) -> None:
+        state = {
+            "products": [{"id": "P1", "name": "考研无忧秋-英语"}],
+            "product_courses": [
+                {"product_id": "P1", "product_name": "考研无忧秋-英语", "subject": "英语", "stage": "基础", "course_module": "词汇", "course_group": "阅读类"},
+                {"product_id": "P1", "product_name": "考研无忧秋-英语", "subject": "英语", "stage": "强化", "course_module": "阅读", "course_group": "阅读类"},
+                {"product_id": "P1", "product_name": "考研无忧秋-英语", "subject": "数学", "stage": "基础", "course_module": "高数", "course_group": "数学类"},
+            ],
+            "classes": [
+                {
+                    "id": "C1",
+                    "name": "英语班",
+                    "product_id": "P1",
+                    "subject": "英语",
+                    "selected_stages": ["基础"],
+                    "teacher_assignments": [
+                        {"subject": "英语", "stage": "基础", "course_group": "阅读类", "teacher_id": "T1", "teacher_name": "张老师"}
+                    ],
+                },
+                {
+                    "id": "C2",
+                    "name": "跳过班",
+                    "product_id": "P1",
+                    "subject": "英语",
+                    "selected_stages": ["基础"],
+                    "teacher_assignments": [{"teacher_id": "KEEP", "teacher_name": "保留老师"}],
+                },
+            ],
+        }
+
+        stats = data_admin_server.sync_class_teacher_assignments(state, class_ids={"C1"})
+
+        self.assertEqual(stats, {"classes": 1, "assignments": 1})
+        self.assertEqual(len(state["classes"][0]["teacher_assignments"]), 1)
+        self.assertEqual(state["classes"][0]["teacher_assignments"][0]["stage"], "基础")
+        self.assertEqual(state["classes"][0]["teacher_assignments"][0]["teacher_id"], "T1")
+        self.assertEqual(state["classes"][1]["teacher_assignments"], [{"teacher_id": "KEEP", "teacher_name": "保留老师"}])
+
     def test_blank_teacher_assignment_placeholder_is_not_schedulable(self) -> None:
         payload = {
             "time_slots": [
