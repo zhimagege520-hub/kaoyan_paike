@@ -1325,10 +1325,14 @@ def normalize_product_rule(rule: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def normalize_class(cls: Dict[str, Any]) -> Dict[str, Any]:
-    standard_capacity = normalize_int(cls.get("standard_capacity") or cls.get("standard_size"))
-    class_id = normalize_text(cls.get("id") or cls.get("class_id"))
-    class_name = normalize_text(cls.get("name") or cls.get("class_name"))
+def normalized_class_stage_fields(cls: Dict[str, Any]) -> Dict[str, List[str]]:
+    return {
+        "selected_stages": split_id_list(cls.get("selected_stages", cls.get("stages", cls.get("stage")))),
+        "stages": split_id_list(cls.get("stages", cls.get("selected_stages", cls.get("stage")))),
+    }
+
+
+def normalized_class_exam_fields(cls: Dict[str, Any]) -> Dict[str, str]:
     raw_exam_season = normalize_text(cls.get("exam_season"))
     exam_season = normalize_exam_season(raw_exam_season)
     exam_month = normalize_text(cls.get("exam_month") or cls.get("考试月份"))
@@ -1337,6 +1341,81 @@ def normalize_class(cls: Dict[str, Any]) -> Dict[str, Any]:
         exam_season = exam_season_from_month(exam_month)
     elif not exam_season and exam_month:
         exam_season = exam_season_from_month(exam_month)
+    return {"exam_season": exam_season, "exam_month": exam_month}
+
+
+def normalized_class_capacity_fields(cls: Dict[str, Any]) -> Dict[str, Any]:
+    standard_capacity = normalize_int(cls.get("standard_capacity") or cls.get("standard_size"))
+    return {
+        "standard_capacity": standard_capacity,
+        "capacity_type": normalize_text(cls.get("capacity_type")) or infer_capacity_type(standard_capacity),
+        "size": normalize_int(cls.get("size")),
+    }
+
+
+def normalized_class_date_fields(cls: Dict[str, Any]) -> Dict[str, str]:
+    return {
+        "start_date": normalize_date_text(cls.get("start_date")),
+        "start_period": normalize_text(cls.get("start_period")),
+        "first_lesson_date": normalize_date_text(cls.get("first_lesson_date") or cls.get("首课日期")),
+        "first_lesson_period": normalize_text(cls.get("first_lesson_period") or cls.get("首课时段")),
+        "end_date": normalize_date_text(cls.get("end_date")),
+        "end_period": normalize_text(cls.get("end_period")),
+    }
+
+
+def normalized_class_resource_fields(cls: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "preferred_teaching_area_ids": split_id_list(cls.get("preferred_teaching_area_ids")),
+        "preferred_room_ids": split_id_list(cls.get("preferred_room_ids")),
+        "preferred_room_is_required": normalize_bool(
+            cls.get("preferred_room_is_required")
+            or cls.get("must_use_preferred_room")
+            or cls.get("必须指定教室")
+            or cls.get("指定教室必排")
+        ),
+    }
+
+
+def normalized_class_lock_fields(cls: Dict[str, Any]) -> Dict[str, bool]:
+    manual_lock_value = (
+        cls.get("is_manual_schedule_locked")
+        or cls.get("is_schedule_locked")
+        or cls.get("schedule_locked")
+        or cls.get("课表已定")
+        or cls.get("不自动排课")
+    )
+    schedule_lock_value = (
+        cls.get("is_schedule_locked")
+        or cls.get("is_manual_schedule_locked")
+        or cls.get("schedule_locked")
+        or cls.get("课表已定")
+        or cls.get("不自动排课")
+    )
+    return {
+        "is_manual_schedule_locked": normalize_bool(manual_lock_value),
+        "is_schedule_locked": normalize_bool(schedule_lock_value),
+    }
+
+
+def normalized_class_nested_rows(cls: Dict[str, Any], class_id: str) -> Dict[str, List[Dict[str, Any]]]:
+    return {
+        "requirements": [
+            normalize_class_requirement(requirement)
+            for requirement in cls.get("requirements", [])
+            if has_requirement_content(requirement)
+        ],
+        "teacher_assignments": [
+            current_teacher_assignment_row(assignment, class_id=class_id)
+            for assignment in cls.get("teacher_assignments", [])
+            if has_assignment_content(assignment)
+        ],
+    }
+
+
+def normalize_class(cls: Dict[str, Any]) -> Dict[str, Any]:
+    class_id = normalize_text(cls.get("id") or cls.get("class_id"))
+    class_name = normalize_text(cls.get("name") or cls.get("class_name"))
     return {
         "id": class_id,
         "name": class_name,
@@ -1348,53 +1427,15 @@ def normalize_class(cls: Dict[str, Any]) -> Dict[str, Any]:
         "course_nature": normalize_text(cls.get("course_nature")),
         "subject_category": normalize_text(cls.get("subject_category")),
         "subject": normalize_text(cls.get("subject")),
-        "selected_stages": split_id_list(cls.get("selected_stages", cls.get("stages", cls.get("stage")))),
-        "stages": split_id_list(cls.get("stages", cls.get("selected_stages", cls.get("stage")))),
-        "exam_season": exam_season,
-        "exam_month": exam_month,
+        **normalized_class_stage_fields(cls),
+        **normalized_class_exam_fields(cls),
         "suite_code": normalize_text(cls.get("suite_code") or cls.get("package_code") or cls.get("套班编码")) or infer_suite_code_from_class_name(class_name),
-        "standard_capacity": standard_capacity,
-        "capacity_type": normalize_text(cls.get("capacity_type")) or infer_capacity_type(standard_capacity),
-        "size": normalize_int(cls.get("size")),
-        "start_date": normalize_date_text(cls.get("start_date")),
-        "start_period": normalize_text(cls.get("start_period")),
-        "first_lesson_date": normalize_date_text(cls.get("first_lesson_date") or cls.get("首课日期")),
-        "first_lesson_period": normalize_text(cls.get("first_lesson_period") or cls.get("首课时段")),
-        "end_date": normalize_date_text(cls.get("end_date")),
-        "end_period": normalize_text(cls.get("end_period")),
-        "preferred_teaching_area_ids": split_id_list(cls.get("preferred_teaching_area_ids")),
-        "preferred_room_ids": split_id_list(cls.get("preferred_room_ids")),
-        "preferred_room_is_required": normalize_bool(
-            cls.get("preferred_room_is_required")
-            or cls.get("must_use_preferred_room")
-            or cls.get("必须指定教室")
-            or cls.get("指定教室必排")
-        ),
-        "is_manual_schedule_locked": normalize_bool(
-            cls.get("is_manual_schedule_locked")
-            or cls.get("is_schedule_locked")
-            or cls.get("schedule_locked")
-            or cls.get("课表已定")
-            or cls.get("不自动排课")
-        ),
-        "is_schedule_locked": normalize_bool(
-            cls.get("is_schedule_locked")
-            or cls.get("is_manual_schedule_locked")
-            or cls.get("schedule_locked")
-            or cls.get("课表已定")
-            or cls.get("不自动排课")
-        ),
+        **normalized_class_capacity_fields(cls),
+        **normalized_class_date_fields(cls),
+        **normalized_class_resource_fields(cls),
+        **normalized_class_lock_fields(cls),
         "notes": normalize_text(cls.get("notes")),
-        "requirements": [
-            normalize_class_requirement(requirement)
-            for requirement in cls.get("requirements", [])
-            if has_requirement_content(requirement)
-        ],
-        "teacher_assignments": [
-            current_teacher_assignment_row(assignment, class_id=class_id)
-            for assignment in cls.get("teacher_assignments", [])
-            if has_assignment_content(assignment)
-        ],
+        **normalized_class_nested_rows(cls, class_id),
     }
 
 

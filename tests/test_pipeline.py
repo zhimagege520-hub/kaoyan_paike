@@ -2452,6 +2452,45 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(inferred["suite_code"], "2701")
         self.assertEqual(preserved["suite_code"], "MANUAL")
 
+    def test_normalize_class_keeps_template_aliases_and_nested_rows(self) -> None:
+        normalized = data_admin_server.normalize_class(
+            {
+                "class_id": "C1",
+                "class_name": "考研数学无忧寒（27届03班）",
+                "exam_season": "2026-12",
+                "standard_size": "80",
+                "stages": "基础|强化",
+                "首课日期": "2026/7/2",
+                "首课时段": "AM",
+                "preferred_teaching_area_ids": "A1|A2",
+                "preferred_room_ids": "R1|R2",
+                "必须指定教室": "是",
+                "不自动排课": "是",
+                "requirements": [{"subject": "数学", "total_hours": "4"}],
+                "teacher_assignments": [{"subject": "数学", "teacher_id": "000001", "teacher_name": "王老师"}],
+            }
+        )
+
+        self.assertEqual(normalized["id"], "C1")
+        self.assertEqual(normalized["name"], "考研数学无忧寒（27届03班）")
+        self.assertEqual(normalized["exam_month"], "2026-12")
+        self.assertEqual(normalized["exam_season"], "27考研")
+        self.assertEqual(normalized["suite_code"], "2703")
+        self.assertEqual(normalized["standard_capacity"], 80)
+        self.assertEqual(normalized["capacity_type"], "班课")
+        self.assertEqual(normalized["selected_stages"], ["基础", "强化"])
+        self.assertEqual(normalized["stages"], ["基础", "强化"])
+        self.assertEqual(normalized["first_lesson_date"], "2026-07-02")
+        self.assertEqual(normalized["first_lesson_period"], "AM")
+        self.assertEqual(normalized["preferred_teaching_area_ids"], ["A1", "A2"])
+        self.assertEqual(normalized["preferred_room_ids"], ["R1", "R2"])
+        self.assertTrue(normalized["preferred_room_is_required"])
+        self.assertTrue(normalized["is_manual_schedule_locked"])
+        self.assertTrue(normalized["is_schedule_locked"])
+        self.assertEqual(normalized["requirements"][0]["total_hours"], 4)
+        self.assertEqual(normalized["teacher_assignments"][0]["actual_scheduled_class_id"], "C1")
+        self.assertEqual(normalized["teacher_assignments"][0]["teacher_id"], "000001")
+
     def test_preferred_room_can_expand_to_same_teaching_area_unless_required(self) -> None:
         state = data_admin_server.normalize_payload(
             {
