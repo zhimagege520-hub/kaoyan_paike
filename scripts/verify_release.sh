@@ -18,6 +18,15 @@ run() {
   "$@"
 }
 
+verify_cli_help() {
+  local script_path="$1"
+  if grep -q "argparse" "$script_path" && grep -q "if __name__" "$script_path"; then
+    echo
+    echo "==> $PYTHON_BIN $script_path --help"
+    "$PYTHON_BIN" "$script_path" --help >/dev/null
+  fi
+}
+
 cd "$ROOT_DIR"
 
 echo "Release verification workspace: $WORK_DIR"
@@ -38,12 +47,17 @@ while IFS= read -r script_path; do
   run "$PYTHON_BIN" -m py_compile "$script_path"
 done < <(find scripts -name "*.py" -print | sort)
 
+for script_path in \
+  scheduler.py \
+  run_scheduling_pipeline.py \
+  data_admin_server.py \
+  generate_time_slots.py \
+  schedule_publish_server.py; do
+  verify_cli_help "$script_path"
+done
+
 while IFS= read -r script_path; do
-  if grep -q "argparse" "$script_path" && grep -q "if __name__" "$script_path"; then
-    echo
-    echo "==> $PYTHON_BIN $script_path --help"
-    "$PYTHON_BIN" "$script_path" --help >/dev/null
-  fi
+  verify_cli_help "$script_path"
 done < <(find scripts -name "*.py" -print | sort)
 
 run "$PYTHON_BIN" scripts/audit_release_package.py --root "$ROOT_DIR"

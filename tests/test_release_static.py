@@ -72,7 +72,12 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIn('export PYTHONPYCACHEPREFIX="$WORK_DIR/pycache"', script)
         self.assertIn('find scripts -name "*.py"', script)
         self.assertIn("-m py_compile \"$script_path\"", script)
+        self.assertIn("verify_cli_help()", script)
+        self.assertIn('verify_cli_help "$script_path"', script)
         self.assertIn('--help >/dev/null', script)
+        self.assertIn('scheduler.py \\', script)
+        self.assertIn('run_scheduling_pipeline.py \\', script)
+        self.assertIn('data_admin_server.py \\', script)
         self.assertIn('grep -q "argparse" "$script_path"', script)
         self.assertIn('grep -q "if __name__" "$script_path"', script)
 
