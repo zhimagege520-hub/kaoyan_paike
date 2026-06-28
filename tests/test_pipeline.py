@@ -1566,6 +1566,79 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(requirement.course_code, "ENG001")
         self.assertEqual(requirement.course_name, "")
 
+    def test_class_requirement_from_product_requirement_preserves_fields_and_rooms(self) -> None:
+        rule = scheduler.ScheduleRule(
+            subject="英语",
+            stage="基础",
+            course_module="词汇",
+            course_group="阅读类",
+            start_date="2026-07-01",
+            end_date="2026-07-31",
+            allowed_periods={"AM"},
+            allowed_weekdays={0, 2},
+            excluded_weekdays={6},
+            block_hours=4,
+            season_window_ids={"WINDOW_SUMMER"},
+        )
+        product_req = scheduler.ProductRequirement(
+            subject_category="公共课",
+            subject="英语",
+            quarter="暑假",
+            stage="基础",
+            course_module="词汇",
+            course_group="阅读类",
+            total_hours=8,
+            block_hours=4,
+            course_code="ENG001",
+            course_name="暑假阅读",
+            room_ids={"R1", "R2"},
+            start_date="2026-07-01",
+            end_date="2026-07-31",
+            allowed_periods={"AM", "PM"},
+            allowed_weekdays={0, 2},
+            excluded_weekdays={6},
+            schedule_rules=(rule,),
+        )
+        teacher = scheduler.TeacherAssignment(
+            product_id="P1",
+            subject="英语",
+            stage="基础",
+            course_module="词汇",
+            course_group="阅读类",
+            teacher_id="T1",
+            teacher_name="张老师",
+        )
+
+        requirement = scheduler.class_requirement_from_product_requirement(
+            "C1",
+            product_req,
+            teacher,
+            {"R2", "R3"},
+        )
+
+        self.assertEqual(requirement.subject_category, "公共课")
+        self.assertEqual(requirement.subject, "英语")
+        self.assertEqual(requirement.quarter, "暑假")
+        self.assertEqual(requirement.stage, "基础")
+        self.assertEqual(requirement.course_module, "词汇")
+        self.assertEqual(requirement.course_group, "阅读类")
+        self.assertEqual(requirement.teacher_id, "T1")
+        self.assertEqual(requirement.teacher_name, "张老师")
+        self.assertEqual(requirement.total_hours, 8)
+        self.assertEqual(requirement.block_hours, 4)
+        self.assertEqual(requirement.course_code, "ENG001")
+        self.assertEqual(requirement.course_name, "暑假阅读")
+        self.assertEqual(requirement.room_ids, {"R2"})
+        self.assertEqual(requirement.start_date, "2026-07-01")
+        self.assertEqual(requirement.end_date, "2026-07-31")
+        self.assertEqual(requirement.allowed_periods, {"AM", "PM"})
+        self.assertEqual(requirement.allowed_weekdays, {0, 2})
+        self.assertEqual(requirement.excluded_weekdays, {6})
+        self.assertEqual(requirement.schedule_rules, (rule,))
+
+        with self.assertRaisesRegex(ValueError, "班级 C1/英语/词汇 的班级教室限制与产品/课程教室限制没有交集"):
+            scheduler.class_requirement_from_product_requirement("C1", product_req, teacher, {"R9"})
+
     def test_parse_class_window_constraints_expands_rooms_sorts_and_validates_periods(self) -> None:
         rooms = {
             "R1": scheduler.Room("R1", teaching_area_id="A1"),

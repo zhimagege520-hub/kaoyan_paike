@@ -1669,6 +1669,49 @@ def resolve_product_requirement_teachers(
     return resolved_requirements
 
 
+def product_requirement_course_fields(product_req: ProductRequirement) -> Dict[str, object]:
+    return {
+        "subject_category": product_req.subject_category,
+        "subject": product_req.subject,
+        "quarter": product_req.quarter,
+        "stage": product_req.stage,
+        "course_module": product_req.course_module,
+        "course_group": product_req.course_group,
+        "course_code": product_req.course_code,
+        "course_name": product_req.course_name,
+    }
+
+
+def product_requirement_hours_fields(product_req: ProductRequirement) -> Dict[str, object]:
+    return {
+        "total_hours": product_req.total_hours,
+        "block_hours": product_req.block_hours,
+    }
+
+
+def product_requirement_schedule_fields(product_req: ProductRequirement) -> Dict[str, object]:
+    return {
+        "start_date": product_req.start_date,
+        "end_date": product_req.end_date,
+        "allowed_periods": product_req.allowed_periods,
+        "allowed_weekdays": product_req.allowed_weekdays,
+        "excluded_weekdays": product_req.excluded_weekdays,
+        "schedule_rules": product_req.schedule_rules,
+    }
+
+
+def class_requirement_room_ids(
+    class_id: str,
+    product_req: ProductRequirement,
+    class_room_ids: Optional[Set[str]],
+) -> Optional[Set[str]]:
+    return merge_room_constraints(
+        product_req.room_ids,
+        class_room_ids,
+        f"班级 {class_id}/{product_req.subject}/{product_req.course_module or ''}",
+    )
+
+
 def class_requirement_from_product_requirement(
     class_id: str,
     product_req: ProductRequirement,
@@ -1676,29 +1719,12 @@ def class_requirement_from_product_requirement(
     class_room_ids: Optional[Set[str]],
 ) -> Requirement:
     return Requirement(
-        subject_category=product_req.subject_category,
-        subject=product_req.subject,
-        quarter=product_req.quarter,
-        stage=product_req.stage,
-        course_module=product_req.course_module,
-        course_group=product_req.course_group,
+        **product_requirement_course_fields(product_req),
+        **product_requirement_hours_fields(product_req),
         teacher_id=teacher_assignment.teacher_id,
         teacher_name=teacher_assignment.teacher_name,
-        total_hours=product_req.total_hours,
-        block_hours=product_req.block_hours,
-        course_code=product_req.course_code,
-        course_name=product_req.course_name,
-        room_ids=merge_room_constraints(
-            product_req.room_ids,
-            class_room_ids,
-            f"班级 {class_id}/{product_req.subject}/{product_req.course_module or ''}",
-        ),
-        start_date=product_req.start_date,
-        end_date=product_req.end_date,
-        allowed_periods=product_req.allowed_periods,
-        allowed_weekdays=product_req.allowed_weekdays,
-        excluded_weekdays=product_req.excluded_weekdays,
-        schedule_rules=product_req.schedule_rules,
+        room_ids=class_requirement_room_ids(class_id, product_req, class_room_ids),
+        **product_requirement_schedule_fields(product_req),
     )
 
 
