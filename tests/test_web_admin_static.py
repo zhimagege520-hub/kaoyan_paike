@@ -40,6 +40,17 @@ class WebAdminStaticTest(unittest.TestCase):
         inherited_check = "if (inheritedClass && inheritedClass !== currentClassId) return \"共享课表\";"
         self.assertLess(source.index(actual_check), source.index(inherited_check))
 
+    def test_class_teacher_mode_edits_treat_self_reference_as_current_class_schedule(self) -> None:
+        source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('const requestedMode = normalizeScheduleMode(target.value);', source)
+        self.assertIn('if (requestedMode === "共享课表") {', source)
+        self.assertIn('assignment.actual_scheduled_class_id && assignment.actual_scheduled_class_id !== currentClassId', source)
+        self.assertIn('const sourceClassId = classIdFromPickerValue(target.value) || target.value.trim();', source)
+        self.assertIn('if (sourceClassId && sourceClassId !== currentClassId) {', source)
+        self.assertIn('assignment.class_schedule_mode = scheduleModeDisplayName("本班实际排课");', source)
+        self.assertNotIn('if (assignment.actual_scheduled_class_id) {\n        assignment.class_schedule_mode = scheduleModeDisplayName("共享课表");', source)
+
     def test_product_rule_guide_uses_season_window_label(self) -> None:
         source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
 

@@ -6727,33 +6727,42 @@ function handleValueChange(target, event = null) {
       return;
     }
     if (field === "class_schedule_mode") {
-      const scheduleMode = normalizeScheduleMode(target.value, assignmentReferenceClassId(assignment));
-      assignment.class_schedule_mode = scheduleModeDisplayName(scheduleMode);
+      const currentClassId = currentClass()?.id || assignment.class_id || "";
+      const requestedMode = normalizeScheduleMode(target.value);
+      assignment.class_schedule_mode = scheduleModeDisplayName(requestedMode);
       delete assignment.schedule_mode;
       delete assignment.inherit_from_class_id;
       delete assignment.teacher_available_slots;
-      if (teacherAssignmentIsShared(assignment)) {
+      if (requestedMode === "共享课表") {
         assignment.teacher_id = "";
         assignment.teacher_name = "";
         assignment.assignment_extra_time_requirement = "";
-        assignment.actual_scheduled_class_id = assignment.actual_scheduled_class_id || "";
+        assignment.actual_scheduled_class_id =
+          assignment.actual_scheduled_class_id && assignment.actual_scheduled_class_id !== currentClassId
+            ? assignment.actual_scheduled_class_id
+            : "";
       } else {
-        assignment.actual_scheduled_class_id = currentClass()?.id || "";
+        assignment.actual_scheduled_class_id = currentClassId;
       }
       renderClasses();
       return;
     }
     if (field === "actual_scheduled_class_id") {
-      assignment.actual_scheduled_class_id = classIdFromPickerValue(target.value) || target.value.trim();
+      const currentClassId = currentClass()?.id || assignment.class_id || "";
+      const sourceClassId = classIdFromPickerValue(target.value) || target.value.trim();
+      assignment.actual_scheduled_class_id = sourceClassId || currentClassId;
       delete assignment.schedule_mode;
       delete assignment.inherit_from_class_id;
       delete assignment.teacher_available_slots;
-      if (assignment.actual_scheduled_class_id) {
+      if (sourceClassId && sourceClassId !== currentClassId) {
         assignment.class_schedule_mode = scheduleModeDisplayName("共享课表");
         assignment.teacher_id = "";
         assignment.teacher_name = "";
         assignment.assignment_extra_time_requirement = "";
+      } else {
+        assignment.class_schedule_mode = scheduleModeDisplayName("本班实际排课");
       }
+      renderClasses();
       return;
     }
     assignment[field] = target.value;
