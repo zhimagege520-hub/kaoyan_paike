@@ -1231,6 +1231,52 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertNotIn("actual_schedule_window_ids", classes_doc["classes"][0])
         self.assertNotIn("actual_schedule_window_ids", header)
 
+    def test_normalize_payload_enriches_resource_teacher_and_product_metadata(self) -> None:
+        normalized = data_admin_server.normalize_payload(
+            {
+                "teaching_areas": [{"id": "A1", "name": "蜀山-环球金融校区（安农大）", "is_active": "是"}],
+                "rooms": [{"id": "R1", "name": "101", "teaching_area_id": "A1", "capacity": 80, "is_active": "是"}],
+                "teachers": [{"employee_id": "000001", "name": "张老师", "project": "考研", "primary_subject": "英语"}],
+                "products": [{"id": "P1", "name": "主表产品", "subject": "英语", "subject_category": "公共课"}],
+                "product_courses": [
+                    {
+                        "product_id": "P1",
+                        "product_name": "旧产品名",
+                        "subject": "英语",
+                        "stage": "基础",
+                        "course_group": "阅读类",
+                        "course_module": "词汇",
+                        "total_hours": 2,
+                    }
+                ],
+                "classes": [
+                    {
+                        "id": "C1",
+                        "name": "英语1班",
+                        "product_id": "P1",
+                        "teacher_assignments": [
+                            {"subject": "英语", "stage": "基础", "course_group": "阅读类", "teacher_name": "张老师"},
+                            {"subject": "政治", "stage": "基础", "course_group": "毛史类", "teacher_id": "旧ID", "teacher_name": "张老师"},
+                            {"subject": "数学", "stage": "基础", "course_group": "数学类", "teacher_id": "000001"},
+                        ],
+                    }
+                ],
+            }
+        )
+
+        room = normalized["rooms"][0]
+        assignments = normalized["classes"][0]["teacher_assignments"]
+
+        self.assertEqual(room["teaching_area_name"], "环球金融")
+        self.assertEqual(room["campus"], "")
+        self.assertEqual(room["row"], 2)
+        self.assertEqual(normalized["product_courses"][0]["product_name"], "主表产品")
+        self.assertEqual(normalized["product_courses"][0]["row"], 2)
+        self.assertEqual(normalized["classes"][0]["subject"], "英语")
+        self.assertEqual(assignments[0]["teacher_id"], "000001")
+        self.assertEqual(assignments[1]["teacher_id"], "000001")
+        self.assertEqual(assignments[2]["teacher_name"], "张老师")
+
     def test_scheduler_rules_export_preserves_season_window(self) -> None:
         rules = [
             data_admin_server.normalize_product_rule(

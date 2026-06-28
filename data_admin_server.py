@@ -990,6 +990,22 @@ def merge_products(products: List[Dict[str, Any]], product_courses: List[Dict[st
 
 
 def normalize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = normalized_payload_tables(payload)
+    enrich_room_area_metadata(normalized["rooms"], normalized["teaching_areas"])
+    enrich_class_teacher_assignments(normalized["classes"], normalized["teachers"])
+    recompute_area_capacity(normalized["teaching_areas"], normalized["rooms"])
+    assign_normalized_row_numbers(normalized)
+    sync_course_product_names(normalized["product_courses"], normalized["products"])
+    apply_class_product_label_defaults(
+        normalized["classes"],
+        normalized["products"],
+        normalized["product_courses"],
+    )
+    validate_state(normalized)
+    return normalized
+
+
+def normalized_payload_tables(payload: Dict[str, Any]) -> Dict[str, Any]:
     schedule_windows = [normalize_schedule_window(item) for item in payload.get("schedule_windows", [])]
     time_slots = [normalize_time_slot(item) for item in payload.get("time_slots", [])]
     teaching_areas = [normalize_teaching_area(area) for area in payload.get("teaching_areas", [])]
@@ -1020,67 +1036,7 @@ def normalize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         normalize_business_product_mapping(item)
         for item in payload.get("business_product_mappings", [])
     ]
-    area_by_id = {area["id"]: area for area in teaching_areas if area["id"]}
-    for index, room in enumerate(rooms, start=2):
-        room["row"] = index
-        area = area_by_id.get(room.get("teaching_area_id", ""))
-        if area:
-            room["teaching_area_name"] = area.get("short_name") or area.get("name", "")
-            room["campus"] = area.get("campus", "")
-
-    teacher_by_id = {teacher["employee_id"]: teacher for teacher in teachers if teacher["employee_id"]}
-    teacher_ids_by_name: Dict[str, List[str]] = {}
-    numeric_teacher_ids_by_name: Dict[str, List[str]] = {}
-    for teacher in teachers:
-        teacher_name = normalize_text(teacher.get("name"))
-        teacher_id = normalize_text(teacher.get("employee_id"))
-        if teacher_name and teacher_id:
-            teacher_ids_by_name.setdefault(teacher_name, []).append(teacher_id)
-            if is_employee_id(teacher_id):
-                numeric_teacher_ids_by_name.setdefault(teacher_name, []).append(teacher_id)
-    for cls in classes:
-        for assignment in cls.get("teacher_assignments", []):
-            if assignment.get("teacher_id") and not is_employee_id(assignment.get("teacher_id")):
-                numeric_ids = numeric_teacher_ids_by_name.get(assignment.get("teacher_name", ""), [])
-                if len(numeric_ids) == 1:
-                    assignment["teacher_id"] = numeric_ids[0]
-            if not assignment.get("teacher_id") and assignment.get("teacher_name"):
-                matching_ids = teacher_ids_by_name.get(assignment["teacher_name"], [])
-                if len(matching_ids) == 1:
-                    assignment["teacher_id"] = matching_ids[0]
-            teacher = teacher_by_id.get(assignment.get("teacher_id", ""))
-            if teacher and not assignment.get("teacher_name"):
-                assignment["teacher_name"] = teacher.get("name", "")
-
-    recompute_area_capacity(teaching_areas, rooms)
-    for index, item in enumerate(teacher_unavailability, start=2):
-        item["row"] = index
-    for index, product in enumerate(products, start=2):
-        product["row"] = index
-    for index, course in enumerate(product_courses, start=2):
-        course["row"] = index
-    for index, rule in enumerate(rules, start=2):
-        rule["row"] = index
-    for index, group in enumerate(class_conflict_groups, start=2):
-        group["row"] = index
-    for index, item in enumerate(class_window_boundaries, start=2):
-        item["row"] = index
-    for index, lesson in enumerate(locked_scheduled_lessons, start=2):
-        lesson["row"] = index
-    for index, blackout in enumerate(blackouts, start=2):
-        blackout["row"] = index
-
-    product_by_id = {product["id"]: product for product in products if product["id"]}
-    for course in product_courses:
-        product = product_by_id.get(course.get("product_id", ""))
-        if product:
-            course["product_name"] = product["name"]
-
-    product_meta = product_catalog(products, product_courses)
-    for cls in classes:
-        apply_class_label_defaults(cls, product_meta, product_courses)
-
-    normalized = {
+    return {
         "schedule_windows": schedule_windows,
         "time_slots": time_slots,
         "teaching_areas": teaching_areas,
@@ -1100,8 +1056,82 @@ def normalize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         "erp_standard_products": erp_standard_products,
         "business_product_mappings": business_product_mappings,
     }
-    validate_state(normalized)
-    return normalized
+
+
+def enrich_room_area_metadata(rooms: List[Dict[str, Any]], teaching_areas: List[Dict[str, Any]]) -> None:
+    area_by_id = {area["id"]: area for area in teaching_areas if area["id"]}
+    for index, room in enumerate(rooms, start=2):
+        room["row"] = index
+        area = area_by_id.get(room.get("teaching_area_id", ""))
+        if area:
+            room["teaching_area_name"] = area.get("short_name") or area.get("name", "")
+            room["campus"] = area.get("campus", "")
+
+
+def teacher_id_lookups(
+    teachers: List[Dict[str, Any]],
+) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, List[str]], Dict[str, List[str]]]:
+    teacher_by_id = {teacher["employee_id"]: teacher for teacher in teachers if teacher["employee_id"]}
+    teacher_ids_by_name: Dict[str, List[str]] = {}
+    numeric_teacher_ids_by_name: Dict[str, List[str]] = {}
+    for teacher in teachers:
+        teacher_name = normalize_text(teacher.get("name"))
+        teacher_id = normalize_text(teacher.get("employee_id"))
+        if teacher_name and teacher_id:
+            teacher_ids_by_name.setdefault(teacher_name, []).append(teacher_id)
+            if is_employee_id(teacher_id):
+                numeric_teacher_ids_by_name.setdefault(teacher_name, []).append(teacher_id)
+    return teacher_by_id, teacher_ids_by_name, numeric_teacher_ids_by_name
+
+
+def enrich_class_teacher_assignments(classes: List[Dict[str, Any]], teachers: List[Dict[str, Any]]) -> None:
+    teacher_by_id, teacher_ids_by_name, numeric_teacher_ids_by_name = teacher_id_lookups(teachers)
+    for cls in classes:
+        for assignment in cls.get("teacher_assignments", []):
+            if assignment.get("teacher_id") and not is_employee_id(assignment.get("teacher_id")):
+                numeric_ids = numeric_teacher_ids_by_name.get(assignment.get("teacher_name", ""), [])
+                if len(numeric_ids) == 1:
+                    assignment["teacher_id"] = numeric_ids[0]
+            if not assignment.get("teacher_id") and assignment.get("teacher_name"):
+                matching_ids = teacher_ids_by_name.get(assignment["teacher_name"], [])
+                if len(matching_ids) == 1:
+                    assignment["teacher_id"] = matching_ids[0]
+            teacher = teacher_by_id.get(assignment.get("teacher_id", ""))
+            if teacher and not assignment.get("teacher_name"):
+                assignment["teacher_name"] = teacher.get("name", "")
+
+
+def assign_normalized_row_numbers(normalized: Dict[str, Any]) -> None:
+    for table_name in (
+        "teacher_unavailability",
+        "products",
+        "product_courses",
+        "product_schedule_rules",
+        "class_conflict_groups",
+        "class_window_boundaries",
+        "locked_scheduled_lessons",
+        "global_blackout_dates",
+    ):
+        for index, row in enumerate(normalized[table_name], start=2):
+            row["row"] = index
+
+
+def sync_course_product_names(product_courses: List[Dict[str, Any]], products: List[Dict[str, Any]]) -> None:
+    product_by_id = {product["id"]: product for product in products if product["id"]}
+    for course in product_courses:
+        product = product_by_id.get(course.get("product_id", ""))
+        if product:
+            course["product_name"] = product["name"]
+
+
+def apply_class_product_label_defaults(
+    classes: List[Dict[str, Any]],
+    products: List[Dict[str, Any]],
+    product_courses: List[Dict[str, Any]],
+) -> None:
+    product_meta = product_catalog(products, product_courses)
+    for cls in classes:
+        apply_class_label_defaults(cls, product_meta, product_courses)
 
 
 def normalize_teaching_area(area: Dict[str, Any]) -> Dict[str, Any]:
