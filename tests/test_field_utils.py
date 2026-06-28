@@ -4,6 +4,8 @@ import unittest
 from datetime import date, datetime
 
 from scripts.field_utils import (
+    is_blank_marker,
+    normalize_blank_marker,
     normalize_date_text,
     normalize_excel_text,
     normalize_float,
@@ -25,6 +27,13 @@ class FieldUtilsTest(unittest.TestCase):
         self.assertEqual(normalize_text(None), "")
         self.assertEqual(normalize_text("  C1  "), "C1")
         self.assertEqual(normalize_text(0), "0")
+
+    def test_blank_marker_helpers_share_placeholder_values(self) -> None:
+        self.assertTrue(is_blank_marker("暂无"))
+        self.assertTrue(is_blank_marker("N/A"))
+        self.assertTrue(is_blank_marker("None"))
+        self.assertEqual(normalize_blank_marker(" — "), "")
+        self.assertEqual(normalize_blank_marker(" T001 "), "T001")
 
     def test_normalize_excel_text_drops_integer_float_suffixes(self) -> None:
         self.assertEqual(normalize_excel_text(None), "")

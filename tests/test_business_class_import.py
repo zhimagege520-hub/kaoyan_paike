@@ -15,6 +15,7 @@ from business_class_import import (
     product_map_from_rows,
     product_courses_by_id,
     resolve_teacher_assignment,
+    split_codes,
 )
 from run_scheduling_pipeline import run_pipeline, table_name_for
 
@@ -203,6 +204,9 @@ def scheduled_lesson(
 class BusinessClassImportTest(unittest.TestCase):
     def tearDown(self) -> None:
         data_admin_server.DATA_DIR = ORIGINAL_DATA_DIR
+
+    def test_split_codes_uses_shared_blank_markers(self) -> None:
+        self.assertEqual(split_codes(" A1，暂无|N/A;None、B2 "), ["A1", "B2"])
 
     def test_business_csv_pipeline_filters_scope_and_generates_schedule(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

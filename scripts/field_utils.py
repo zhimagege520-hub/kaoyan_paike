@@ -7,6 +7,7 @@ from typing import Any, Iterable, List, Optional, Tuple
 
 TRUE_VALUES = {"1", "true", "yes", "y", "是", "对", "启用", "可用", "纳入", "锁定"}
 FALSE_VALUES = {"0", "false", "no", "n", "否", "错", "停用", "禁用", "不可用", "不纳入"}
+BLANK_MARKERS = {"", "-", "—", "无", "暂无", "NULL", "N/A", "None"}
 
 
 def normalize_text(value: Any) -> str:
@@ -21,6 +22,15 @@ def normalize_excel_text(value: Any) -> str:
     if isinstance(value, float) and value.is_integer():
         return str(int(value))
     return normalize_text(value)
+
+
+def is_blank_marker(value: Any) -> bool:
+    return normalize_text(value) in BLANK_MARKERS
+
+
+def normalize_blank_marker(value: Any) -> str:
+    text = normalize_text(value)
+    return "" if text in BLANK_MARKERS else text
 
 
 def normalize_int(value: Any, default: int = 0) -> int:

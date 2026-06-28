@@ -22,6 +22,7 @@ from urllib.parse import unquote, urlparse
 
 from scripts.csv_utils import csv_rows_text, serialize_csv_value, write_csv_rows
 from scripts.field_utils import (
+    normalize_blank_marker,
     normalize_float,
     normalize_int,
     normalize_date_text,
@@ -1186,11 +1187,6 @@ def normalize_locked_scheduled_lesson(lesson: Dict[str, Any]) -> Dict[str, Any]:
         "is_locked": normalize_bool(lesson.get("is_locked")) if "is_locked" in lesson else True,
         "notes": normalize_text(lesson.get("notes")),
     }
-
-
-def normalize_blank_marker(value: Any) -> str:
-    text = normalize_text(value)
-    return "" if text in {"-", "—", "无", "暂无", "NULL", "N/A"} else text
 
 
 def has_assignment_content(assignment: Dict[str, Any]) -> bool:

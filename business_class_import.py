@@ -9,7 +9,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, 
 
 import data_admin_server
 from scripts.csv_utils import write_csv_rows
-from scripts.field_utils import normalize_int, normalize_text, parse_date_value, parse_time_minutes
+from scripts.field_utils import is_blank_marker, normalize_int, normalize_text, parse_date_value, parse_time_minutes
 from scripts.product_catalog import product_catalog as shared_product_catalog
 
 
@@ -100,16 +100,11 @@ def clamp_date(value: date, lower: date, upper: date) -> date:
 
 
 def split_codes(value: Any) -> List[str]:
-    blank_values = {"", "-", "—", "无", "暂无", "NULL", "N/A"}
     return [
         item.strip()
         for item in re.split(r"[,，;；、|]+", normalize_text(value))
-        if item.strip() and item.strip() not in blank_values
+        if not is_blank_marker(item.strip())
     ]
-
-
-def is_blank_marker(value: Any) -> bool:
-    return normalize_text(value) in {"", "-", "—", "无", "暂无", "NULL", "N/A"}
 
 
 def infer_history_stage(course_text: Any) -> str:
