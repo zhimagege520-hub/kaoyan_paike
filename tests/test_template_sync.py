@@ -38,6 +38,20 @@ class TemplateSyncTest(unittest.TestCase):
                     "teacher_id": "T1",
                     "teacher_name": "张老师",
                 },
+                {
+                    "class_id": "C_SUB_NEW",
+                    "class_name": "新版共享从班",
+                    "product_id": "P1",
+                    "subject": "英语",
+                    "stage": "强化",
+                    "course_group": "阅读类",
+                    "class_schedule_mode": "",
+                    "actual_scheduled_class_id": "C_CURRENT_MAIN",
+                    "schedule_mode": "本班实际排课",
+                    "inherit_from_class_id": "C_OLD_MAIN",
+                    "teacher_id": "T_STALE",
+                    "teacher_name": "旧字段老师",
+                },
             ],
         )
 
@@ -52,6 +66,9 @@ class TemplateSyncTest(unittest.TestCase):
         self.assertEqual(rows[1]["class_schedule_mode"], "本班实际排课")
         self.assertEqual(rows[1]["actual_scheduled_class_id"], "C_SELF")
         self.assertEqual(rows[1]["teacher_id"], "T1")
+        self.assertEqual(rows[2]["class_schedule_mode"], "共享实际排课班级")
+        self.assertEqual(rows[2]["actual_scheduled_class_id"], "C_CURRENT_MAIN")
+        self.assertEqual(rows[2]["teacher_id"], "")
 
 
 if __name__ == "__main__":

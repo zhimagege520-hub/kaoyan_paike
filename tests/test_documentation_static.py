@@ -29,6 +29,13 @@ class DocumentationStaticTest(unittest.TestCase):
             self.assertTrue(image_path.exists(), image_name)
             self.assertEqual(b"\x89PNG\r\n\x1a\n", image_path.read_bytes()[:8], image_name)
 
+    def test_docs_do_not_reintroduce_teacher_available_slot_language(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+        self.assertNotIn("老师可用课节", readme)
+        self.assertNotIn("教师可用课节", readme)
+        self.assertIn("教师不可排例外过多，或班级排课窗口过窄", readme)
+
 
 if __name__ == "__main__":
     unittest.main()

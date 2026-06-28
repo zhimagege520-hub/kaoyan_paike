@@ -89,7 +89,7 @@ class ScheduleModesTest(unittest.TestCase):
             "class_id": "C_SUB",
             "class_schedule_mode": "",
             "actual_scheduled_class_id": "C_CURRENT_MAIN",
-            "schedule_mode": "",
+            "schedule_mode": "本班实际排课",
             "inherit_from_class_id": "C_OLD_MAIN",
         }
 

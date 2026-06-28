@@ -18,6 +18,7 @@ from openpyxl import load_workbook
 from scripts.schedule_modes import (
     assignment_actual_scheduled_class_id,
     assignment_inherited_class_id,
+    assignment_schedule_mode_value,
     class_schedule_mode_display_name,
     normalize_class_schedule_mode,
 )
@@ -263,7 +264,7 @@ def current_teacher_assignment_template_row(row: Dict[str, Any]) -> Dict[str, An
     inherited_class_id = assignment_inherited_class_id(row)
     actual_class_id = assignment_actual_scheduled_class_id(row) or inherited_class_id
     mode = normalize_class_schedule_mode(
-        row.get("class_schedule_mode") or row.get("schedule_mode") or row.get("assignment_mode"),
+        assignment_schedule_mode_value(row),
         inherit_from_class_id=inherited_class_id,
         actual_scheduled_class_id=actual_class_id,
         class_id=class_id,

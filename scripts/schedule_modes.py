@@ -73,13 +73,21 @@ def class_schedule_mode_display_name(mode: str) -> str:
     return "本班实际排课"
 
 
-def assignment_schedule_mode(row: Mapping[str, Any], class_id: Any = "") -> str:
-    return normalize_class_schedule_mode(
-        row.get("class_schedule_mode")
-        or row.get("schedule_mode")
+def assignment_schedule_mode_value(row: Mapping[str, Any]) -> Any:
+    current_mode = row.get("class_schedule_mode")
+    if normalize_text(current_mode) or assignment_actual_scheduled_class_id(row):
+        return current_mode
+    return (
+        row.get("schedule_mode")
         or row.get("assignment_mode")
         or row.get("排课方式")
-        or row.get("合班方式"),
+        or row.get("合班方式")
+    )
+
+
+def assignment_schedule_mode(row: Mapping[str, Any], class_id: Any = "") -> str:
+    return normalize_class_schedule_mode(
+        assignment_schedule_mode_value(row),
         inherit_from_class_id=assignment_inherited_class_id(row),
         actual_scheduled_class_id=assignment_actual_scheduled_class_id(row),
         class_id=class_id or row.get("class_id") or row.get("班级编码"),
