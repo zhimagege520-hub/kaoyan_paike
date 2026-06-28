@@ -1327,6 +1327,39 @@ class SchedulingPipelineTest(unittest.TestCase):
             assignments = scheduler.schedule(scheduler.load_input(path))
             self.assertEqual(assignments[0].candidate.slots[0].date, "2026-07-02")
 
+    def test_class_scheduling_bounds_normalize_period_values(self) -> None:
+        payload = {
+            "time_slots": [],
+            "rooms": [],
+            "classes": [
+                {
+                    "id": "C1",
+                    "name": "英语1班",
+                    "start_date": "2026-07-01",
+                    "start_period": "pm",
+                    "end_date": "2026-07-07",
+                    "end_period": " evening ",
+                    "first_lesson_date": "2026-07-02",
+                    "first_lesson_period": "am",
+                    "requirements": [
+                        {
+                            "subject": "英语",
+                            "teacher_id": "T1",
+                            "teacher_name": "张老师",
+                            "total_hours": 2,
+                            "block_hours": 2,
+                        }
+                    ],
+                }
+            ],
+        }
+
+        parsed_class = scheduler.load_input_data(payload).classes["C1"]
+
+        self.assertEqual(parsed_class.start_period, "PM")
+        self.assertEqual(parsed_class.end_period, "EVENING")
+        self.assertEqual(parsed_class.first_lesson_period, "AM")
+
     def test_class_boundary_period_requires_matching_date(self) -> None:
         payload = {
             "time_slots": [],

@@ -1345,19 +1345,28 @@ def parse_class_row(
     bounds = parse_class_scheduling_bounds(class_id, raw_class)
     product = parse_class_product(class_id, raw_class, products)
     class_room_ids = parse_class_room_ids(raw_class, allow_area_field_as_room_ids)
-    requirements = build_class_requirements(
+    requirements = class_requirements_or_none(
         class_id,
         raw_class,
         product,
         class_room_ids,
         allow_area_field_as_room_ids,
     )
-    if not requirements:
-        if class_has_shared_schedule_markers(raw_class):
-            return None
-        raise ValueError(f"班级 {class_id} 需要填写 product_id 或 requirements")
+    if requirements is None:
+        return None
     stage_order = build_stage_order(raw_class, product, requirements)
+    return school_class_from_row(raw_class, class_id, product, class_room_ids, bounds, stage_order, requirements)
 
+
+def school_class_from_row(
+    raw_class: dict,
+    class_id: str,
+    product: Optional[Product],
+    class_room_ids: Optional[Set[str]],
+    bounds: ClassSchedulingBounds,
+    stage_order: Dict[str, int],
+    requirements: List[Requirement],
+) -> SchoolClass:
     return SchoolClass(
         id=class_id,
         name=raw_class.get("name", class_id),
@@ -1377,21 +1386,14 @@ def parse_class_row(
 
 
 def parse_class_scheduling_bounds(class_id: str, raw_class: dict) -> ClassSchedulingBounds:
-    start_date = validate_date(raw_class.get("start_date"), f"班级 {class_id}/start_date")
-    start_period = raw_class.get("start_period") or ("AM" if start_date else None)
-    end_date = validate_date(raw_class.get("end_date"), f"班级 {class_id}/end_date")
-    end_period = raw_class.get("end_period") or ("EVENING" if end_date else None)
-    first_lesson_date = validate_date(raw_class.get("first_lesson_date"), f"班级 {class_id}/first_lesson_date")
-    first_lesson_period = raw_class.get("first_lesson_period") or ("AM" if first_lesson_date else None)
-
-    validate_class_period_pair(class_id, "start_period", start_period, "start_date", start_date)
-    validate_class_period_pair(class_id, "end_period", end_period, "end_date", end_date)
-    validate_class_period_pair(
+    start_date, start_period = parse_class_date_period(raw_class, class_id, "start_date", "start_period", "AM")
+    end_date, end_period = parse_class_date_period(raw_class, class_id, "end_date", "end_period", "EVENING")
+    first_lesson_date, first_lesson_period = parse_class_date_period(
+        raw_class,
         class_id,
-        "first_lesson_period",
-        first_lesson_period,
         "first_lesson_date",
-        first_lesson_date,
+        "first_lesson_period",
+        "AM",
     )
     return ClassSchedulingBounds(
         start_date=start_date,
@@ -1401,6 +1403,24 @@ def parse_class_scheduling_bounds(class_id: str, raw_class: dict) -> ClassSchedu
         first_lesson_date=first_lesson_date,
         first_lesson_period=first_lesson_period,
     )
+
+
+def parse_class_date_period(
+    raw_class: dict,
+    class_id: str,
+    date_field: str,
+    period_field: str,
+    default_period: str,
+) -> Tuple[Optional[str], Optional[str]]:
+    date_value = validate_date(raw_class.get(date_field), f"班级 {class_id}/{date_field}")
+    period = normalize_class_period(raw_class.get(period_field), default_period if date_value else None)
+    validate_class_period_pair(class_id, period_field, period, date_field, date_value)
+    return date_value, period
+
+
+def normalize_class_period(value: object, default: Optional[str] = None) -> Optional[str]:
+    period = str(value or default or "").strip().upper()
+    return period or None
 
 
 def validate_class_period_pair(
@@ -1431,6 +1451,27 @@ def parse_class_room_ids(raw_class: dict, allow_area_field_as_room_ids: bool) ->
         ("room_ids", "teaching_area_ids"),
         ("preferred_room_ids", "preferred_teaching_area_ids"),
     )
+
+
+def class_requirements_or_none(
+    class_id: str,
+    raw_class: dict,
+    product: Optional[Product],
+    class_room_ids: Optional[Set[str]],
+    allow_area_field_as_room_ids: bool,
+) -> Optional[List[Requirement]]:
+    requirements = build_class_requirements(
+        class_id,
+        raw_class,
+        product,
+        class_room_ids,
+        allow_area_field_as_room_ids,
+    )
+    if requirements:
+        return requirements
+    if class_has_shared_schedule_markers(raw_class):
+        return None
+    raise ValueError(f"班级 {class_id} 需要填写 product_id 或 requirements")
 
 
 def build_class_requirements(
