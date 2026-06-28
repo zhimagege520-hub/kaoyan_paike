@@ -1290,18 +1290,11 @@ def class_has_shared_schedule_markers(raw_class: dict) -> bool:
     return any(assignment_is_shared(raw_assignment, class_id=raw_class.get("id")) for raw_assignment in raw_class.get("teacher_assignments", []))
 
 
-def build_requirements_from_product(
+def select_product_requirements_for_class(
     class_id: str,
     product: Product,
     raw_class: dict,
-    class_room_ids: Optional[Set[str]],
-) -> List[Requirement]:
-    teacher_assignments = parse_teacher_assignments(
-        class_id,
-        raw_class.get("teacher_assignments", []),
-        product.id,
-    )
-    requirements: List[Requirement] = []
+) -> List[ProductRequirement]:
     class_subject = raw_class.get("subject")
     class_stages = parse_string_set(raw_class.get("stages", raw_class.get("stage")))
     subject_requirements = [
@@ -1322,7 +1315,15 @@ def build_requirements_from_product(
         if class_has_shared_schedule_markers(raw_class):
             return []
         raise ValueError(f"班级 {class_id} 的阶段 {sorted(class_stages)} 不在产品 {product.id} 的课程中")
+    return product_requirements
 
+
+def resolve_product_requirement_teachers(
+    class_id: str,
+    product_id: str,
+    product_requirements: List[ProductRequirement],
+    teacher_assignments: Dict[Tuple[str, str, str, str], TeacherAssignment],
+) -> List[Tuple[ProductRequirement, TeacherAssignment]]:
     resolved_requirements: List[Tuple[ProductRequirement, TeacherAssignment]] = []
     missing_teacher_labels: List[str] = []
     missing_teacher_seen: Set[str] = set()
@@ -1342,41 +1343,68 @@ def build_requirements_from_product(
 
     if missing_teacher_labels:
         raise ValueError(
-            f"班级 {class_id} 的产品 {product.id} 缺少课程老师安排: "
+            f"班级 {class_id} 的产品 {product_id} 缺少课程老师安排: "
             + "、".join(missing_teacher_labels)
         )
+    return resolved_requirements
 
-    prepared_requirements: List[Requirement] = []
-    for product_req, teacher_assignment in resolved_requirements:
-        prepared_requirements.append(
-            Requirement(
-                subject_category=product_req.subject_category,
-                subject=product_req.subject,
-                quarter=product_req.quarter,
-                stage=product_req.stage,
-                course_module=product_req.course_module,
-                course_group=product_req.course_group,
-                teacher_id=teacher_assignment.teacher_id,
-                teacher_name=teacher_assignment.teacher_name,
-                total_hours=product_req.total_hours,
-                block_hours=product_req.block_hours,
-                course_code=product_req.course_code,
-                course_name=product_req.course_name,
-                room_ids=merge_room_constraints(
-                    product_req.room_ids,
-                    class_room_ids,
-                    f"班级 {class_id}/{product_req.subject}/{product_req.course_module or ''}",
-                ),
-                start_date=product_req.start_date,
-                end_date=product_req.end_date,
-                allowed_periods=product_req.allowed_periods,
-                allowed_weekdays=product_req.allowed_weekdays,
-                excluded_weekdays=product_req.excluded_weekdays,
-                schedule_rules=product_req.schedule_rules,
-            )
-        )
 
-    return aggregate_class_requirements(class_id, product.id, prepared_requirements)
+def class_requirement_from_product_requirement(
+    class_id: str,
+    product_req: ProductRequirement,
+    teacher_assignment: TeacherAssignment,
+    class_room_ids: Optional[Set[str]],
+) -> Requirement:
+    return Requirement(
+        subject_category=product_req.subject_category,
+        subject=product_req.subject,
+        quarter=product_req.quarter,
+        stage=product_req.stage,
+        course_module=product_req.course_module,
+        course_group=product_req.course_group,
+        teacher_id=teacher_assignment.teacher_id,
+        teacher_name=teacher_assignment.teacher_name,
+        total_hours=product_req.total_hours,
+        block_hours=product_req.block_hours,
+        course_code=product_req.course_code,
+        course_name=product_req.course_name,
+        room_ids=merge_room_constraints(
+            product_req.room_ids,
+            class_room_ids,
+            f"班级 {class_id}/{product_req.subject}/{product_req.course_module or ''}",
+        ),
+        start_date=product_req.start_date,
+        end_date=product_req.end_date,
+        allowed_periods=product_req.allowed_periods,
+        allowed_weekdays=product_req.allowed_weekdays,
+        excluded_weekdays=product_req.excluded_weekdays,
+        schedule_rules=product_req.schedule_rules,
+    )
+
+
+def build_requirements_from_product(
+    class_id: str,
+    product: Product,
+    raw_class: dict,
+    class_room_ids: Optional[Set[str]],
+) -> List[Requirement]:
+    teacher_assignments = parse_teacher_assignments(
+        class_id,
+        raw_class.get("teacher_assignments", []),
+        product.id,
+    )
+    product_requirements = select_product_requirements_for_class(class_id, product, raw_class)
+    resolved_requirements = resolve_product_requirement_teachers(
+        class_id,
+        product.id,
+        product_requirements,
+        teacher_assignments,
+    )
+    requirements = [
+        class_requirement_from_product_requirement(class_id, product_req, teacher_assignment, class_room_ids)
+        for product_req, teacher_assignment in resolved_requirements
+    ]
+    return aggregate_class_requirements(class_id, product.id, requirements)
 
 
 def aggregate_class_requirements(
