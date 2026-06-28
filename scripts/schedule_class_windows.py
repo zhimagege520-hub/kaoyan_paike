@@ -10,6 +10,7 @@ from scripts.field_utils import parse_enabled, split_pipe_values
 from scripts.period_utils import normalize_period as normalize_schedule_period
 from scripts.schedule_data import load_room_metadata
 from scripts.schedule_scope import normalize_date
+from scripts.window_utils import expanded_window_tokens
 
 
 @dataclass(frozen=True)
@@ -50,12 +51,14 @@ def class_window_matches(
     if schedule_window_ids and (row.get("schedule_window_id") or "").strip() not in schedule_window_ids:
         return False
     if season_window_ids:
-        season_tokens = {
-            (row.get("season_window_id") or "").strip(),
-            (row.get("season_name") or "").strip(),
-            (row.get("schedule_window_name") or "").strip(),
-        }
-        if not (season_tokens & season_window_ids):
+        season_tokens = expanded_window_tokens(
+            row.get("season_window_id"),
+            row.get("season_name"),
+            row.get("schedule_window_name"),
+            row.get("schedule_window_id"),
+        )
+        requested_tokens = expanded_window_tokens(season_window_ids)
+        if not (season_tokens & requested_tokens):
             return False
     return True
 

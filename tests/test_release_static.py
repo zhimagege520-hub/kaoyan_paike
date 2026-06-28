@@ -206,6 +206,20 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIsNone(re.search(r"(?m)^WEEKDAY_LABELS\s*=", schedule_display_source))
         self.assertNotIn('["周一", "周二", "周三", "周四", "周五", "周六", "周日"]', business_import_source)
 
+    def test_window_normalization_lives_in_shared_window_utils(self) -> None:
+        scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")
+        class_windows_source = (ROOT / "scripts" / "schedule_class_windows.py").read_text(encoding="utf-8")
+        window_utils_source = (ROOT / "scripts" / "window_utils.py").read_text(encoding="utf-8")
+
+        self.assertIn("from scripts.window_utils import", scheduler_source)
+        self.assertIn("from scripts.window_utils import", class_windows_source)
+        self.assertIn("SEASON_WINDOW_ID_TO_NAME", window_utils_source)
+        self.assertIn("YEAR_SEASON_WINDOW_PATTERN", window_utils_source)
+        self.assertIsNone(re.search(r"(?m)^SEASON_WINDOW_ID_TO_NAME\s*=", scheduler_source))
+        self.assertIsNone(re.search(r"(?m)^SEASON_WINDOW_NAME_TO_ID\s*=", scheduler_source))
+        self.assertIsNone(re.search(r"(?m)^def expanded_window_tokens\(", scheduler_source))
+        self.assertNotIn("season_tokens = {", class_windows_source)
+
     def test_cli_scripts_import_project_modules_with_bootstrap(self) -> None:
         project_import = re.compile(
             r"(?m)^\s*("

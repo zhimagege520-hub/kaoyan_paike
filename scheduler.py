@@ -22,6 +22,11 @@ from scripts.field_utils import (
 from scripts.period_utils import PERIOD_ORDER, VALID_PERIODS, normalize_period, period_sort_value
 from scripts.schedule_modes import assignment_is_shared
 from scripts.weekday_utils import parse_weekday_set
+from scripts.window_utils import (
+    SEASON_WINDOW_ID_TO_NAME,
+    SEASON_WINDOW_NAME_TO_ID,
+    expanded_window_tokens,
+)
 
 
 SCHEDULE_CSV_FIELDNAMES = [
@@ -52,13 +57,6 @@ SCHEDULE_CSV_FIELDNAMES = [
     "duration_hours",
     "source",
 ]
-SEASON_WINDOW_ID_TO_NAME = {
-    "WINDOW_WINTER": "寒假",
-    "WINDOW_SPRING": "春季",
-    "WINDOW_SUMMER": "暑假",
-    "WINDOW_AUTUMN": "秋季",
-}
-SEASON_WINDOW_NAME_TO_ID = {name: window_id for window_id, name in SEASON_WINDOW_ID_TO_NAME.items()}
 STAGE_ORDER_PROFILES = [
     ({"寒暑营", "无忧寒"}, ["寒假", "春季", "暑假", "秋季"]),
     ({"全年营"}, ["一轮", "二轮", "三轮", "四轮"]),
@@ -1001,22 +999,6 @@ def parse_string_set(values: object) -> Optional[Set[str]]:
         items = [str(item).strip() for item in values]  # type: ignore[union-attr]
     result = {item for item in items if item}
     return result or None
-
-
-def expanded_window_tokens(*values: object) -> Set[str]:
-    tokens: Set[str] = set()
-    for value in values:
-        items = parse_string_set(value) or set()
-        for item in items:
-            token = item.strip()
-            if not token:
-                continue
-            tokens.add(token)
-            if token in SEASON_WINDOW_ID_TO_NAME:
-                tokens.add(SEASON_WINDOW_ID_TO_NAME[token])
-            if token in SEASON_WINDOW_NAME_TO_ID:
-                tokens.add(SEASON_WINDOW_NAME_TO_ID[token])
-    return tokens
 
 
 def rule_window_tokens(rule: ScheduleRule) -> Set[str]:
@@ -2335,11 +2317,11 @@ def slot_matches_task_constraints(slot: TimeSlot, task: CourseBlock) -> bool:
 
 
 def slot_matches_class_window_constraint(slot: TimeSlot, constraint: ClassWindowConstraint) -> bool:
-    constraint_tokens = {
-        value
-        for value in (constraint.schedule_window_id, constraint.season_window_id, constraint.season_name)
-        if value
-    }
+    constraint_tokens = expanded_window_tokens(
+        constraint.schedule_window_id,
+        constraint.season_window_id,
+        constraint.season_name,
+    )
     if constraint_tokens:
         slot_tokens = slot_window_tokens(slot)
         if not slot_tokens or not (constraint_tokens & slot_tokens):
@@ -2459,12 +2441,9 @@ def slot_matches_teacher_unavailability(slot: TimeSlot, rule: TeacherUnavailable
     if rule.periods and slot.period not in rule.periods:
         return False
     if rule.schedule_window_ids:
-        slot_window_ids = {
-            value
-            for value in (slot.schedule_window_id, slot.season_window_id)
-            if value
-        }
-        if not slot_window_ids or not (slot_window_ids & rule.schedule_window_ids):
+        rule_tokens = expanded_window_tokens(rule.schedule_window_ids)
+        slot_window_ids = slot_window_tokens(slot)
+        if not slot_window_ids or not (slot_window_ids & rule_tokens):
             return False
 
     weekday = Date.fromisoformat(slot.date).weekday()
