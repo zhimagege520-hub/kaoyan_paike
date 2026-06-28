@@ -492,6 +492,78 @@ class SchedulingPipelineTest(unittest.TestCase):
 
         self.assertEqual([slot["id"] for slot in scheduler_input["time_slots"]], ["S_USABLE"])
 
+    def test_build_scheduler_input_exports_products_for_schedulable_classes_only(self) -> None:
+        state = data_admin_server.normalize_payload(
+            {
+                "teaching_areas": [],
+                "rooms": [],
+                "teachers": [],
+                "products": [
+                    {"id": "P_ACTIVE", "name": "本轮产品", "subject": "英语"},
+                    {"id": "P_LOCKED", "name": "锁定产品", "subject": "数学"},
+                ],
+                "product_courses": [
+                    {
+                        "product_id": "P_ACTIVE",
+                        "product_name": "本轮产品",
+                        "subject": "英语",
+                        "stage": "基础",
+                        "course_module": "词汇",
+                        "course_group": "阅读类",
+                        "total_hours": 2,
+                        "block_hours": 2,
+                    },
+                    {
+                        "product_id": "P_LOCKED",
+                        "product_name": "锁定产品",
+                        "subject": "数学",
+                        "stage": "基础",
+                        "course_module": "函数",
+                        "course_group": "数学类",
+                        "total_hours": 2,
+                        "block_hours": 2,
+                    },
+                ],
+                "product_schedule_rules": [
+                    {
+                        "rule_id": "RULE_ALL",
+                        "scope_type": "all",
+                        "season_window_id": "WINDOW_SUMMER",
+                        "allowed_periods": "AM",
+                    }
+                ],
+                "classes": [
+                    {
+                        "id": "C_ACTIVE",
+                        "name": "本轮班",
+                        "product_id": "P_ACTIVE",
+                        "subject": "英语",
+                        "stages": "基础",
+                        "size": 30,
+                    },
+                    {
+                        "id": "C_LOCKED",
+                        "name": "锁定班",
+                        "product_id": "P_LOCKED",
+                        "subject": "数学",
+                        "stages": "基础",
+                        "size": 30,
+                        "is_schedule_locked": "是",
+                    },
+                ],
+                "global_blackout_dates": [],
+            }
+        )
+
+        scheduler_input = data_admin_server.build_scheduler_input(state, time_slots=[])
+
+        self.assertEqual([item["id"] for item in scheduler_input["products"]], ["P_ACTIVE"])
+        self.assertEqual([item["id"] for item in scheduler_input["classes"]], ["C_ACTIVE"])
+        self.assertEqual(
+            [item["product_id"] for item in scheduler_input["product_schedule_rules"]],
+            ["P_ACTIVE"],
+        )
+
     def test_export_scheduler_input_includes_active_teacher_unavailability(self) -> None:
         state = data_admin_server.normalize_payload(
             {

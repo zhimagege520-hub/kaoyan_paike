@@ -2285,38 +2285,37 @@ def class_ids_with_window_boundaries(state: Dict[str, Any]) -> Set[str]:
     }
 
 
-def build_scheduler_input(
-    payload: Optional[Dict[str, Any]] = None,
-    time_slots: Optional[List[Dict[str, Any]]] = None,
-) -> Dict[str, Any]:
-    state = normalize_payload(payload) if payload else normalize_payload(load_state())
-    if time_slots is None:
-        time_slots_doc = read_json(DEFAULT_TIME_SLOTS, {"time_slots": []})
-        raw_time_slots = time_slots_doc.get("time_slots", [])
-    else:
-        raw_time_slots = time_slots
-    filtered_time_slots = [
+def scheduler_time_slots(
+    state: Dict[str, Any],
+    raw_time_slots: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    return [
         slot for slot in raw_time_slots
         if slot_is_usable(slot)
         and not slot_is_blackout(slot, state["global_blackout_dates"])
     ]
-    rooms = [room for room in state["rooms"] if normalize_bool(room.get("is_active"))]
-    rooms_by_area: Dict[str, List[Dict[str, Any]]] = {}
-    for room in rooms:
-        rooms_by_area.setdefault(room["teaching_area_id"], []).append(room)
-    area_by_id = {area["id"]: area for area in state["teaching_areas"] if area.get("id")}
-    class_window_rows = scheduler_class_window_boundaries(state, rooms_by_area)
 
-    schedulable_classes = [cls for cls in state["classes"] if not normalize_bool(cls.get("is_schedule_locked"))]
-    classes_with_window_boundaries = class_ids_with_window_boundaries(state)
-    referenced_product_ids = {cls["product_id"] for cls in schedulable_classes if cls.get("product_id")}
-    product_meta = product_catalog(state["products"], state["product_courses"])
+
+def active_scheduler_rooms(state: Dict[str, Any]) -> List[Dict[str, Any]]:
+    return [room for room in state["rooms"] if normalize_bool(room.get("is_active"))]
+
+
+def rooms_by_teaching_area(rooms: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    for room in rooms:
+        grouped.setdefault(room["teaching_area_id"], []).append(room)
+    return grouped
+
+
+def scheduler_product_payloads(
+    product_courses: List[Dict[str, Any]],
+    product_meta: Dict[str, Dict[str, Any]],
+    referenced_product_ids: Set[str],
+) -> List[Dict[str, Any]]:
     products: Dict[str, Dict[str, Any]] = {}
-    for course in state["product_courses"]:
+    for course in product_courses:
         product_id = course["product_id"]
-        if not product_id:
-            continue
-        if product_id not in referenced_product_ids:
+        if not product_id or product_id not in referenced_product_ids:
             continue
         meta = product_meta.get(product_id, {})
         product = products.setdefault(
@@ -2350,9 +2349,18 @@ def build_scheduler_input(
                 "block_hours": course["block_hours"],
             }
         )
+    return list(products.values())
 
-    classes = []
-    for cls in schedulable_classes:
+
+def scheduler_class_payloads(
+    classes: List[Dict[str, Any]],
+    product_meta: Dict[str, Dict[str, Any]],
+    classes_with_window_boundaries: Set[str],
+    rooms_by_area: Dict[str, List[Dict[str, Any]]],
+    active_rooms: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    result = []
+    for cls in classes:
         meta = product_meta.get(cls.get("product_id", ""), {})
         class_row = {
             "id": cls["id"],
@@ -2384,41 +2392,83 @@ def build_scheduler_input(
         if stage_order:
             class_row["stage_order"] = stage_order
         if cls["id"] not in classes_with_window_boundaries:
-            class_room_ids = class_room_constraint(cls, rooms_by_area, rooms)
+            class_room_ids = class_room_constraint(cls, rooms_by_area, active_rooms)
             if class_room_ids:
                 class_row["room_ids"] = class_room_ids
         requirements = scheduler_class_requirements(cls)
         if requirements:
             class_row["requirements"] = requirements
-        classes.append({key: value for key, value in class_row.items() if value not in ("", None, [])})
+        result.append({key: value for key, value in class_row.items() if value not in ("", None, [])})
+    return result
+
+
+def scheduler_room_payloads(
+    rooms: List[Dict[str, Any]],
+    area_by_id: Dict[str, Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    return [
+        {
+            "id": room["id"],
+            "name": room.get("name", ""),
+            "capacity": room.get("capacity", 0),
+            "capacity_unlimited": room_capacity_unlimited(room),
+            "teaching_area_id": room.get("teaching_area_id", ""),
+            "teaching_area_name": room.get("teaching_area_name", ""),
+            "region_tag": area_by_id.get(room.get("teaching_area_id", ""), {}).get("region_tag", ""),
+        }
+        for room in rooms
+    ]
+
+
+def scheduler_teaching_area_payloads(teaching_areas: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return [
+        {
+            "id": area["id"],
+            "name": area.get("name", ""),
+            "short_name": area.get("short_name", ""),
+            "region_tag": area.get("region_tag", ""),
+        }
+        for area in teaching_areas
+        if area.get("id")
+    ]
+
+
+def build_scheduler_input(
+    payload: Optional[Dict[str, Any]] = None,
+    time_slots: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    state = normalize_payload(payload) if payload else normalize_payload(load_state())
+    if time_slots is None:
+        time_slots_doc = read_json(DEFAULT_TIME_SLOTS, {"time_slots": []})
+        raw_time_slots = time_slots_doc.get("time_slots", [])
+    else:
+        raw_time_slots = time_slots
+    filtered_time_slots = scheduler_time_slots(state, raw_time_slots)
+    rooms = active_scheduler_rooms(state)
+    room_groups = rooms_by_teaching_area(rooms)
+    area_by_id = {area["id"]: area for area in state["teaching_areas"] if area.get("id")}
+    class_window_rows = scheduler_class_window_boundaries(state, room_groups)
+
+    schedulable_classes = [cls for cls in state["classes"] if not normalize_bool(cls.get("is_schedule_locked"))]
+    classes_with_window_boundaries = class_ids_with_window_boundaries(state)
+    referenced_product_ids = {cls["product_id"] for cls in schedulable_classes if cls.get("product_id")}
+    product_meta = product_catalog(state["products"], state["product_courses"])
+    products = scheduler_product_payloads(state["product_courses"], product_meta, referenced_product_ids)
+    classes = scheduler_class_payloads(
+        schedulable_classes,
+        product_meta,
+        classes_with_window_boundaries,
+        room_groups,
+        rooms,
+    )
 
     return {
         "time_slots": filtered_time_slots,
-        "rooms": [
-            {
-                "id": room["id"],
-                "name": room.get("name", ""),
-                "capacity": room.get("capacity", 0),
-                "capacity_unlimited": room_capacity_unlimited(room),
-                "teaching_area_id": room.get("teaching_area_id", ""),
-                "teaching_area_name": room.get("teaching_area_name", ""),
-                "region_tag": area_by_id.get(room.get("teaching_area_id", ""), {}).get("region_tag", ""),
-            }
-            for room in rooms
-        ],
-        "teaching_areas": [
-            {
-                "id": area["id"],
-                "name": area.get("name", ""),
-                "short_name": area.get("short_name", ""),
-                "region_tag": area.get("region_tag", ""),
-            }
-            for area in state["teaching_areas"]
-            if area.get("id")
-        ],
+        "rooms": scheduler_room_payloads(rooms, area_by_id),
+        "teaching_areas": scheduler_teaching_area_payloads(state["teaching_areas"]),
         "teaching_area_links": list(state.get("teaching_area_links", [])),
-        "products": list(products.values()),
-        "product_schedule_rules": scheduler_rules(state["product_schedule_rules"], referenced_product_ids, product_catalog(state["products"], state["product_courses"])),
+        "products": products,
+        "product_schedule_rules": scheduler_rules(state["product_schedule_rules"], referenced_product_ids, product_meta),
         "classes": classes,
         "conflict_groups": scheduler_conflict_groups(state, classes, state.get("locked_scheduled_lessons", [])),
         "locked_lessons": scheduler_locked_lessons(state.get("locked_scheduled_lessons", [])),
