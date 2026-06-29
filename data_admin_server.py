@@ -56,7 +56,7 @@ from scripts.schedule_modes import (
     assignment_schedule_mode,
     class_schedule_mode_display_name,
 )
-from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE
+from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE, subject_sort_value
 from scripts.table_schema import (
     BUSINESS_PRODUCT_MAPPING_FIELDNAMES,
     CLASS_CONFLICT_GROUP_FIELDNAMES,
@@ -81,7 +81,7 @@ from scripts.table_schema import (
     TEACHING_AREA_LINK_FIELDNAMES,
     TIME_SLOT_FIELDNAMES,
 )
-from scripts.window_utils import expanded_window_tokens
+from scripts.window_utils import SEASON_WINDOW_ORDER, expanded_window_tokens
 
 
 ROOT = Path(__file__).resolve().parent
@@ -338,8 +338,10 @@ def build_lookups(
         "product_lines": ["考研复试", "考研集训营", "考研无忧", "考研个性化", "考研其他", "专升本", "四六级"],
         "subjects": sorted(subjects),
         "window_names": sorted(window_names),
+        "season_window_order": list(SEASON_WINDOW_ORDER),
         "stage_order": list(DEFAULT_STAGE_ORDER),
         "stages": sort_stage_values(stages),
+        "public_teacher_subjects": sorted(PUBLIC_TEACHER_SUBJECTS, key=subject_sort_value),
         "course_modules": sorted(modules),
         "course_groups": sorted(groups),
         "course_name_tags": load_course_name_tags(product_courses),

@@ -27,7 +27,7 @@ const tabs = {
   publish: ["发布复用中心", "确认发布门禁，打开只读课表和复用资料。"],
 };
 
-const publicTeacherSubjects = new Set(["英语", "政治", "数学", "语文"]);
+let publicTeacherSubjects = new Set();
 const teacherAssignmentScheduleModeOptions = [
   { value: "独立排课", label: "本班实际排课" },
   { value: "合班主班", label: "合班实际排课班级" },
@@ -97,8 +97,8 @@ const productTagFilterFields = [
 ];
 let stageOrder = [];
 let stageOrderIndex = new Map();
-const seasonWindowOrder = ["寒假", "春季", "暑假", "秋季"];
-const seasonWindowOrderIndex = new Map(seasonWindowOrder.map((name, index) => [name, index]));
+let seasonWindowOrder = [];
+let seasonWindowOrderIndex = new Map();
 const visibleRowLimits = {
   rules: 40,
   classMeta: 40,
@@ -272,6 +272,8 @@ async function loadData() {
   state.products = state.products || [];
   state.lookups = state.lookups || {};
   hydrateStageOrder();
+  hydrateSeasonWindowOrder();
+  hydratePublicTeacherSubjects();
   hydrateLabels();
   selected.areaId = selected.areaId || state.teaching_areas[0]?.id || "";
   selected.productId = selected.productId || products()[0]?.id || "";
@@ -293,6 +295,16 @@ async function refreshResultStatus() {
 function hydrateStageOrder() {
   stageOrder = arrayValues(state.lookups?.stage_order);
   stageOrderIndex = new Map(stageOrder.map((stage, index) => [stage, index]));
+}
+
+function hydrateSeasonWindowOrder() {
+  seasonWindowOrder = arrayValues(state.lookups?.season_window_order);
+  if (!seasonWindowOrder.length) seasonWindowOrder = Object.keys(seasonWindowDefaults);
+  seasonWindowOrderIndex = new Map(seasonWindowOrder.map((name, index) => [name, index]));
+}
+
+function hydratePublicTeacherSubjects() {
+  publicTeacherSubjects = new Set(arrayValues(state.lookups?.public_teacher_subjects));
 }
 
 function hydrateLabels() {

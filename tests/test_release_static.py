@@ -620,6 +620,7 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertNotIn("date.fromisoformat(value)", pipeline_source)
 
     def test_window_normalization_lives_in_shared_window_utils(self) -> None:
+        admin_source = (ROOT / "data_admin_server.py").read_text(encoding="utf-8")
         scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")
         class_windows_source = (ROOT / "scripts" / "schedule_class_windows.py").read_text(encoding="utf-8")
         schedule_batch_source = (ROOT / "scripts" / "schedule_batch.py").read_text(encoding="utf-8")
@@ -627,10 +628,13 @@ class ReleaseStaticTest(unittest.TestCase):
         camp_maintenance_source = (ROOT / "scripts" / "build_camp_maintenance_schedule.py").read_text(encoding="utf-8")
         window_utils_source = (ROOT / "scripts" / "window_utils.py").read_text(encoding="utf-8")
 
+        self.assertIn("from scripts.window_utils import", admin_source)
         self.assertIn("from scripts.window_utils import", scheduler_source)
         self.assertIn("from scripts.window_utils import", class_windows_source)
         self.assertIn("SEASON_WINDOW_ID_TO_NAME", window_utils_source)
+        self.assertIn("SEASON_WINDOW_ORDER", window_utils_source)
         self.assertIn("YEAR_SEASON_WINDOW_PATTERN", window_utils_source)
+        self.assertIn("SEASON_WINDOW_ORDER", admin_source)
         self.assertIsNone(re.search(r"(?m)^SEASON_WINDOW_ID_TO_NAME\s*=", scheduler_source))
         self.assertIsNone(re.search(r"(?m)^SEASON_WINDOW_NAME_TO_ID\s*=", scheduler_source))
         self.assertIsNone(re.search(r"(?m)^def expanded_window_tokens\(", scheduler_source))

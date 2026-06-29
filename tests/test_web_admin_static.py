@@ -111,6 +111,18 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertNotIn('const stageOrder = ["导学", "专项", "基础", "强化", "冲刺", "一轮", "二轮", "三轮", "四轮", "复试"];', source)
         self.assertNotIn(r"const numbered = text.match(/^(导学|专项)(\d+)$/);", source)
 
+    def test_frontend_reuses_lookup_business_sets(self) -> None:
+        source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn("let publicTeacherSubjects = new Set();", source)
+        self.assertIn("let seasonWindowOrder = [];", source)
+        self.assertIn("hydrateSeasonWindowOrder();", source)
+        self.assertIn("hydratePublicTeacherSubjects();", source)
+        self.assertIn("seasonWindowOrder = arrayValues(state.lookups?.season_window_order);", source)
+        self.assertIn("publicTeacherSubjects = new Set(arrayValues(state.lookups?.public_teacher_subjects));", source)
+        self.assertNotIn('new Set(["英语", "政治", "数学", "语文"])', source)
+        self.assertNotIn('const seasonWindowOrder = ["寒假", "春季", "暑假", "秋季"];', source)
+
     def test_business_mapping_editor_writes_current_local_product_field_only(self) -> None:
         source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
 

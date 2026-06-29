@@ -6,6 +6,7 @@ import scheduler
 from scripts.schedule_class_windows import class_window_matches, row_to_constraint
 from scripts.window_utils import (
     SEASON_WINDOW_ID_TO_NAME,
+    SEASON_WINDOW_ORDER,
     expanded_window_tokens,
     season_window_id_for_name,
     season_window_name_for_id,
@@ -14,6 +15,7 @@ from scripts.window_utils import (
 
 class WindowUtilsTest(unittest.TestCase):
     def test_expanded_window_tokens_maps_ids_names_and_year_windows(self) -> None:
+        self.assertEqual(SEASON_WINDOW_ORDER, ("寒假", "春季", "暑假", "秋季"))
         self.assertEqual(SEASON_WINDOW_ID_TO_NAME["WINDOW_SUMMER"], "暑假")
         self.assertEqual(season_window_name_for_id("WINDOW_AUTUMN"), "秋季")
         self.assertEqual(season_window_id_for_name("寒假"), "WINDOW_WINTER")

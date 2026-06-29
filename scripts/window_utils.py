@@ -12,6 +12,7 @@ SEASON_WINDOW_ID_TO_NAME = {
     "WINDOW_SUMMER": "暑假",
     "WINDOW_AUTUMN": "秋季",
 }
+SEASON_WINDOW_ORDER = tuple(SEASON_WINDOW_ID_TO_NAME.values())
 SEASON_WINDOW_NAME_TO_ID = {name: window_id for window_id, name in SEASON_WINDOW_ID_TO_NAME.items()}
 YEAR_SEASON_WINDOW_PATTERN = re.compile(r"^\d{4}\s*年?\s*[-_/]?\s*(寒假|春季|暑假|秋季)$")
 
