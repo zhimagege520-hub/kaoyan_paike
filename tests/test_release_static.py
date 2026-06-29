@@ -516,9 +516,12 @@ class ReleaseStaticTest(unittest.TestCase):
 
     def test_time_slot_generator_reuses_shared_date_normalization(self) -> None:
         generator_source = (ROOT / "generate_time_slots.py").read_text(encoding="utf-8")
+        pipeline_source = (ROOT / "run_scheduling_pipeline.py").read_text(encoding="utf-8")
 
         self.assertIn("from scripts.field_utils import normalize_iso_date_text", generator_source)
         self.assertNotIn("datetime.strptime", generator_source)
+        self.assertIn("normalize_iso_date_text", pipeline_source)
+        self.assertNotIn("date.fromisoformat(value)", pipeline_source)
 
     def test_window_normalization_lives_in_shared_window_utils(self) -> None:
         scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")

@@ -14,7 +14,12 @@ import scheduler
 from business_class_import import BusinessDataError, convert_business_tables
 from generate_time_slots import generate_time_slots, parse_weekdays
 from scripts.csv_utils import clean_csv_rows, read_csv_with_fieldnames, write_csv_rows
-from scripts.field_utils import normalize_excel_cell_text, normalize_text, split_delimited_values
+from scripts.field_utils import (
+    normalize_excel_cell_text,
+    normalize_iso_date_text,
+    normalize_text,
+    split_delimited_values,
+)
 from scripts.product_catalog import product_catalog as shared_product_catalog
 from scripts.template_tables import (
     BUSINESS_SOURCE_TABLES,
@@ -368,9 +373,9 @@ def prepare_state_for_scheduling(
 
 def parse_iso_date(value: str, label: str) -> date:
     try:
-        return date.fromisoformat(value)
+        return date.fromisoformat(normalize_iso_date_text(value, label))
     except ValueError as exc:
-        raise PipelineError(f"{label} 需要使用 YYYY-MM-DD 格式: {value}") from exc
+        raise PipelineError(str(exc)) from exc
 
 
 def expanded_rules_for_state(state: Dict[str, Any]) -> List[Dict[str, Any]]:

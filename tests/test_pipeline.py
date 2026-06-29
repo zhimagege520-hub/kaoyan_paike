@@ -27,6 +27,7 @@ from run_scheduling_pipeline import (
     main as pipeline_main,
     missing_teacher_rows_for_requirements,
     overlay_standard_tables_on_state,
+    parse_iso_date,
     parse_missing_teacher_requirements,
     row_counts_for_tables,
     run_pipeline,
@@ -353,6 +354,13 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(parse_date("2026.07.01 00:00:00"), date(2026, 7, 1))
         with self.assertRaisesRegex(ValueError, "日期格式无法识别"):
             parse_date("not-a-date", "测试日期")
+
+    def test_pipeline_parse_iso_date_uses_shared_import_formats(self) -> None:
+        self.assertEqual(parse_iso_date("2026/07/01", "班级 C1/start_date"), date(2026, 7, 1))
+        self.assertEqual(parse_iso_date("20260701", "班级 C1/end_date"), date(2026, 7, 1))
+        self.assertEqual(parse_iso_date("2026.07.01 00:00:00", "班级 C1/end_date"), date(2026, 7, 1))
+        with self.assertRaisesRegex(PipelineError, "班级 C1/start_date 日期格式无法识别"):
+            parse_iso_date("待确认", "班级 C1/start_date")
 
     def test_csv_pipeline_generates_schedule_and_dynamic_input(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
