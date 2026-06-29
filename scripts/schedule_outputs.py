@@ -7,13 +7,13 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import scheduler
 from scripts.csv_utils import write_csv_rows
+from scripts.period_utils import PERIOD_LABELS
 from scripts.schedule_data import (
     assignment_course_tag,
     load_class_metadata,
     load_product_course_tags,
 )
 from scripts.schedule_display import (
-    PERIOD_LABELS,
     assignment_standard_lesson_slots,
     date_range,
     standard_display_slots,

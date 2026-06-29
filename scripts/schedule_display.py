@@ -5,10 +5,10 @@ from datetime import date as Date, timedelta
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 import scheduler
+from scripts.period_utils import PERIOD_LABELS
 from scripts.weekday_utils import WEEKDAY_LABELS, weekday_label_for_date
 
 
-PERIOD_LABELS = {"AM": "上午", "PM": "下午", "EVENING": "晚上"}
 STANDARD_DISPLAY_SLOTS = (
     {"id": "AM1", "period": "AM", "label": "上午一", "start_time": "08:00", "end_time": "10:00"},
     {"id": "AM2", "period": "AM", "label": "上午二", "start_time": "10:20", "end_time": "12:20"},

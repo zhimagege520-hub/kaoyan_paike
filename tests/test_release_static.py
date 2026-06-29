@@ -490,6 +490,9 @@ class ReleaseStaticTest(unittest.TestCase):
         public_gap_repair_source = (ROOT / "scripts" / "repair_public_coverage_gaps.py").read_text(encoding="utf-8")
         halfday_repair_source = (ROOT / "scripts" / "repair_2757_halfday_blocks.py").read_text(encoding="utf-8")
         quality_hotspot_repair_source = (ROOT / "scripts" / "repair_schedule_quality_hotspots.py").read_text(encoding="utf-8")
+        schedule_display_source = (ROOT / "scripts" / "schedule_display.py").read_text(encoding="utf-8")
+        schedule_outputs_source = (ROOT / "scripts" / "schedule_outputs.py").read_text(encoding="utf-8")
+        extreme_weeks_repair_source = (ROOT / "scripts" / "repair_2792_extreme_weeks.py").read_text(encoding="utf-8")
         period_utils_source = (ROOT / "scripts" / "period_utils.py").read_text(encoding="utf-8")
 
         self.assertIn("from scripts.period_utils import", scheduler_source)
@@ -500,8 +503,11 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIn("from scripts.period_utils import", public_gap_repair_source)
         self.assertIn("from scripts.period_utils import", halfday_repair_source)
         self.assertIn("from scripts.period_utils import", quality_hotspot_repair_source)
+        self.assertIn("from scripts.period_utils import PERIOD_LABELS", schedule_display_source)
+        self.assertIn("from scripts.period_utils import PERIOD_LABELS", schedule_outputs_source)
         self.assertIn("VALID_PERIODS", period_utils_source)
         self.assertIn("PERIOD_ORDER", period_utils_source)
+        self.assertIn("PERIOD_LABELS", period_utils_source)
         self.assertIsNone(re.search(r"(?m)^VALID_PERIODS\s*=", scheduler_source))
         for source in (
             scheduler_source,
@@ -512,6 +518,8 @@ class ReleaseStaticTest(unittest.TestCase):
             quality_hotspot_repair_source,
         ):
             self.assertIsNone(re.search(r"(?m)^PERIOD_ORDER\s*=", source))
+        for source in (schedule_display_source, schedule_outputs_source, extreme_weeks_repair_source):
+            self.assertIsNone(re.search(r"(?m)^PERIOD_LABELS\s*=", source))
         self.assertIsNone(re.search(r"(?m)^def period_sort_value\(", scheduler_source))
         self.assertIsNone(re.search(r"(?m)^def normalize_period\(", class_windows_source))
         self.assertIsNone(re.search(r"(?m)^\s*aliases\s*=\s*\{", business_import_source))

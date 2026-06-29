@@ -46,12 +46,6 @@ QUOTAS = {
     "英语": [5, 6, 6, 6],
     "政治": [6, 5, 5, 5],
 }
-PERIOD_LABELS = {
-    "AM": ("AM1", "上午一", "08:00", "10:00"),
-    "PM": ("PM1", "下午一", "14:00", "16:00"),
-}
-
-
 def week_slots(week: str) -> List[Tuple[str, str]]:
     start = Date.fromisoformat(week)
     slots: List[Tuple[str, str]] = []

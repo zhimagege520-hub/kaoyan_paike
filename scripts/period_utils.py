@@ -7,6 +7,7 @@ from scripts.field_utils import normalize_text, parse_time_minutes
 
 VALID_PERIODS = {"AM", "PM", "EVENING"}
 PERIOD_ORDER = {"AM": 0, "PM": 1, "EVENING": 2}
+PERIOD_LABELS = {"AM": "上午", "PM": "下午", "EVENING": "晚上"}
 PERIOD_ALIASES = {
     "AM": "AM",
     "上午": "AM",
