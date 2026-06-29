@@ -262,6 +262,20 @@ class SchedulingPipelineTest(unittest.TestCase):
             ["导学", "基础", "强化", "冲刺"],
         )
 
+    def test_scheduler_infers_stage_order_from_product_catalog_profiles(self) -> None:
+        self.assertEqual(
+            scheduler.inferred_stage_order({"sub_product": "无忧寒"}, None),
+            ["寒假", "春季", "暑假", "秋季"],
+        )
+        self.assertEqual(
+            scheduler.inferred_stage_order({"product_name": "考研全年营"}, None),
+            ["一轮", "二轮", "三轮", "四轮"],
+        )
+        self.assertEqual(
+            scheduler.inferred_stage_order({"name": "无忧秋英语班"}, None),
+            ["基础", "强化", "冲刺"],
+        )
+
     def test_cli_parser_accepts_preflight_mode(self) -> None:
         args = build_parser().parse_args(["--source", "incoming", "--preflight"])
 

@@ -22,6 +22,7 @@ from scripts.field_utils import (
     split_delimited_values,
 )
 from scripts.period_utils import PERIOD_ORDER, VALID_PERIODS, normalize_period, period_sort_value
+from scripts.product_catalog import infer_stage_order_from_context
 from scripts.schedule_modes import assignment_is_shared
 from scripts.subject_utils import CORE_PUBLIC_SUBJECTS
 from scripts.weekday_utils import parse_weekday_set
@@ -59,12 +60,6 @@ SCHEDULE_CSV_FIELDNAMES = [
     "teaching_area_id",
     "duration_hours",
     "source",
-]
-STAGE_ORDER_PROFILES = [
-    ({"寒暑营", "无忧寒"}, ["寒假", "春季", "暑假", "秋季"]),
-    ({"全年营"}, ["一轮", "二轮", "三轮", "四轮"]),
-    ({"半年营", "暑假营", "无忧秋", "无忧春", "无忧暑"}, ["基础", "强化", "冲刺"]),
-    ({"冲刺营"}, ["冲刺"]),
 ]
 SAME_CLASS_TEACHER_DAY_LIMIT_SUBJECTS = CORE_PUBLIC_SUBJECTS
 MAX_SAME_CLASS_TEACHER_DAY_HOURS = 8
@@ -1440,21 +1435,13 @@ def ordered_stage_names(values: object) -> List[str]:
 
 
 def inferred_stage_order(raw_class: dict, product: Optional[Product]) -> List[str]:
-    text = " ".join(
-        normalized
-        for value in (
-            raw_class.get("sub_product"),
-            raw_class.get("product_line"),
-            raw_class.get("name"),
-            raw_class.get("product_name"),
-            product.name if product else "",
-        )
-        if (normalized := normalize_text(value))
+    return infer_stage_order_from_context(
+        raw_class.get("sub_product"),
+        raw_class.get("product_line"),
+        raw_class.get("name"),
+        raw_class.get("product_name"),
+        product.name if product else "",
     )
-    for keywords, order in STAGE_ORDER_PROFILES:
-        if any(keyword in text for keyword in keywords):
-            return list(order)
-    return []
 
 
 def build_stage_order(raw_class: dict, product: Optional[Product], requirements: List[Requirement]) -> Dict[str, int]:
