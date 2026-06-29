@@ -49,7 +49,7 @@ from scripts.schedule_constraints import (
     place_candidate,
 )
 from scripts.schedule_conflicts import clean as conflict_clean, teacher_time_conflict_lines
-from scripts.schedule_data import assignment_course_tag
+from scripts.schedule_data import assignment_course_tag, load_product_course_tags
 from scripts.schedule_display import (
     assignment_display_slot_ids,
     assignment_standard_lesson_slots,
@@ -1654,6 +1654,43 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
             {"course_code": "ENG-VOC", "course_name": "英语词汇"},
         )
 
+    def test_load_product_course_tags_prefers_current_window_name_field(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            data_dir = Path(tmp_dir)
+            with (data_dir / "product_courses.csv").open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=[
+                        "product_id",
+                        "subject",
+                        "window_name",
+                        "quarter",
+                        "stage",
+                        "course_module",
+                        "course_group",
+                        "course_code",
+                        "course_name",
+                    ],
+                )
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "product_id": "P1",
+                        "subject": "英语",
+                        "window_name": "暑假",
+                        "quarter": "旧窗口",
+                        "stage": "基础",
+                        "course_module": "词汇",
+                        "course_group": "阅读类",
+                        "course_code": "ENG-VOC",
+                        "course_name": "英语词汇",
+                    }
+                )
+
+            tags = load_product_course_tags(data_dir)
+
+        self.assertEqual(tags[0]["quarter"], "暑假")
+
     def test_write_batch_csv_expands_standard_lessons_and_course_tags(self) -> None:
         task = scheduler.CourseBlock(
             task_id="TASK_A",
@@ -1664,8 +1701,8 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
             class_size=None,
             subject_category="公共课",
             subject="英语",
-            quarter=None,
-            stage="暑假",
+            quarter="暑假",
+            stage="基础",
             course_module="词汇",
             course_group="阅读类",
             teacher_id="T_1",
@@ -1704,7 +1741,7 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
                 "product_id": "P1",
                 "subject": "英语",
                 "quarter": "暑假",
-                "stage": "",
+                "stage": "基础",
                 "course_module": "词汇",
                 "course_group": "阅读类",
                 "course_code": "ENG-VOC",
@@ -1726,9 +1763,12 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
                 rows = list(reader)
 
         self.assertEqual(reader.fieldnames, BATCH_SCHEDULE_CSV_FIELDNAMES)
+        self.assertIn("window_name", reader.fieldnames or [])
+        self.assertNotIn("quarter", reader.fieldnames or [])
         self.assertEqual([row["lesson_slot"] for row in rows], ["AM1", "AM2"])
         self.assertEqual([row["slot_label"] for row in rows], ["上午一", "上午二"])
         self.assertEqual({row["weekday"] for row in rows}, {"周三"})
+        self.assertEqual({row["window_name"] for row in rows}, {"暑假"})
         self.assertEqual({row["course_code"] for row in rows}, {"ENG-VOC"})
         self.assertEqual({row["course_name"] for row in rows}, {"英语词汇"})
         self.assertEqual({row["room_name"] for row in rows}, {"101教室"})
@@ -1743,8 +1783,8 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
             class_size=None,
             subject_category="公共课",
             subject="英语",
-            quarter=None,
-            stage="暑假",
+            quarter="暑假",
+            stage="基础",
             course_module="词汇",
             course_group="阅读类",
             teacher_id="T_1",
@@ -1783,7 +1823,7 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
                 "product_id": "P1",
                 "subject": "英语",
                 "quarter": "暑假",
-                "stage": "",
+                "stage": "基础",
                 "course_module": "词汇",
                 "course_group": "阅读类",
                 "course_code": "ENG-VOC",
@@ -1876,6 +1916,8 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
         self.assertEqual([slot["id"] for slot in payload["slotRows"]], ["AM1", "AM2"])
         self.assertEqual([row["lesson_slot"] for row in payload["rows"]], ["AM1", "AM2"])
         self.assertEqual({row["suite_code"] for row in payload["rows"]}, {"2775"})
+        self.assertEqual({row["window_name"] for row in payload["rows"]}, {"暑假"})
+        self.assertTrue(all("quarter" not in row for row in payload["rows"]))
         self.assertEqual({row["course_code"] for row in payload["rows"]}, {"ENG-VOC"})
         self.assertEqual({row["course_name"] for row in payload["rows"]}, {"英语词汇"})
         self.assertEqual({row["room_name"] for row in payload["rows"]}, {"101教室"})

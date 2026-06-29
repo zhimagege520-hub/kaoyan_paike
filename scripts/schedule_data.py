@@ -269,7 +269,7 @@ def load_product_course_tags(path: Path) -> List[Dict[str, str]]:
             {
                 "product_id": clean_cell(row.get("product_id")),
                 "subject": clean_cell(row.get("subject")),
-                "quarter": clean_cell(row.get("quarter")),
+                "quarter": clean_cell(row.get("window_name")) or clean_cell(row.get("quarter")),
                 "stage": clean_cell(row.get("stage")),
                 "course_module": clean_cell(row.get("course_module")),
                 "course_group": clean_cell(row.get("course_group")),

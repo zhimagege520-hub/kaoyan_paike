@@ -7,7 +7,7 @@ from pathlib import Path
 
 from scripts import audit_schedule_quality
 from scripts import repair_schedule_quality_hotspots
-from scripts.audit_schedule_coverage import is_public_auto_class, load_class_metadata
+from scripts.audit_schedule_coverage import is_public_auto_class, load_class_metadata, scheduled_hours
 
 
 class ScheduleAuditTest(unittest.TestCase):
@@ -74,6 +74,43 @@ class ScheduleAuditTest(unittest.TestCase):
         self.assertTrue(is_public_auto_class(metadata["KYYY2750"]))
         self.assertEqual(metadata["KYZZ2750"].is_locked, "是")
         self.assertFalse(is_public_auto_class(metadata["KYZZ2750"]))
+
+    def test_coverage_audit_accepts_current_window_name_schedule_field(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            schedule_csv = Path(tmp) / "schedule.csv"
+            with schedule_csv.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=[
+                        "class_id",
+                        "subject",
+                        "window_name",
+                        "quarter",
+                        "stage",
+                        "course_module",
+                        "course_group",
+                        "teacher_id",
+                        "duration_hours",
+                    ],
+                )
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "class_id": "C1",
+                        "subject": "英语",
+                        "window_name": "暑假",
+                        "quarter": "旧窗口",
+                        "stage": "基础",
+                        "course_module": "词汇",
+                        "course_group": "阅读类",
+                        "teacher_id": "T1",
+                        "duration_hours": "2",
+                    }
+                )
+
+            hours = scheduled_hours(schedule_csv)
+
+        self.assertEqual(hours[("C1", "英语", "暑假", "基础", "词汇", "阅读类", "T1")], 2)
 
     def test_quality_audit_uses_shared_compact_class_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

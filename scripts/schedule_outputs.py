@@ -33,7 +33,7 @@ BATCH_SCHEDULE_CSV_FIELDNAMES = [
     "class_id",
     "class_name",
     "subject",
-    "quarter",
+    "window_name",
     "stage",
     "course_module",
     "course_group",
@@ -152,7 +152,7 @@ def build_day_table_payload(
                     "course_nature": class_meta.get("course_nature", ""),
                     "subject_category": class_meta.get("subject_category", ""),
                     "subject": assignment.task.subject,
-                    "quarter": assignment.task.quarter or "",
+                    "window_name": assignment.task.quarter or "",
                     "stage": assignment.task.stage or "",
                     "course_module": assignment.task.course_module or "",
                     "course_group": assignment.task.course_group or "",
@@ -625,7 +625,7 @@ function rowSearchText(row) {
     row.class_name,
     row.suite_code,
     row.subject,
-    row.quarter,
+    row.window_name || row.quarter,
     row.stage,
     row.course_module,
     row.course_group,
@@ -837,7 +837,8 @@ function renderTeacherSummaryInto(rows, target) {
 }
 
 function courseCard(row) {
-  const detail = [row.quarter, row.stage, row.course_module].filter(Boolean).join(" ");
+  const windowName = row.window_name || row.quarter || "";
+  const detail = [windowName, row.stage, row.course_module].filter(Boolean).join(" ");
   const courseName = row.course_name || "";
   const location = [row.class_id, row.sub_product || "", row.room_name].filter(Boolean).join(" / ");
   return `<div class="course-card" style="--subject-color: ${escapeHtml(row.color)}">
@@ -853,8 +854,9 @@ function courseCard(row) {
 function teacherLessonCard(row) {
   const timeText = [row.start_time, row.end_time].filter(Boolean).join("-");
   const courseName = row.course_name || "";
+  const windowName = row.window_name || row.quarter || "";
   return `<div class="teacher-lesson" style="--subject-color: ${escapeHtml(row.color)}">
-    <strong>${escapeHtml(row.subject)} ${escapeHtml([row.quarter, row.stage, row.course_module].filter(Boolean).join(" "))}</strong>
+    <strong>${escapeHtml(row.subject)} ${escapeHtml([windowName, row.stage, row.course_module].filter(Boolean).join(" "))}</strong>
     <span>${escapeHtml(timeText)} / ${escapeHtml(row.class_id)} ${escapeHtml(row.class_name || "")}</span>
     ${row.merge_note ? `<small class="merge-note">${escapeHtml(row.merge_note)}</small>` : ""}
     <small>${escapeHtml(row.sub_product || row.product_name || "")} / 套班 ${escapeHtml(rowSuite(row))}</small>
@@ -1163,7 +1165,7 @@ def write_batch_csv(
                     "class_id": assignment.task.class_id,
                     "class_name": assignment.task.class_name,
                     "subject": assignment.task.subject,
-                    "quarter": assignment.task.quarter or "",
+                    "window_name": assignment.task.quarter or "",
                     "stage": assignment.task.stage or "",
                     "course_module": assignment.task.course_module or "",
                     "course_group": assignment.task.course_group or "",

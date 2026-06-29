@@ -47,7 +47,7 @@ SCHEDULE_CSV_FIELDNAMES = [
     "product_name",
     "subject_category",
     "subject",
-    "quarter",
+    "window_name",
     "stage",
     "course_module",
     "course_group",
@@ -3053,7 +3053,7 @@ def write_csv(assignments: List[Assignment], out_path: Path, schedule_input: Opt
                 "product_name": assignment.task.product_name or "",
                 "subject_category": assignment.task.subject_category,
                 "subject": assignment.task.subject,
-                "quarter": assignment.task.quarter or "",
+                "window_name": assignment.task.quarter or "",
                 "stage": assignment.task.stage or "",
                 "course_module": assignment.task.course_module or "",
                 "course_group": assignment.task.course_group or "",
@@ -3461,7 +3461,7 @@ def render_assignment_table(assignments: List[Assignment]) -> str:
             <th>产品</th>
             <th>类别</th>
             <th>科目</th>
-            <th>季度</th>
+            <th>排课窗口</th>
             <th>阶段</th>
             <th>模块</th>
             <th>师资组</th>

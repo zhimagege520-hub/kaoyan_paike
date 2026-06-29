@@ -4718,9 +4718,20 @@ class SchedulingPipelineTest(unittest.TestCase):
                 out_path,
             )
             html_text = out_path.read_text(encoding="utf-8")
+            csv_path = Path(tmp) / "schedule.csv"
+            scheduler.write_csv([assignment], csv_path, schedule_input)
+            with csv_path.open(newline="", encoding="utf-8") as handle:
+                reader = csv.DictReader(handle)
+                csv_rows = list(reader)
+                csv_fields = reader.fieldnames or []
 
         self.assertIn("锁定班", html_text)
         self.assertIn("英语", html_text)
+        self.assertIn("排课窗口", html_text)
+        self.assertNotIn("<th>季度</th>", html_text)
+        self.assertIn("window_name", csv_fields)
+        self.assertNotIn("quarter", csv_fields)
+        self.assertEqual(csv_rows[0]["window_name"], "暑假")
 
     def test_parse_locked_lessons_uses_slot_ids_and_preserves_course_metadata(self) -> None:
         slots = [

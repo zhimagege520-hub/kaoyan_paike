@@ -97,7 +97,7 @@ def scheduled_hours(schedule_csv: Path, ignore_teacher: bool = False) -> Counter
         key = coverage_key(
             class_id,
             row.get("subject"),
-            row.get("quarter"),
+            row.get("window_name") or row.get("quarter"),
             row.get("stage"),
             row.get("course_module"),
             row.get("course_group"),
@@ -565,7 +565,7 @@ def main() -> None:
         "",
         "## 原始精确对账文件",
         "",
-        "- 以下文件按班级/科目/季度/阶段/模块/课程分组精确匹配。由于历史课表与产品需求字段还存在阶段/季度写法差异，只作为字段治理参考，不作为发布门禁。",
+        "- 以下文件按班级/科目/排课窗口/阶段/模块/课程分组精确匹配。由于历史课表与产品需求字段还存在阶段/窗口写法差异，只作为字段治理参考，不作为发布门禁。",
         f"- 原始汇总 CSV: {summary_path}",
         f"- 原始精确缺口 CSV: {gap_path}",
         f"- 原始精确超出 CSV: {over_path}",
