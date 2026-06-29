@@ -632,6 +632,15 @@ class BusinessClassImportTest(unittest.TestCase):
             self.assertNotIn("inherit_from_class_id", learned_rows[0])
             self.assertNotIn("teacher_available_slots", learned_rows[0])
             self.assertNotIn("course_module", learned_rows[0])
+            for filename in (
+                "learned_product_course_hours_20260430_140000.csv",
+                "learned_schedule_rules_20260430_140000.csv",
+                "shared_schedule_candidates_20260430_140000.csv",
+            ):
+                with (output_dir / filename).open(encoding="utf-8") as handle:
+                    header = next(csv.reader(handle))
+                self.assertIn("window_name", header)
+                self.assertNotIn("quarter", header)
 
     def test_missing_product_mapping_blocks_selected_class(self) -> None:
         tables = {
