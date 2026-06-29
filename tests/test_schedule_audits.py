@@ -6,12 +6,13 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from scripts import audit_schedule_quality
 from scripts import repair_schedule_quality_hotspots
 from scripts.audit_schedule_coverage import is_public_auto_class, load_class_metadata, main as coverage_main, scheduled_hours
-from scripts.repair_public_coverage_gaps import gap_key, halfday_rows
+from scripts.repair_public_coverage_gaps import gap_key, halfday_rows, make_gap_tasks
 
 
 class ScheduleAuditTest(unittest.TestCase):
@@ -232,25 +233,28 @@ class ScheduleAuditTest(unittest.TestCase):
             "course_module": "词汇",
             "course_group": "阅读类",
             "teacher_id": "T1",
+            "diff_hours": "4",
         }
-        task = {
-            "class_id": "C1",
-            "class_name": "测试班",
-            "subject": "英语",
-            "window_name": "暑假",
-            "quarter": "旧窗口",
-            "stage": "基础",
-            "course_module": "词汇",
-            "course_group": "阅读类",
-            "course_code": "ENG-VOC",
-            "course_name": "英语词汇",
-            "teacher_id": "T1",
-            "teacher_name": "张老师",
-            "room_id": "R1",
-            "room_name": "101",
+        requirement_lookup = {
+            gap_key(current_gap_row): SimpleNamespace(
+                teacher_name="张老师",
+                course_code="ENG-VOC",
+                course_name="英语词汇",
+            )
         }
+        tasks, offset_lines = make_gap_tasks(
+            [current_gap_row],
+            [],
+            requirement_lookup,
+            {"C1": {"name": "测试班", "preferred_room_ids": "R1"}},
+            {"R1": "101"},
+        )
+        task = tasks[0]
 
         self.assertEqual(gap_key(current_gap_row)[2], "暑假")
+        self.assertEqual(offset_lines, [])
+        self.assertEqual(task["window_name"], "暑假")
+        self.assertNotIn("quarter", task)
         current_rows = halfday_rows(
             task,
             "2026-07-01",

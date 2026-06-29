@@ -190,7 +190,6 @@ def make_gap_tasks(
                     "class_name": class_rows[class_id]["name"],
                     "subject": key[1],
                     "window_name": key[2],
-                    "quarter": key[2],
                     "stage": key[3],
                     "course_module": key[4],
                     "course_group": key[5],

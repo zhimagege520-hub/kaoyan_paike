@@ -249,6 +249,8 @@ class ReleaseStaticTest(unittest.TestCase):
                 offenders.append(f"{path.relative_to(ROOT)} clears falsey values with value-or-empty")
             if path.name in {"repair_2757_halfday_blocks.py", "repair_wyqc_foundation_gaps.py"} and 'clean(row.get("quarter"))' in source:
                 offenders.append(f"{path.relative_to(ROOT)} reads legacy quarter without window_name fallback")
+            if path.name == "repair_public_coverage_gaps.py" and '"quarter": key[2]' in source:
+                offenders.append(f"{path.relative_to(ROOT)} emits legacy quarter from new gap tasks")
 
         self.assertEqual([], offenders)
 
