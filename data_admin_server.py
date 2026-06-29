@@ -29,6 +29,7 @@ from scripts.field_utils import (
     normalize_text,
     normalize_time_text,
     parse_bool as normalize_bool,
+    split_delimited_values,
     split_pipe_values as split_id_list,
 )
 from scripts.product_catalog import (
@@ -3026,14 +3027,12 @@ def run_batch_schedule_job(job_id: str, mode: str, suite_codes: List[str], class
 
 def normalize_payload_list(payload: Dict[str, Any], key: str) -> List[str]:
     value = payload.get(key, [])
-    if isinstance(value, str):
-        raw_items = re.split(r"[,，|;\s]+", value)
-    elif isinstance(value, list):
+    if isinstance(value, list):
         raw_items = []
         for item in value:
-            raw_items.extend(re.split(r"[,，|;\s]+", str(item)))
+            raw_items.extend(split_delimited_values(item, include_whitespace=True))
     else:
-        raw_items = []
+        raw_items = split_delimited_values(value, include_whitespace=True)
     result: List[str] = []
     seen: Set[str] = set()
     for item in raw_items:

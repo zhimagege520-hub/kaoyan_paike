@@ -86,6 +86,9 @@ class DocumentationStaticTest(unittest.TestCase):
 
         self.assertIn("# AI辅助排课系统使用攻略", guide)
         self.assertIn("这份攻略面向第一次下载、配置和复用本项目的部门同事", guide)
+        self.assertIn("## 目录索引", guide)
+        self.assertIn("| 阅读位置 | 章节 | 主要用途 |", guide)
+        self.assertIn("| 要改程序时读 | 11. 程序调整的正确顺序 |", guide)
         self.assertIn("bash scripts/verify_release.sh", guide)
         self.assertIn("./scripts/start_admin.sh", guide)
         self.assertIn("http://127.0.0.1:8765", guide)

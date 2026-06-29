@@ -48,6 +48,18 @@ class AdminPipelineApiTest(unittest.TestCase):
         data_admin_server.OUTPUT_DIR = ORIGINAL_OUTPUT_DIR
         data_admin_server.PIPELINE_JOBS.clear()
 
+    def test_normalize_payload_list_accepts_pasted_tokens(self) -> None:
+        payload = {
+            "class_ids": "C1 C2，C3|C1",
+            "suite_codes": ["S1 S2", "S3；S1"],
+            "sub_products": 0,
+        }
+
+        self.assertEqual(data_admin_server.normalize_payload_list(payload, "class_ids"), ["C1", "C2", "C3"])
+        self.assertEqual(data_admin_server.normalize_payload_list(payload, "suite_codes"), ["S1", "S2", "S3"])
+        self.assertEqual(data_admin_server.normalize_payload_list(payload, "sub_products"), ["0"])
+        self.assertEqual(data_admin_server.normalize_payload_list(payload, "missing"), [])
+
     def test_markdown_preview_renders_readable_safe_html(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "report.md"
