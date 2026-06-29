@@ -18,7 +18,7 @@ if str(ROOT) not in sys.path:
 
 import scripts.build_camp_maintenance_schedule as maintenance
 from scripts.csv_utils import read_csv_with_fieldnames, write_csv_rows
-from scripts.field_utils import normalize_text as clean
+from scripts.field_utils import normalize_text as clean, row_value
 from scripts.schedule_data import load_room_names
 from scripts.schedule_outputs import write_day_table_html
 
@@ -26,7 +26,7 @@ from scripts.schedule_outputs import write_day_table_html
 DEFAULT_SCHEDULE = Path("outputs/batch_schedule_maintenance.csv")
 DEFAULT_OUTPUT_DIR = Path("outputs")
 TARGET_SUITE = "2757"
-TARGET_QUARTER = "暑假"
+TARGET_WINDOW = "暑假"
 PUBLIC_SUBJECTS = {"英语", "政治", "数学", "语文"}
 SECOND_SLOT = {
     "AM1": ("AM2", "上午二", "10:20", "12:20"),
@@ -35,6 +35,11 @@ SECOND_SLOT = {
     "PM2": ("PM1", "下午一", "14:00", "16:00"),
 }
 PERIOD_ORDER = {"AM": 0, "PM": 1, "EVENING": 2}
+
+
+def row_window_name(row: Dict[str, str]) -> str:
+    return clean(row_value(row, "window_name", "quarter"))
+
 
 def read_csv(path: Path) -> Tuple[List[str], List[Dict[str, str]]]:
     return read_csv_with_fieldnames(path)
@@ -71,7 +76,7 @@ def load_product_course_expected_rows(data_dir: Path, class_metadata: Dict[str, 
     }
     expected: Dict[Tuple[str, str, str, str], int] = {}
     for row in product_courses:
-        if clean(row.get("quarter")) != TARGET_QUARTER:
+        if row_window_name(row) != TARGET_WINDOW:
             continue
         total_hours = float(row.get("total_hours") or 0)
         if total_hours <= 0:
@@ -96,7 +101,7 @@ def target_rows_by_key(rows: Sequence[Dict[str, str]], class_metadata: Dict[str,
         meta = class_metadata.get(class_id, {})
         if meta.get("suite_code") != TARGET_SUITE:
             continue
-        if clean(row.get("quarter")) != TARGET_QUARTER:
+        if row_window_name(row) != TARGET_WINDOW:
             continue
         if clean(row.get("subject")) not in PUBLIC_SUBJECTS:
             continue

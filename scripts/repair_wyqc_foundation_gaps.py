@@ -18,7 +18,7 @@ import scheduler
 from scripts import audit_schedule_coverage as coverage
 from scripts import build_camp_maintenance_schedule as maintenance
 from scripts.csv_utils import write_csv_rows as write_csv_rows_with_fields
-from scripts.field_utils import normalize_text as clean
+from scripts.field_utils import normalize_text as clean, row_value
 from scripts.schedule_display import assignment_standard_lesson_count, week_start
 from scripts.schedule_outputs import write_batch_csv, write_day_table_html
 
@@ -27,6 +27,11 @@ PUBLIC_SUBJECTS = maintenance.SUMMER_PUBLIC_SUBJECTS
 TARGET_STAGES = {"基础", "强化"}
 TARGET_PRODUCTS = maintenance.WYQC_PRODUCTS
 PUBLIC_HALFDAY_HOURS = 4
+
+
+def row_window_name(row: dict) -> str:
+    return clean(row_value(row, "window_name", "quarter"))
+
 
 def suite_window(suite_code: str) -> Tuple[str, str]:
     return (
@@ -75,7 +80,7 @@ def build_module_gap_rows(data_dir: Path, schedule_csv: Path) -> List[dict]:
                 "class_subject": meta.subject,
                 "suite_code": meta.suite_code,
                 "subject": subject,
-                "quarter": quarter,
+                "window_name": quarter,
                 "stage": stage,
                 "course_module": course_module,
                 "course_group": course_group,
@@ -97,7 +102,7 @@ def module_key_from_row(row: dict) -> Tuple[str, str, str, str, str, str]:
     return (
         clean(row.get("class_id")),
         clean(row.get("subject")),
-        clean(row.get("quarter")),
+        row_window_name(row),
         clean(row.get("stage")),
         clean(row.get("course_module")),
         clean(row.get("course_group")),
@@ -232,7 +237,7 @@ def transformed_schedule_input(
 def requirement_matches_row(requirement: scheduler.Requirement, row: dict, include_teacher: bool = False) -> bool:
     if requirement.subject != clean(row.get("subject")):
         return False
-    if clean(requirement.quarter) != clean(row.get("quarter")):
+    if clean(requirement.quarter) != row_window_name(row):
         return False
     if clean(requirement.stage) != clean(row.get("stage")):
         return False
@@ -311,7 +316,7 @@ def task_from_existing_row(
         class_size=None,
         subject_category=clean(row.get("subject_category")) or "公共课",
         subject=clean(row.get("subject")),
-        quarter=clean(row.get("quarter")) or None,
+        quarter=row_window_name(row) or None,
         stage=clean(row.get("stage")) or None,
         course_module=clean(row.get("course_module")) or None,
         course_group=clean(row.get("course_group")) or None,

@@ -35,11 +35,18 @@ from scripts.build_camp_maintenance_schedule import (
     wuyou_spring_autumn_class_ids,
 )
 from scripts.repair_2726_summer_week_balance import clean as repair_2726_clean
-from scripts.repair_2757_halfday_blocks import clean as repair_2757_clean
+from scripts.repair_2757_halfday_blocks import (
+    clean as repair_2757_clean,
+    row_window_name as repair_2757_row_window_name,
+)
 from scripts.repair_public_coverage_gaps import clean as repair_public_coverage_clean
 from scripts.repair_schedule_quality_hotspots import parse_name_set as parse_repair_name_set
 from scripts.repair_wyqc_foundation_deadlines import clean as repair_wyqc_deadline_clean
-from scripts.repair_wyqc_foundation_gaps import clean as repair_wyqc_gap_clean
+from scripts.repair_wyqc_foundation_gaps import (
+    clean as repair_wyqc_gap_clean,
+    module_key_from_row,
+    row_window_name as repair_wyqc_gap_row_window_name,
+)
 from scripts.repair_wyqc_summer_week_balance import clean as repair_wyqc_summer_clean, parse_suite_codes
 from scripts.schedule_constraints import (
     assignment_constraint_sets,
@@ -155,6 +162,25 @@ class ScheduleScopeDateTest(unittest.TestCase):
         self.assertEqual(conflict_clean(0), "0")
         self.assertEqual(conflict_clean(False), "False")
         self.assertEqual(conflict_clean("无"), "")
+
+    def test_repair_window_helpers_prefer_current_window_name(self) -> None:
+        row = {
+            "class_id": "C1",
+            "subject": "英语",
+            "window_name": "暑假",
+            "quarter": "旧窗口",
+            "stage": "基础",
+            "course_module": "词汇",
+            "course_group": "阅读类",
+        }
+
+        self.assertEqual(repair_2757_row_window_name(row), "暑假")
+        self.assertEqual(repair_wyqc_gap_row_window_name(row), "暑假")
+        self.assertEqual(
+            module_key_from_row(row),
+            ("C1", "英语", "暑假", "基础", "词汇", "阅读类"),
+        )
+        self.assertEqual(repair_2757_row_window_name({"quarter": "暑假"}), "暑假")
 
     def test_normalize_date_uses_shared_import_formats(self) -> None:
         self.assertEqual(normalize_date("2026/7/1"), "2026-07-01")

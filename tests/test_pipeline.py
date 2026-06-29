@@ -3050,6 +3050,35 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertFalse(state["classes"][1]["is_manual_schedule_locked"])
         self.assertFalse(state["classes"][1]["is_schedule_locked"])
 
+    def test_professional_import_course_meta_uses_current_window_name_field(self) -> None:
+        from scripts.import_locked_professional_schedules import course_meta_from_product_course
+
+        current = course_meta_from_product_course(
+            {
+                "window_name": "暑假",
+                "quarter": "旧窗口",
+                "stage": "基础",
+                "course_module": "专业课模块",
+                "course_group": "专业课组",
+                "course_code": "PRO-001",
+            },
+            "专业课基础",
+        )
+        legacy = course_meta_from_product_course(
+            {
+                "quarter": "暑假",
+                "stage": "基础",
+                "course_module": "专业课模块",
+                "course_group": "专业课组",
+                "course_code": "PRO-001",
+            },
+            "专业课基础",
+        )
+
+        self.assertEqual(current["window_name"], "暑假")
+        self.assertNotIn("quarter", current)
+        self.assertEqual(legacy["window_name"], "暑假")
+
     def test_preferred_room_can_expand_to_same_teaching_area_unless_required(self) -> None:
         state = data_admin_server.normalize_payload(
             {

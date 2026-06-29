@@ -245,6 +245,8 @@ class ReleaseStaticTest(unittest.TestCase):
                 offenders.append(f"{path.relative_to(ROOT)} defines local clean")
             if 'str(value or "").strip()' in source:
                 offenders.append(f"{path.relative_to(ROOT)} clears falsey values with value-or-empty")
+            if path.name in {"repair_2757_halfday_blocks.py", "repair_wyqc_foundation_gaps.py"} and 'clean(row.get("quarter"))' in source:
+                offenders.append(f"{path.relative_to(ROOT)} reads legacy quarter without window_name fallback")
 
         self.assertEqual([], offenders)
 
@@ -375,6 +377,9 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIn("parse_datetime_value", camp_maintenance_source)
         self.assertIn("is_manual_schedule_locked", import_locked_source)
         self.assertNotIn('cls["is_schedule_locked"] =', import_locked_source)
+        self.assertIn('"window_name": window_name', import_locked_source)
+        self.assertNotIn('"quarter": quarter', import_locked_source)
+        self.assertNotIn('"quarter": normalize_text', import_locked_source)
         self.assertNotIn("def class_is_movable_public", wyqc_foundation_gap_source)
         self.assertNotIn("datetime.strptime", import_locked_source)
         self.assertNotIn("datetime.strptime", camp_maintenance_source)

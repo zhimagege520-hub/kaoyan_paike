@@ -26,7 +26,7 @@ from data_admin_server import (
     save_state,
     split_id_list,
 )
-from scripts.field_utils import parse_datetime_value
+from scripts.field_utils import parse_datetime_value, row_value
 
 
 CLASS_ID_RE = re.compile(r"(KY[A-Z]+[0-9]+)")
@@ -155,7 +155,7 @@ def stage_from_course_name(course_name: str) -> str:
 
 def course_meta_from_product_course(course: Dict[str, Any], course_name: str) -> Dict[str, str]:
     return {
-        "quarter": normalize_text(course.get("quarter")),
+        "window_name": normalize_text(row_value(course, "window_name", "quarter")),
         "stage": normalize_text(course.get("stage")),
         "course_module": normalize_text(course.get("course_module")),
         "course_group": normalize_text(course.get("course_group")),
@@ -184,7 +184,7 @@ def resolve_course_meta(
             return course_meta_from_product_course(matches[0], raw_course_name)
         unique_without_stage = {
             (
-                normalize_text(course.get("quarter")),
+                normalize_text(row_value(course, "window_name", "quarter")),
                 normalize_text(course.get("course_module")),
                 normalize_text(course.get("course_group")),
                 normalize_text(course.get("course_code")),
@@ -200,7 +200,7 @@ def resolve_course_meta(
 
     meta = indexes["course_meta"].get((product_id, subject), {})
     return {
-        "quarter": "",
+        "window_name": "",
         "stage": "",
         "course_module": meta.get("course_module", ""),
         "course_group": meta.get("course_group", ""),
@@ -359,7 +359,7 @@ def import_workbook(
         teacher_id, teacher_name = resolve_teacher(row, indexes, summary)
         subject = clean_cell(row.get("科目内")) or normalize_text(cls.get("subject"))
         meta = resolve_course_meta(row, cls, subject, indexes, summary)
-        quarter = meta.get("quarter", "")
+        window_name = meta.get("window_name", "")
         stage = meta.get("stage", "") or infer_stage(cls, lesson_date)
         course_module = meta.get("course_module", "")
         course_group = meta.get("course_group", "")
@@ -385,7 +385,7 @@ def import_workbook(
                 "business_product_id": normalize_text(cls.get("product_id")),
                 "business_product_name": normalize_text(product.get("name")) or normalize_text(cls.get("product_id")),
                 "subject": subject,
-                "quarter": quarter,
+                "window_name": window_name,
                 "stage": stage,
                 "course_module": course_module,
                 "course_group": course_group,
