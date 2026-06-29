@@ -4,6 +4,7 @@ import unittest
 
 from scripts.subject_utils import (
     CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS,
+    CORE_PUBLIC_SUBJECTS,
     PUBLIC_SUBJECT_SORT_ORDER,
     PUBLIC_SUBJECTS_WITH_CHINESE,
     subject_sort_value,
@@ -11,6 +12,9 @@ from scripts.subject_utils import (
 
 
 class SubjectUtilsTest(unittest.TestCase):
+    def test_core_public_subjects_are_shared(self) -> None:
+        self.assertEqual(CORE_PUBLIC_SUBJECTS, frozenset({"英语", "政治", "数学"}))
+
     def test_public_subjects_with_chinese_are_shared(self) -> None:
         self.assertEqual(PUBLIC_SUBJECTS_WITH_CHINESE, frozenset({"英语", "政治", "数学", "语文"}))
 

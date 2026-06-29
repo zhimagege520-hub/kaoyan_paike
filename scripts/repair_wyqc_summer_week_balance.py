@@ -21,9 +21,10 @@ from scripts.csv_utils import read_csv_rows, write_csv_rows as write_csv_rows_wi
 from scripts.field_utils import normalize_text as clean, split_delimited_values
 from scripts.schedule_display import week_start, weekday_label
 from scripts.schedule_outputs import write_day_table_html
+from scripts.subject_utils import CORE_PUBLIC_SUBJECTS
 
 
-PUBLIC_SUBJECTS = {"英语", "政治", "数学"}
+PUBLIC_SUBJECTS = CORE_PUBLIC_SUBJECTS
 SUMMER_START = "2026-07-04"
 SUMMER_END = "2026-08-31"
 MAX_SAME_SUITE_SUBJECT_TEACHER_STREAK = 3

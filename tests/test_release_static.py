@@ -526,23 +526,38 @@ class ReleaseStaticTest(unittest.TestCase):
 
     def test_public_subject_sets_live_in_shared_subject_utils(self) -> None:
         admin_source = (ROOT / "data_admin_server.py").read_text(encoding="utf-8")
+        scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")
+        business_import_source = (ROOT / "business_class_import.py").read_text(encoding="utf-8")
         erp_export_source = (ROOT / "scripts" / "export_erp_lesson_import.py").read_text(encoding="utf-8")
         erp_lesson_map_source = (ROOT / "scripts" / "build_erp_lesson_id_map.py").read_text(encoding="utf-8")
+        schedule_data_source = (ROOT / "scripts" / "schedule_data.py").read_text(encoding="utf-8")
         schedule_batch_source = (ROOT / "scripts" / "schedule_batch.py").read_text(encoding="utf-8")
         schedule_scope_source = (ROOT / "scripts" / "schedule_scope.py").read_text(encoding="utf-8")
         schedule_week_balance_source = (ROOT / "scripts" / "schedule_week_balance.py").read_text(encoding="utf-8")
         camp_maintenance_source = (ROOT / "scripts" / "build_camp_maintenance_schedule.py").read_text(encoding="utf-8")
         audit_quality_source = (ROOT / "scripts" / "audit_schedule_quality.py").read_text(encoding="utf-8")
         quality_hotspot_repair_source = (ROOT / "scripts" / "repair_schedule_quality_hotspots.py").read_text(encoding="utf-8")
+        suite_week_balance_repair_source = (ROOT / "scripts" / "repair_2726_summer_week_balance.py").read_text(encoding="utf-8")
+        wyqc_week_balance_repair_source = (ROOT / "scripts" / "repair_wyqc_summer_week_balance.py").read_text(encoding="utf-8")
+        wyqc_deadline_repair_source = (ROOT / "scripts" / "repair_wyqc_foundation_deadlines.py").read_text(encoding="utf-8")
         halfday_repair_source = (ROOT / "scripts" / "repair_2757_halfday_blocks.py").read_text(encoding="utf-8")
         subject_utils_source = (ROOT / "scripts" / "subject_utils.py").read_text(encoding="utf-8")
 
+        self.assertIn("CORE_PUBLIC_SUBJECTS", subject_utils_source)
         self.assertIn("PUBLIC_SUBJECTS_WITH_CHINESE", subject_utils_source)
         self.assertIn("PUBLIC_SUBJECT_SORT_ORDER", subject_utils_source)
         self.assertIn("CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS", subject_utils_source)
+        self.assertIn("from scripts.subject_utils import CORE_PUBLIC_SUBJECTS", scheduler_source)
+        self.assertIn("from scripts.subject_utils import CORE_PUBLIC_SUBJECTS", business_import_source)
+        self.assertIn("from scripts.subject_utils import CORE_PUBLIC_SUBJECTS", schedule_data_source)
         self.assertIn("from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE", admin_source)
         self.assertIn("from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE", erp_export_source)
         self.assertIn("from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE", erp_lesson_map_source)
+        self.assertIn("CORE_PUBLIC_SUBJECTS", schedule_batch_source)
+        self.assertIn("CORE_PUBLIC_SUBJECTS", camp_maintenance_source)
+        self.assertIn("CORE_PUBLIC_SUBJECTS", suite_week_balance_repair_source)
+        self.assertIn("CORE_PUBLIC_SUBJECTS", wyqc_week_balance_repair_source)
+        self.assertIn("CORE_PUBLIC_SUBJECTS", wyqc_deadline_repair_source)
         self.assertIn("CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS", schedule_batch_source)
         self.assertIn("CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS", camp_maintenance_source)
         self.assertIn("CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS", quality_hotspot_repair_source)
@@ -557,6 +572,9 @@ class ReleaseStaticTest(unittest.TestCase):
             admin_source,
             erp_export_source,
             erp_lesson_map_source,
+            scheduler_source,
+            business_import_source,
+            schedule_data_source,
             schedule_batch_source,
             schedule_scope_source,
             schedule_week_balance_source,
@@ -564,9 +582,14 @@ class ReleaseStaticTest(unittest.TestCase):
             audit_quality_source,
             quality_hotspot_repair_source,
             halfday_repair_source,
+            suite_week_balance_repair_source,
+            wyqc_week_balance_repair_source,
+            wyqc_deadline_repair_source,
         ):
             self.assertIsNone(re.search(r'(?m)^PUBLIC_(?:TEACHER_)?SUBJECTS\s*=\s*\{"英语", "政治", "数学", "语文"\}', source))
             self.assertIsNone(re.search(r'(?m)^SUBJECT_ORDER\s*=\s*\{"数学": 0, "英语": 1, "政治": 2, "语文": 3\}', source))
+            self.assertNotIn('{"英语", "政治", "数学"}', source)
+            self.assertNotIn('{"英语", "数学", "政治"}', source)
             self.assertNotIn('{"数学": "AM", "英语": "PM", "政治": "PM"}', source)
 
     def test_weekday_normalization_lives_in_shared_weekday_utils(self) -> None:

@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Set, Tuple
 import scheduler
 from scripts.csv_utils import clean_cell, read_csv_rows
 from scripts.field_utils import row_value
+from scripts.subject_utils import CORE_PUBLIC_SUBJECTS
 
 
 def _data_file(path: Path, file_name: str) -> Path:
@@ -224,7 +225,7 @@ SUBJECT_SUFFIXES = {
     "XY": "西医",
 }
 
-PUBLIC_SUBJECTS = {"英语", "政治", "数学"}
+PUBLIC_SUBJECTS = CORE_PUBLIC_SUBJECTS
 
 
 def infer_class_subject(row: Dict[str, str]) -> str:

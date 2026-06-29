@@ -20,6 +20,7 @@ from scripts.field_utils import (
 )
 from scripts.period_utils import VALID_PERIODS, normalize_period, period_from_time_text
 from scripts.product_catalog import product_catalog as shared_product_catalog
+from scripts.subject_utils import CORE_PUBLIC_SUBJECTS
 from scripts.weekday_utils import weekday_label_for_date
 
 
@@ -524,7 +525,7 @@ def infer_subject(*values: Any) -> str:
 
 
 def subject_category(subject: str) -> str:
-    return "公共课" if subject in {"英语", "政治", "数学"} else ("专业课" if subject else "")
+    return "公共课" if subject in CORE_PUBLIC_SUBJECTS else ("专业课" if subject else "")
 
 
 def product_catalog(payload: Mapping[str, Any]) -> Dict[str, Dict[str, Any]]:

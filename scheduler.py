@@ -23,6 +23,7 @@ from scripts.field_utils import (
 )
 from scripts.period_utils import PERIOD_ORDER, VALID_PERIODS, normalize_period, period_sort_value
 from scripts.schedule_modes import assignment_is_shared
+from scripts.subject_utils import CORE_PUBLIC_SUBJECTS
 from scripts.weekday_utils import parse_weekday_set
 from scripts.window_utils import (
     SEASON_WINDOW_ID_TO_NAME,
@@ -65,7 +66,7 @@ STAGE_ORDER_PROFILES = [
     ({"半年营", "暑假营", "无忧秋", "无忧春", "无忧暑"}, ["基础", "强化", "冲刺"]),
     ({"冲刺营"}, ["冲刺"]),
 ]
-SAME_CLASS_TEACHER_DAY_LIMIT_SUBJECTS = {"英语", "政治", "数学"}
+SAME_CLASS_TEACHER_DAY_LIMIT_SUBJECTS = CORE_PUBLIC_SUBJECTS
 MAX_SAME_CLASS_TEACHER_DAY_HOURS = 8
 
 

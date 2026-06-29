@@ -21,9 +21,10 @@ from scripts.csv_utils import read_csv_rows, write_csv_rows as write_csv_rows_wi
 from scripts.field_utils import normalize_text as clean
 from scripts.schedule_display import weekday_label
 from scripts.schedule_outputs import write_day_table_html
+from scripts.subject_utils import CORE_PUBLIC_SUBJECTS
 
 
-PUBLIC_SUBJECTS = {"英语", "政治", "数学"}
+PUBLIC_SUBJECTS = CORE_PUBLIC_SUBJECTS
 TARGET_STAGES = {"基础", "强化"}
 DEFAULT_DEADLINES = {
     "2720": "2026-08-16",

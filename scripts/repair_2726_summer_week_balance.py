@@ -21,10 +21,11 @@ from scripts.csv_utils import read_csv_rows, write_csv_rows as write_csv_rows_wi
 from scripts.field_utils import normalize_text as clean
 from scripts.schedule_display import week_start, weekday_label
 from scripts.schedule_outputs import write_day_table_html
+from scripts.subject_utils import CORE_PUBLIC_SUBJECTS
 
 
 SUITE_CODE = "2726"
-PUBLIC_SUBJECTS = {"英语", "政治", "数学"}
+PUBLIC_SUBJECTS = CORE_PUBLIC_SUBJECTS
 SUMMER_START = "2026-07-04"
 SUMMER_END = "2026-08-31"
 WEEK_SUBJECT_QUOTAS: Dict[Tuple[str, str], int] = {

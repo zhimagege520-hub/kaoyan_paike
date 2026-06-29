@@ -87,7 +87,7 @@ from scripts.schedule_batch import (
     LONG_CAMP_MATH_MAX_CONSECUTIVE_DAYS,
     SUMMER_PREFERRED_WEEKLY_HALFDAY_MAX,
 )
-from scripts.subject_utils import CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS
+from scripts.subject_utils import CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS, CORE_PUBLIC_SUBJECTS
 
 _raw_class_ids_for_suite_codes = raw_class_ids_for_suite_codes
 _raw_load_class_metadata = raw_load_class_metadata
@@ -232,7 +232,7 @@ SPRINT_CAMP_WEEK_BOUNDS = {
 }
 SUMMER_PREPLAN_STAGES = {"暑假", "基础", "强化"}
 SUMMER_CLASS_WINDOW_IDS = {"WINDOW_SUMMER", "暑假"}
-SUMMER_PUBLIC_SUBJECTS = {"英语", "政治", "数学"}
+SUMMER_PUBLIC_SUBJECTS = CORE_PUBLIC_SUBJECTS
 SUMMER_STAGE_ORDER = {"基础": 0, "强化": 1, "冲刺": 2}
 AUTUMN_PREPLAN_STAGES = {"秋季", "冲刺"}
 LONG_CAMP_PREFERRED_PERIODS = CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS
@@ -731,7 +731,7 @@ def suite_subject_classes(data_dir: Path) -> Dict[str, Dict[str, Dict[str, str]]
     for row in read_csv_rows(data_dir / "classes.csv"):
         suite_code = clean(row.get("suite_code")) or suite_code_from_class_id(clean(row.get("id")))
         subject = normalize_subject(infer_class_subject(row))
-        if suite_code not in MAINTENANCE_SUITES or subject not in {"英语", "数学", "政治"}:
+        if suite_code not in MAINTENANCE_SUITES or subject not in CORE_PUBLIC_SUBJECTS:
             continue
         result[suite_code][subject] = {
             "id": clean(row.get("id")),
@@ -6457,7 +6457,7 @@ def class_teacher_day_loads_for_assignments(
     for assignment in assignments:
         if assignment.task.task_id == excluded_task_id:
             continue
-        if assignment.task.subject not in {"英语", "政治", "数学"}:
+        if assignment.task.subject not in CORE_PUBLIC_SUBJECTS:
             continue
         teacher_key = candidate_teacher_key(assignment.candidate)
         if not teacher_key:
@@ -10805,7 +10805,7 @@ def long_camp_sequence_warning_lines(
         suite_code = suite_code_from_class_id(assignment.task.class_id)
         if suite_code not in HALF_YEAR_BATCH_SUITES and "全年营" not in assignment.task.class_name:
             continue
-        if assignment.task.subject not in {"英语", "政治", "数学"}:
+        if assignment.task.subject not in CORE_PUBLIC_SUBJECTS:
             continue
         key = (suite_code, assignment.task.subject)
         by_subject_dates[key].add(assignment.candidate.slots[0].date)

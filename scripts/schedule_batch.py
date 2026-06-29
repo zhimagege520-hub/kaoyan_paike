@@ -90,6 +90,7 @@ from scripts.schedule_week_balance import (
     week_key,
 )
 from scripts.subject_utils import (
+    CORE_PUBLIC_SUBJECTS,
     CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS,
     PUBLIC_SUBJECT_SORT_ORDER as SUBJECT_ORDER,
     PUBLIC_SUBJECTS_WITH_CHINESE as PUBLIC_SUBJECTS,
@@ -2224,7 +2225,7 @@ def improve_three_day_run_balance(
                 continue
             if (
                 is_long_camp_assignment(assignment, class_metadata)
-                and task.subject in {"英语", "政治", "数学"}
+                and task.subject in CORE_PUBLIC_SUBJECTS
                 and assignment_week_load_for_suite_subject(
                     schedule_input,
                     result,
