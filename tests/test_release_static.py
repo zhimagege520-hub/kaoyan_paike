@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 import unittest
 from pathlib import Path
 from typing import Iterable
@@ -9,9 +10,47 @@ from typing import Iterable
 ROOT = Path(__file__).resolve().parents[1]
 PERSONAL_PATH_MARKERS = ("/Users/" + "plzhz", "Down" + "loads" + "/")
 TEXT_RELEASE_SUFFIXES = {".csv", ".html", ".js", ".json", ".md", ".py", ".sh", ".txt", ".yml"}
+TEXT_RELEASE_NAMES = {".env.example", ".gitignore"}
+RELEASE_TEXT_PATHS = [
+    ".env.example",
+    ".gitignore",
+    "LAUNCH_CHECKLIST.md",
+    "PUBLIC_SCHEDULE_DEPLOY.md",
+    "README.md",
+    "SCHEDULING_RULES_REVIEW_20260524.md",
+    ".github",
+    "cloudflare_schedule_publish",
+    "docs",
+    "examples",
+    "scripts",
+    "share",
+    "tests",
+    "web_admin",
+    "*.py",
+]
+RELEASE_DOC_PATHS = ["README.md", "PUBLIC_SCHEDULE_DEPLOY.md", "LAUNCH_CHECKLIST.md", "docs", "share"]
 
 
-def release_text_files() -> Iterable[Path]:
+def git_tracked_files(pathspecs: Iterable[str]) -> list[Path]:
+    try:
+        result = subprocess.run(
+            ["git", "-c", "core.quotePath=false", "ls-files", "-z", "--", *pathspecs],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return []
+    return sorted({ROOT / item for item in result.stdout.split("\0") if item})
+
+
+def is_release_text_file(path: Path) -> bool:
+    return path.is_file() and (path.name in TEXT_RELEASE_NAMES or path.suffix in TEXT_RELEASE_SUFFIXES)
+
+
+def filesystem_release_text_files() -> list[Path]:
+    paths: list[Path] = []
     top_level_files = [
         ROOT / ".env.example",
         ROOT / ".gitignore",
@@ -21,19 +60,58 @@ def release_text_files() -> Iterable[Path]:
         ROOT / "SCHEDULING_RULES_REVIEW_20260524.md",
     ]
     for path in top_level_files:
-        yield path
+        if is_release_text_file(path):
+            paths.append(path)
     for directory in (".github", "cloudflare_schedule_publish", "docs", "examples", "scripts", "share", "tests", "web_admin"):
         for path in sorted((ROOT / directory).rglob("*")):
-            if path.is_file() and path.suffix in TEXT_RELEASE_SUFFIXES:
-                yield path
+            if is_release_text_file(path):
+                paths.append(path)
     for path in sorted(ROOT.glob("*.py")):
+        if is_release_text_file(path):
+            paths.append(path)
+    return sorted(paths)
+
+
+def release_text_files() -> Iterable[Path]:
+    tracked_paths = git_tracked_files(RELEASE_TEXT_PATHS)
+    paths = [path for path in tracked_paths if is_release_text_file(path)] if tracked_paths else filesystem_release_text_files()
+    for path in paths:
         yield path
+
+
+def release_script_python_files() -> list[Path]:
+    tracked_paths = git_tracked_files(["scripts/*.py"])
+    if tracked_paths:
+        return [path for path in tracked_paths if path.is_file() and path.suffix == ".py"]
+    return sorted(path for path in (ROOT / "scripts").glob("*.py") if path.is_file())
+
+
+def release_docs_text_files() -> list[Path]:
+    tracked_paths = git_tracked_files(RELEASE_DOC_PATHS)
+    if not tracked_paths:
+        paths = [ROOT / "README.md", ROOT / "PUBLIC_SCHEDULE_DEPLOY.md", ROOT / "LAUNCH_CHECKLIST.md"]
+        paths.extend(sorted((ROOT / "docs").rglob("*.md")))
+        paths.extend(sorted((ROOT / "share").rglob("*.html")))
+        return [path for path in paths if path.is_file()]
+
+    docs: list[Path] = []
+    for path in tracked_paths:
+        if not path.is_file():
+            continue
+        relative = path.relative_to(ROOT).as_posix()
+        if relative in {"README.md", "PUBLIC_SCHEDULE_DEPLOY.md", "LAUNCH_CHECKLIST.md"}:
+            docs.append(path)
+        elif relative.startswith("docs/") and path.suffix == ".md":
+            docs.append(path)
+        elif relative.startswith("share/") and path.suffix == ".html":
+            docs.append(path)
+    return sorted(docs)
 
 
 class ReleaseStaticTest(unittest.TestCase):
     def test_scripts_do_not_ship_personal_default_paths(self) -> None:
         offenders = []
-        for path in sorted((ROOT / "scripts").glob("*.py")):
+        for path in release_script_python_files():
             source = path.read_text(encoding="utf-8")
             if any(marker in source for marker in PERSONAL_PATH_MARKERS):
                 offenders.append(str(path.relative_to(ROOT)))
@@ -42,10 +120,7 @@ class ReleaseStaticTest(unittest.TestCase):
 
     def test_release_docs_do_not_ship_personal_paths(self) -> None:
         offenders = []
-        paths = [ROOT / "README.md", ROOT / "PUBLIC_SCHEDULE_DEPLOY.md", ROOT / "LAUNCH_CHECKLIST.md"]
-        paths.extend(sorted((ROOT / "docs").rglob("*.md")))
-        paths.extend(sorted((ROOT / "share").rglob("*.html")))
-        for path in paths:
+        for path in release_docs_text_files():
             source = path.read_text(encoding="utf-8")
             if any(marker in source for marker in PERSONAL_PATH_MARKERS):
                 offenders.append(str(path.relative_to(ROOT)))
@@ -82,6 +157,14 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIn('data_admin_server.py \\', script)
         self.assertIn('grep -q "argparse" "$script_path"', script)
         self.assertIn('grep -q "if __name__" "$script_path"', script)
+
+    def test_release_static_scans_tracked_files_in_git_worktrees(self) -> None:
+        release_paths = {path.relative_to(ROOT).as_posix() for path in release_text_files()}
+        script_paths = {path.relative_to(ROOT).as_posix() for path in release_script_python_files()}
+
+        self.assertNotIn("docs/generated/ai-assisted-scheduling-system-user-guide-compact.md", release_paths)
+        self.assertNotIn("scripts/build_ai_user_guide_docx.py", release_paths)
+        self.assertNotIn("scripts/build_ai_user_guide_docx.py", script_paths)
 
     def test_release_surface_does_not_reintroduce_summer_lodging_constraints(self) -> None:
         forbidden_terms = [
@@ -465,7 +548,7 @@ class ReleaseStaticTest(unittest.TestCase):
             r")"
         )
         offenders = []
-        for path in sorted((ROOT / "scripts").glob("*.py")):
+        for path in release_script_python_files():
             source = path.read_text(encoding="utf-8")
             if 'if __name__ == "__main__"' not in source and "if __name__ == '__main__'" not in source:
                 continue
