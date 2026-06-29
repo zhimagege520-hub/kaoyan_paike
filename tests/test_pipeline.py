@@ -2919,6 +2919,7 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(lookups["window_names"], ["春季", "暑假"])
         self.assertNotIn("quarters", lookups)
         self.assertEqual(lookups["season_window_order"], ["寒假", "春季", "暑假", "秋季"])
+        self.assertEqual(lookups["season_window_options"], list(data_admin_server.SEASON_WINDOW_OPTIONS))
         self.assertEqual(lookups["stage_order"], data_admin_server.DEFAULT_STAGE_ORDER)
         self.assertEqual(lookups["stages"], ["基础", "强化"])
         self.assertEqual(set(lookups["public_teacher_subjects"]), {"英语", "政治", "数学", "语文"})

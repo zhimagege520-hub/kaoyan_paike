@@ -14,6 +14,42 @@ SEASON_WINDOW_ID_TO_NAME = {
 }
 SEASON_WINDOW_ORDER = tuple(SEASON_WINDOW_ID_TO_NAME.values())
 SEASON_WINDOW_NAME_TO_ID = {name: window_id for window_id, name in SEASON_WINDOW_ID_TO_NAME.items()}
+SEASON_WINDOW_DEFAULTS = {
+    "寒假": {
+        "season_window_id": "WINDOW_WINTER",
+        "start_month": 1,
+        "end_month": 2,
+        "blocked_weekdays": ["周日"],
+    },
+    "春季": {
+        "season_window_id": "WINDOW_SPRING",
+        "start_month": 3,
+        "end_month": 6,
+        "blocked_weekdays": ["周一"],
+    },
+    "暑假": {
+        "season_window_id": "WINDOW_SUMMER",
+        "start_month": 7,
+        "end_month": 8,
+        "blocked_weekdays": ["周日"],
+    },
+    "秋季": {
+        "season_window_id": "WINDOW_AUTUMN",
+        "start_month": 9,
+        "end_month": 12,
+        "blocked_weekdays": ["周一"],
+    },
+}
+SEASON_WINDOW_OPTIONS = tuple(
+    {
+        "season_window_id": SEASON_WINDOW_DEFAULTS[name]["season_window_id"],
+        "name": name,
+        "start_month": SEASON_WINDOW_DEFAULTS[name]["start_month"],
+        "end_month": SEASON_WINDOW_DEFAULTS[name]["end_month"],
+        "blocked_weekdays": list(SEASON_WINDOW_DEFAULTS[name]["blocked_weekdays"]),
+    }
+    for name in SEASON_WINDOW_ORDER
+)
 YEAR_SEASON_WINDOW_PATTERN = re.compile(r"^\d{4}\s*年?\s*[-_/]?\s*(寒假|春季|暑假|秋季)$")
 
 

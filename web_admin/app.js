@@ -299,7 +299,9 @@ function hydrateStageOrder() {
 
 function hydrateSeasonWindowOrder() {
   seasonWindowOrder = arrayValues(state.lookups?.season_window_order);
-  if (!seasonWindowOrder.length) seasonWindowOrder = Object.keys(seasonWindowDefaults);
+  if (!seasonWindowOrder.length) {
+    seasonWindowOrder = seasonWindowOptions().map((item) => item.name).filter(Boolean);
+  }
   seasonWindowOrderIndex = new Map(seasonWindowOrder.map((name, index) => [name, index]));
 }
 
@@ -833,21 +835,35 @@ function weekdays() {
   return lookupOptions("weekday_options");
 }
 
+function seasonWindowOptions() {
+  return arrayValues(state.lookups?.season_window_options);
+}
+
+function seasonWindowOptionById(seasonWindowId) {
+  const id = String(seasonWindowId || "").trim();
+  return seasonWindowOptions().find((item) => (item.season_window_id || item.id) === id) || null;
+}
+
+function seasonWindowOptionByName(windowName) {
+  const seasonName = normalizeSeasonName(windowName);
+  return seasonWindowOptions().find((item) => item.name === seasonName) || null;
+}
+
 function seasonWindowSelectOptions() {
-  return [
-    { value: "WINDOW_WINTER", label: "寒假" },
-    { value: "WINDOW_SPRING", label: "春季" },
-    { value: "WINDOW_SUMMER", label: "暑假" },
-    { value: "WINDOW_AUTUMN", label: "秋季" },
-  ];
+  return seasonWindowOptions()
+    .map((item) => ({
+      value: item.season_window_id || item.id || "",
+      label: item.name || item.label || "",
+    }))
+    .filter((item) => item.value && item.label);
 }
 
 function seasonWindowName(seasonWindowId) {
-  return seasonWindowSelectOptions().find((item) => item.value === seasonWindowId)?.label || "";
+  return seasonWindowOptionById(seasonWindowId)?.name || "";
 }
 
 function seasonWindowIdFromName(windowName) {
-  return seasonWindowSelectOptions().find((item) => item.label === windowName)?.value || "";
+  return seasonWindowOptionByName(windowName)?.season_window_id || "";
 }
 
 function productName(productId) {
@@ -2208,13 +2224,6 @@ const defaultLessonTemplates = [
   { period: "EVENING", suffix: "1", name: "晚上", order: 1, start_time: "19:00", end_time: "21:00" },
 ];
 
-const seasonWindowDefaults = {
-  寒假: { season_window_id: "WINDOW_WINTER", startMonth: 1, endMonth: 2, blockedWeekdays: ["周日"] },
-  春季: { season_window_id: "WINDOW_SPRING", startMonth: 3, endMonth: 6, blockedWeekdays: ["周一"] },
-  暑假: { season_window_id: "WINDOW_SUMMER", startMonth: 7, endMonth: 8, blockedWeekdays: ["周日"] },
-  秋季: { season_window_id: "WINDOW_AUTUMN", startMonth: 9, endMonth: 12, blockedWeekdays: ["周一"] },
-};
-
 function pad2(value) {
   return String(value).padStart(2, "0");
 }
@@ -2252,12 +2261,13 @@ function blackoutReasonsForDate(dateText) {
 
 function normalizeSeasonName(value) {
   const text = String(value || "").trim();
-  return seasonWindowOrder.find((season) => text.includes(season)) || "";
+  const seasonNames = seasonWindowOrder.length ? seasonWindowOrder : seasonWindowOptions().map((item) => item.name).filter(Boolean);
+  return seasonNames.find((season) => text.includes(season)) || "";
 }
 
 function seasonDefaultsForWindow(window) {
   const seasonName = normalizeSeasonName(window.season_name || window.schedule_window_name || window.schedule_window_id);
-  return seasonWindowDefaults[seasonName] || {};
+  return seasonWindowOptionByName(seasonName) || {};
 }
 
 function scheduleWindowSlotCount(scheduleWindowId) {
@@ -2269,20 +2279,23 @@ function nextScheduleWindowDraft() {
     .slice()
     .sort((a, b) => Number(a.window_order || 0) - Number(b.window_order || 0));
   const last = sorted[sorted.length - 1] || null;
-  const currentSeason = normalizeSeasonName(last?.season_name || last?.schedule_window_id) || "寒假";
-  const currentIndex = seasonWindowOrder.indexOf(currentSeason);
-  const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % seasonWindowOrder.length : 0;
-  const seasonName = seasonWindowOrder[nextIndex];
+  const seasons = seasonWindowOrder.length ? seasonWindowOrder : seasonWindowOptions().map((item) => item.name).filter(Boolean);
+  const currentSeason = normalizeSeasonName(last?.season_name || last?.schedule_window_id) || seasons[0] || "";
+  const currentIndex = seasons.indexOf(currentSeason);
+  const nextIndex = seasons.length && currentIndex >= 0 ? (currentIndex + 1) % seasons.length : 0;
+  const seasonName = seasons[nextIndex] || currentSeason;
   const year = Number(last?.window_year || new Date().getFullYear()) + (nextIndex === 0 && currentIndex >= 0 ? 1 : 0);
-  const defaults = seasonWindowDefaults[seasonName];
-  const startDate = `${year}-${pad2(defaults.startMonth)}-01`;
-  const endDate = `${year}-${pad2(defaults.endMonth)}-${pad2(lastDayOfMonth(year, defaults.endMonth))}`;
+  const defaults = seasonWindowOptionByName(seasonName) || {};
+  const startMonth = Number(defaults.start_month || 1);
+  const endMonth = Number(defaults.end_month || startMonth);
+  const startDate = `${year}-${pad2(startMonth)}-01`;
+  const endDate = `${year}-${pad2(endMonth)}-${pad2(lastDayOfMonth(year, endMonth))}`;
   return {
     schedule_window_id: `${year}${seasonName}`,
     schedule_window_name: `${year}${seasonName}`,
     window_year: year,
-    window_order: Number(`${year}${pad2(defaults.startMonth)}`),
-    season_window_id: defaults.season_window_id,
+    window_order: Number(`${year}${pad2(startMonth)}`),
+    season_window_id: defaults.season_window_id || "",
     season_name: seasonName,
     start_date: startDate,
     end_date: endDate,
@@ -2314,7 +2327,7 @@ function buildTimeSlotForWindow(window, date, template) {
   const weekday = weekdayNameFromDate(date);
   const defaults = seasonDefaultsForWindow(window);
   const allowedWeekdays = arrayValues(window.default_allowed_weekdays);
-  const weekdayBlocked = (defaults.blockedWeekdays || []).includes(weekday);
+  const weekdayBlocked = arrayValues(defaults.blocked_weekdays).includes(weekday);
   const notAllowedByWindow = allowedWeekdays.length && !allowedWeekdays.includes(weekday);
   const blackoutReasons = blackoutReasonsForDate(dateText);
   const reasons = [
@@ -5914,7 +5927,7 @@ function defaultScheduleRuleTemplates() {
     return keywords.some((keyword) => productText.includes(keyword));
   });
   const rule = (id, name, keywords, windowName, periods, weekdaysValue, hours, notes, extra = {}) => {
-    const season = seasonWindowDefaults[windowName] || {};
+    const season = seasonWindowOptionByName(windowName) || {};
     const blockHours = Number(hours || 0);
     return productMatches(keywords).map((product) => ({
       rule_id: `${id}_${product.id}`,

@@ -93,7 +93,7 @@ from scripts.table_schema import (
     TIME_SLOT_FIELDNAMES,
 )
 from scripts.weekday_utils import WEEKDAY_LABELS
-from scripts.window_utils import SEASON_WINDOW_ORDER, expanded_window_tokens
+from scripts.window_utils import SEASON_WINDOW_OPTIONS, SEASON_WINDOW_ORDER, expanded_window_tokens
 
 
 ROOT = Path(__file__).resolve().parent
@@ -352,6 +352,13 @@ def build_lookups(
         "subjects": sorted(subjects),
         "window_names": sorted(window_names),
         "season_window_order": list(SEASON_WINDOW_ORDER),
+        "season_window_options": [
+            {
+                **option,
+                "blocked_weekdays": list(option.get("blocked_weekdays", [])),
+            }
+            for option in SEASON_WINDOW_OPTIONS
+        ],
         "stage_order": list(DEFAULT_STAGE_ORDER),
         "stages": sort_stage_values(stages),
         "public_teacher_subjects": sorted(PUBLIC_TEACHER_SUBJECTS, key=subject_sort_value),

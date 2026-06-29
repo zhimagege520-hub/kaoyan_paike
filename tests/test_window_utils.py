@@ -5,7 +5,9 @@ import unittest
 import scheduler
 from scripts.schedule_class_windows import class_window_matches, row_to_constraint
 from scripts.window_utils import (
+    SEASON_WINDOW_DEFAULTS,
     SEASON_WINDOW_ID_TO_NAME,
+    SEASON_WINDOW_OPTIONS,
     SEASON_WINDOW_ORDER,
     expanded_window_tokens,
     season_window_id_for_name,
@@ -19,6 +21,41 @@ class WindowUtilsTest(unittest.TestCase):
         self.assertEqual(SEASON_WINDOW_ID_TO_NAME["WINDOW_SUMMER"], "暑假")
         self.assertEqual(season_window_name_for_id("WINDOW_AUTUMN"), "秋季")
         self.assertEqual(season_window_id_for_name("寒假"), "WINDOW_WINTER")
+        self.assertEqual(SEASON_WINDOW_DEFAULTS["暑假"]["start_month"], 7)
+        self.assertEqual(SEASON_WINDOW_DEFAULTS["秋季"]["blocked_weekdays"], ["周一"])
+        self.assertEqual(
+            list(SEASON_WINDOW_OPTIONS),
+            [
+                {
+                    "season_window_id": "WINDOW_WINTER",
+                    "name": "寒假",
+                    "start_month": 1,
+                    "end_month": 2,
+                    "blocked_weekdays": ["周日"],
+                },
+                {
+                    "season_window_id": "WINDOW_SPRING",
+                    "name": "春季",
+                    "start_month": 3,
+                    "end_month": 6,
+                    "blocked_weekdays": ["周一"],
+                },
+                {
+                    "season_window_id": "WINDOW_SUMMER",
+                    "name": "暑假",
+                    "start_month": 7,
+                    "end_month": 8,
+                    "blocked_weekdays": ["周日"],
+                },
+                {
+                    "season_window_id": "WINDOW_AUTUMN",
+                    "name": "秋季",
+                    "start_month": 9,
+                    "end_month": 12,
+                    "blocked_weekdays": ["周一"],
+                },
+            ],
+        )
 
         tokens = expanded_window_tokens("WINDOW_SUMMER, 2026秋季；寒假")
 

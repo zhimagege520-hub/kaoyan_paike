@@ -119,9 +119,13 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertIn("hydrateSeasonWindowOrder();", source)
         self.assertIn("hydratePublicTeacherSubjects();", source)
         self.assertIn("seasonWindowOrder = arrayValues(state.lookups?.season_window_order);", source)
+        self.assertIn("return arrayValues(state.lookups?.season_window_options);", source)
         self.assertIn("publicTeacherSubjects = new Set(arrayValues(state.lookups?.public_teacher_subjects));", source)
         self.assertNotIn('new Set(["英语", "政治", "数学", "语文"])', source)
         self.assertNotIn('const seasonWindowOrder = ["寒假", "春季", "暑假", "秋季"];', source)
+        self.assertNotIn("const seasonWindowDefaults = {", source)
+        self.assertNotIn('{ value: "WINDOW_WINTER", label: "寒假" }', source)
+        self.assertNotIn("blockedWeekdays", source)
 
     def test_product_project_and_line_options_use_lookups(self) -> None:
         source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
