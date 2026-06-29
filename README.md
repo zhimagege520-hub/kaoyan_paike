@@ -23,7 +23,7 @@
 
 ## 快速开始
 
-给其他部门下载复用时，建议先阅读 [部门复用使用攻略](docs/department-reuse-user-guide.md) 和 [GitHub 发布前检查清单](docs/github-release-checklist.md)。
+给其他部门下载复用时，建议先阅读 [AI辅助排课系统使用攻略](docs/ai-assisted-scheduling-system-user-guide.md) 和 [GitHub 发布前检查清单](docs/github-release-checklist.md)。
 
 下载后可以先用公开最小示例验证环境：
 
@@ -119,7 +119,7 @@ PORT=8780 ./scripts/start_schedule_publish.sh
 
 ## 开发验证入口
 
-下面的命令用于开发排查核心排课器和课节生成器。其他部门正式复用时，优先按 [部门复用使用攻略](docs/department-reuse-user-guide.md) 走“下载模板 -> 后台预检 -> 正式排课 -> 审计验收”的完整流程。
+下面的命令用于开发排查核心排课器和课节生成器。其他部门正式复用时，优先按 [AI辅助排课系统使用攻略](docs/ai-assisted-scheduling-system-user-guide.md) 走“下载模板 -> 后台预检 -> 正式排课 -> 审计验收”的完整流程。
 
 ```bash
 python3 scheduler.py \

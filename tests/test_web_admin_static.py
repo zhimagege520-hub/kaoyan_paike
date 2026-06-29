@@ -169,7 +169,7 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertIn('publish: ["发布复用中心"', source)
         self.assertIn('const scheduleReportPreviewUrl = "/preview/outputs/batch_schedule_maintenance_report.md";', source)
         self.assertIn('const scheduleReportRawUrl = "/outputs/batch_schedule_maintenance_report.md";', source)
-        self.assertIn('"/preview/docs/department-reuse-user-guide.md"', source)
+        self.assertIn('"/preview/docs/ai-assisted-scheduling-system-user-guide.md"', source)
         self.assertIn('"/preview/docs/ai-scheduling-reuse-playbook.md"', source)
         self.assertIn('"/preview/docs/ai-scheduling-sop.md"', source)
         self.assertNotIn('["排课报告", "查看覆盖、冲突和缺口结论", "/outputs/batch_schedule_maintenance_report.md"]', source)

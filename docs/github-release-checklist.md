@@ -19,7 +19,7 @@
 - 后台页面：`web_admin/`。
 - 只读发布：`schedule_publish_server.py`、`cloudflare_schedule_publish/`、`PUBLIC_SCHEDULE_DEPLOY.md`。
 - 示例和测试：`examples/`、`tests/`。
-- 说明文档：`README.md`、`docs/department-reuse-user-guide.md`、`docs/ai-scheduling-sop.md`、`docs/github-release-checklist.md`。
+- 说明文档：`README.md`、`docs/ai-assisted-scheduling-system-user-guide.md`、`docs/ai-scheduling-sop.md`、`docs/github-release-checklist.md`。
 
 ## 不入仓库文件
 

@@ -3632,7 +3632,7 @@ function renderPublish() {
   ];
   const reuseLinks = [
     ["方法复用专题页", "给同事理解这套工作方法", "/share/ai-scheduling-project/method-reuse.html"],
-    ["部门复用攻略", "下载后从安装到验收的操作手册", "/preview/docs/department-reuse-user-guide.md"],
+    ["AI辅助排课系统使用攻略", "下载后从安装、数据处理到规则适配的操作手册", "/preview/docs/ai-assisted-scheduling-system-user-guide.md"],
     ["复用步骤清单", "按步骤复制到下一轮项目", "/preview/docs/ai-scheduling-reuse-playbook.md"],
     ["项目 SOP", "完整操作和验收流程", "/preview/docs/ai-scheduling-sop.md"],
   ];

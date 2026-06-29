@@ -22,8 +22,8 @@ class DocumentationStaticTest(unittest.TestCase):
         self.assertNotIn("| 产品课程表 | 产品 ID、科目、阶段、模块、课程分组、总课时、单次连续课时 |", playbook)
         self.assertNotIn("课程课时不能被单次连续课时整除", sop)
 
-    def test_department_user_guide_images_are_present_pngs(self) -> None:
-        guide = (ROOT / "docs" / "department-reuse-user-guide.md").read_text(encoding="utf-8")
+    def test_user_guide_images_are_present_pngs(self) -> None:
+        guide = (ROOT / "docs" / "ai-assisted-scheduling-system-user-guide.md").read_text(encoding="utf-8")
         for image_name in ("admin-overview.png", "admin-launch.png"):
             image_path = ROOT / "docs" / "assets" / "user-guide" / image_name
             self.assertIn(f"assets/user-guide/{image_name}", guide)
@@ -36,7 +36,7 @@ class DocumentationStaticTest(unittest.TestCase):
             ROOT / "scheduler.py",
             ROOT / "run_scheduling_pipeline.py",
             ROOT / "docs" / "ai-scheduling-sop.md",
-            ROOT / "docs" / "department-reuse-user-guide.md",
+            ROOT / "docs" / "ai-assisted-scheduling-system-user-guide.md",
         ]
         forbidden_terms = [
             "老师" + "可用" + "课节",
@@ -81,14 +81,15 @@ class DocumentationStaticTest(unittest.TestCase):
         self.assertNotIn("班级实际排课窗口ID列表", sop)
         self.assertNotIn("actual_schedule_window_ids", example_classes.splitlines()[0])
 
-    def test_department_guide_includes_audit_commands(self) -> None:
-        guide = (ROOT / "docs" / "department-reuse-user-guide.md").read_text(encoding="utf-8")
+    def test_user_guide_includes_audit_commands_and_ai_workflow(self) -> None:
+        guide = (ROOT / "docs" / "ai-assisted-scheduling-system-user-guide.md").read_text(encoding="utf-8")
 
+        self.assertIn("# AI辅助排课系统使用攻略", guide)
         self.assertIn("scripts/audit_schedule_coverage.py", guide)
         self.assertIn("scripts/audit_schedule_quality.py", guide)
         self.assertIn("硬冲突和覆盖缺口必须处理", guide)
         self.assertIn("共 19 张业务表", guide)
-        self.assertIn("系统能重点解决：上课时间安排、课程模块顺序、教室安排、联报班级冲突、老师同日跨教学区通勤质检", guide)
+        self.assertIn("自动安排上课时间、课程模块顺序、教室、联报班级互斥和老师同日跨教学区通勤质检", guide)
         self.assertIn("老师安排本身仍需要教务和教学提前规划", guide)
         self.assertIn("| 09 | 产品窗口排课规则表 |", guide)
         self.assertIn("| 11 | 班级排课窗口表 |", guide)
@@ -96,13 +97,18 @@ class DocumentationStaticTest(unittest.TestCase):
         self.assertIn("报告打开乱码或不可读", guide)
         self.assertIn("first_lesson_period` 必须有 `first_lesson_date", guide)
         self.assertIn("缺老师补录表不是另一套新数据", guide)
-        self.assertIn("先分清三件事", guide)
-        self.assertIn("发布复用中心：验收后的交付入口", guide)
+        self.assertIn("先理解系统边界", guide)
+        self.assertIn("发布复用中心 | 验收后的交付入口", guide)
         self.assertIn("不要把模板、报告和结果混作同一类文件", guide)
-        self.assertIn("给 AI 助手的材料包建议一次性准备好", guide)
+        self.assertIn("给 AI 助理的材料包建议一次性准备好", guide)
         self.assertIn("ERP 导出建议先按下面方式拆给 AI 整理", guide)
         self.assertIn("ERP 回写字段对照", guide)
         self.assertIn("AI 可以整理草稿，但不能替教学和教务做最终决定", guide)
+        self.assertIn("如何让 AI 助理参与项目", guide)
+        self.assertIn("让 AI 调整程序的提示词", guide)
+        self.assertIn("程序调整的工作顺序", guide)
+        self.assertIn("同步修改模板表、后台页面、导入同步脚本、排课器和报告", guide)
+        self.assertIn("修改后必须运行相关单元测试和 bash scripts/verify_release.sh", guide)
 
     def test_share_and_template_do_not_reintroduce_merge_detail_table_language(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")

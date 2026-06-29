@@ -20,7 +20,7 @@ REQUIRED_PATHS = (
     "scheduler.py",
     "data_admin_server.py",
     "schedule_publish_server.py",
-    "docs/department-reuse-user-guide.md",
+    "docs/ai-assisted-scheduling-system-user-guide.md",
     "docs/ai-scheduling-sop.md",
     "docs/github-release-checklist.md",
     "examples/csv_minimal/README.md",
