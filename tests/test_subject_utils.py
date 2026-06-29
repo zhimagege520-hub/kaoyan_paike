@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from scripts.subject_utils import (
+    CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS,
     PUBLIC_SUBJECT_SORT_ORDER,
     PUBLIC_SUBJECTS_WITH_CHINESE,
     subject_sort_value,
@@ -17,6 +18,9 @@ class SubjectUtilsTest(unittest.TestCase):
         self.assertEqual(PUBLIC_SUBJECT_SORT_ORDER, {"数学": 0, "英语": 1, "政治": 2, "语文": 3})
         self.assertEqual(subject_sort_value(" 数学 "), 0)
         self.assertEqual(subject_sort_value("未知"), 99)
+
+    def test_core_public_subject_preferred_periods_are_shared(self) -> None:
+        self.assertEqual(CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS, {"数学": "AM", "英语": "PM", "政治": "PM"})
 
 
 if __name__ == "__main__":

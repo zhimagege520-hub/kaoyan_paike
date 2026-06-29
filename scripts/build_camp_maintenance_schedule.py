@@ -87,6 +87,7 @@ from scripts.schedule_batch import (
     LONG_CAMP_MATH_MAX_CONSECUTIVE_DAYS,
     SUMMER_PREFERRED_WEEKLY_HALFDAY_MAX,
 )
+from scripts.subject_utils import CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS
 
 _raw_class_ids_for_suite_codes = raw_class_ids_for_suite_codes
 _raw_load_class_metadata = raw_load_class_metadata
@@ -234,7 +235,7 @@ SUMMER_CLASS_WINDOW_IDS = {"WINDOW_SUMMER", "暑假"}
 SUMMER_PUBLIC_SUBJECTS = {"英语", "政治", "数学"}
 SUMMER_STAGE_ORDER = {"基础": 0, "强化": 1, "冲刺": 2}
 AUTUMN_PREPLAN_STAGES = {"秋季", "冲刺"}
-LONG_CAMP_PREFERRED_PERIODS = {"数学": "AM", "英语": "PM", "政治": "PM"}
+LONG_CAMP_PREFERRED_PERIODS = CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS
 LONG_CAMP_BALANCE_START = "2026-07-01"
 LONG_CAMP_SUBJECT_WEEKLY_MIN = {"数学": 1, "英语": 1, "政治": 1}
 LONG_CAMP_SUBJECT_WEEKLY_MAX = {"数学": 4, "英语": 4, "政治": 3}
@@ -8010,7 +8011,7 @@ def repair_summer_subject_week_overloads(
         }
         original_slot_key = scheduler.slot_sort_key(assignment.candidate.slots[0])
         original_date = Date.fromisoformat(assignment.candidate.slots[0].date)
-        preferred_periods = {"数学": "AM", "英语": "PM", "政治": "PM"}
+        preferred_periods = CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS
         preferred_period = preferred_periods.get(assignment.task.subject)
         under_week_set = set(under_weeks)
         try:

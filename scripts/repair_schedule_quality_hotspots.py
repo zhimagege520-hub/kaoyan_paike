@@ -35,7 +35,10 @@ from scripts.schedule_data import (  # noqa: E402
 )
 from scripts.schedule_display import date_range, week_dates, week_start, weekday_label  # noqa: E402
 from scripts.schedule_outputs import write_day_table_html  # noqa: E402
-from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE as PUBLIC_SUBJECTS  # noqa: E402
+from scripts.subject_utils import (  # noqa: E402
+    CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS,
+    PUBLIC_SUBJECTS_WITH_CHINESE as PUBLIC_SUBJECTS,
+)
 
 
 FIELDNAMES = [
@@ -536,7 +539,7 @@ def candidate_score(
     travel_after = teacher_day_travel_score(rows, block.teacher_key, target_date, room_meta, area_meta, area_links)
     original_date = Date.fromisoformat(block.date)
     distance_days = abs((Date.fromisoformat(target_date) - original_date).days)
-    preferred_period = {"数学": "AM", "英语": "PM", "政治": "PM"}.get(block.subject)
+    preferred_period = CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS.get(block.subject)
     return (
         target_subject_count * 20
         + target_total_count * 8

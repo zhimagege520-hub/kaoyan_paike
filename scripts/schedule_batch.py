@@ -90,6 +90,7 @@ from scripts.schedule_week_balance import (
     week_key,
 )
 from scripts.subject_utils import (
+    CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS,
     PUBLIC_SUBJECT_SORT_ORDER as SUBJECT_ORDER,
     PUBLIC_SUBJECTS_WITH_CHINESE as PUBLIC_SUBJECTS,
 )
@@ -1002,7 +1003,7 @@ def schedule_balanced_camp(
     use_average_subject_week_bounds: bool = False,
     subject_week_hard_max: Optional[Dict[str, int]] = None,
 ) -> List[scheduler.Assignment]:
-    preferred_subject_periods = preferred_subject_periods or {"数学": "AM", "英语": "PM", "政治": "PM"}
+    preferred_subject_periods = preferred_subject_periods or CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS
     effective_teacher_alternation_subjects = teacher_alternation_subjects or LONG_CAMP_ALTERNATING_SUBJECTS
     tasks_by_class: Dict[str, List[scheduler.CourseBlock]] = {class_id: [] for class_id in class_order}
     for task in scheduler.build_course_blocks(schedule_input.classes):
@@ -1874,7 +1875,7 @@ def schedule_balanced_camp_by_suite(
     balance_public_subject_weeks: bool = False,
     require_all_subject_weeks: bool = False,
 ) -> List[scheduler.Assignment]:
-    preferred_subject_periods = preferred_subject_periods or {"数学": "AM", "英语": "PM", "政治": "PM"}
+    preferred_subject_periods = preferred_subject_periods or CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS
     grouped_class_ids: List[Tuple[str, List[str]]] = []
     by_suite: Dict[str, List[str]] = {}
     for class_id in class_order:
@@ -2551,7 +2552,7 @@ def schedule_round_robin(
         avoid_three_day_run: bool,
     ) -> Optional[Tuple[str, scheduler.CourseBlock, scheduler.Candidate]]:
         first = slot_block[0]
-        preferred_periods = {"数学": "AM", "英语": "PM", "政治": "PM"} if "数学" in subject_counts else {}
+        preferred_periods = CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS if "数学" in subject_counts else {}
         options: List[Tuple[Tuple[int, int, int, int, str], str, scheduler.CourseBlock, scheduler.Candidate]] = []
         for class_position, class_id in enumerate(class_order):
             if next_index[class_id] >= len(tasks_by_class[class_id]):
@@ -2627,7 +2628,7 @@ def schedule_round_robin(
     ) -> Optional[Tuple[str, scheduler.CourseBlock, scheduler.Candidate]]:
         first = slot_block[0]
         key = week_key(slot_block)
-        preferred_periods = {"数学": "AM", "英语": "PM", "政治": "PM"} if "数学" in subject_counts else {}
+        preferred_periods = CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS if "数学" in subject_counts else {}
         options: List[Tuple[Tuple[int, int, int, int, str], str, scheduler.CourseBlock, scheduler.Candidate]] = []
         for class_position, class_id in enumerate(class_order):
             if next_index[class_id] >= len(tasks_by_class[class_id]):
@@ -2827,7 +2828,7 @@ def schedule_round_robin(
             assignments,
             domains,
             subject_week_quotas,
-            {"数学": "AM", "英语": "PM", "政治": "PM"} if "数学" in subject_counts else {},
+            CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS if "数学" in subject_counts else {},
             set(subject_week_quotas),
             LONG_CAMP_MATH_MAX_CONSECUTIVE_DAYS if balance_public_subject_weeks else None,
         )
@@ -2837,7 +2838,7 @@ def schedule_round_robin(
                 assignments,
                 domains,
                 sum_subject_week_quotas(subject_week_quotas, ()),
-                {"数学": "AM", "英语": "PM", "政治": "PM"} if "数学" in subject_counts else {},
+                CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS if "数学" in subject_counts else {},
             )
 
     if (avoid_public_subject_consecutive_days or prefer_public_teacher_alternation) and hard_weekly_total_max is None:
@@ -2851,7 +2852,7 @@ def schedule_round_robin(
             assignments,
             domains,
             LONG_CAMP_ALTERNATING_SUBJECTS,
-            {"数学": "AM", "英语": "PM", "政治": "PM"} if "数学" in subject_counts else {},
+            CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS if "数学" in subject_counts else {},
             subject_weekly_max_limits if balance_public_subject_weeks else None,
             max_passes=spacing_improvement_passes,
         )

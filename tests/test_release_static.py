@@ -531,6 +531,7 @@ class ReleaseStaticTest(unittest.TestCase):
         schedule_batch_source = (ROOT / "scripts" / "schedule_batch.py").read_text(encoding="utf-8")
         schedule_scope_source = (ROOT / "scripts" / "schedule_scope.py").read_text(encoding="utf-8")
         schedule_week_balance_source = (ROOT / "scripts" / "schedule_week_balance.py").read_text(encoding="utf-8")
+        camp_maintenance_source = (ROOT / "scripts" / "build_camp_maintenance_schedule.py").read_text(encoding="utf-8")
         audit_quality_source = (ROOT / "scripts" / "audit_schedule_quality.py").read_text(encoding="utf-8")
         quality_hotspot_repair_source = (ROOT / "scripts" / "repair_schedule_quality_hotspots.py").read_text(encoding="utf-8")
         halfday_repair_source = (ROOT / "scripts" / "repair_2757_halfday_blocks.py").read_text(encoding="utf-8")
@@ -538,9 +539,13 @@ class ReleaseStaticTest(unittest.TestCase):
 
         self.assertIn("PUBLIC_SUBJECTS_WITH_CHINESE", subject_utils_source)
         self.assertIn("PUBLIC_SUBJECT_SORT_ORDER", subject_utils_source)
+        self.assertIn("CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS", subject_utils_source)
         self.assertIn("from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE", admin_source)
         self.assertIn("from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE", erp_export_source)
         self.assertIn("from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE", erp_lesson_map_source)
+        self.assertIn("CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS", schedule_batch_source)
+        self.assertIn("CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS", camp_maintenance_source)
+        self.assertIn("CORE_PUBLIC_SUBJECT_PREFERRED_PERIODS", quality_hotspot_repair_source)
         self.assertIn("PUBLIC_SUBJECTS_WITH_CHINESE as PUBLIC_SUBJECTS", schedule_batch_source)
         self.assertIn("PUBLIC_SUBJECT_SORT_ORDER as SUBJECT_ORDER", schedule_batch_source)
         self.assertIn("PUBLIC_SUBJECT_SORT_ORDER as SUBJECT_ORDER", schedule_scope_source)
@@ -555,12 +560,14 @@ class ReleaseStaticTest(unittest.TestCase):
             schedule_batch_source,
             schedule_scope_source,
             schedule_week_balance_source,
+            camp_maintenance_source,
             audit_quality_source,
             quality_hotspot_repair_source,
             halfday_repair_source,
         ):
             self.assertIsNone(re.search(r'(?m)^PUBLIC_(?:TEACHER_)?SUBJECTS\s*=\s*\{"英语", "政治", "数学", "语文"\}', source))
             self.assertIsNone(re.search(r'(?m)^SUBJECT_ORDER\s*=\s*\{"数学": 0, "英语": 1, "政治": 2, "语文": 3\}', source))
+            self.assertNotIn('{"数学": "AM", "英语": "PM", "政治": "PM"}', source)
 
     def test_weekday_normalization_lives_in_shared_weekday_utils(self) -> None:
         scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")
