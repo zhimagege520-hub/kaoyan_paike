@@ -188,11 +188,11 @@ class ScheduleScopeDateTest(unittest.TestCase):
         self.assertEqual(normalize_date("20260701"), "2026-07-01")
 
     def test_split_arg_values_uses_shared_list_parser(self) -> None:
-        self.assertEqual(split_arg_values(["C1 C2，C3|C1", "C4； C5"]), {"C1", "C2", "C3", "C4", "C5"})
+        self.assertEqual(split_arg_values(["C1 C2，C3|C1", "C4； C5、C6"]), {"C1", "C2", "C3", "C4", "C5", "C6"})
 
     def test_repair_script_filters_use_shared_list_parser(self) -> None:
         self.assertEqual(parse_repair_name_set("张三，李四|王五、赵六"), {"张三", "李四", "王五", "赵六"})
-        self.assertEqual(parse_suite_codes(["2723 2724，2723"]), ["2723", "2724", "2723"])
+        self.assertEqual(parse_suite_codes(["2723 2724，2723、2724"]), ["2723", "2724", "2723", "2724"])
 
 
 def make_teacher_travel_assignment(

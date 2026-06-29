@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import date as Date, datetime, time as Time
-from typing import Any, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, Iterable, List, Mapping, Optional, Set, Tuple
 
 
 TRUE_VALUES = {"1", "true", "yes", "y", "on", "是", "对", "启用", "可用", "纳入", "锁定"}
@@ -243,6 +243,21 @@ def split_delimited_values(
     else:
         items = [values]
     return [normalize_text(item) for item in items if normalize_text(item)]
+
+
+def split_cli_arg_values(values: Any, *, extra_separators: str = "、") -> List[str]:
+    if values is None:
+        return []
+    if isinstance(values, str) or not isinstance(values, (list, tuple, set)):
+        return split_delimited_values(values, include_whitespace=True, extra_separators=extra_separators)
+    result: List[str] = []
+    for value in values:
+        result.extend(split_delimited_values(value, include_whitespace=True, extra_separators=extra_separators))
+    return result
+
+
+def split_cli_arg_set(values: Any, *, extra_separators: str = "、") -> Set[str]:
+    return set(split_cli_arg_values(values, extra_separators=extra_separators))
 
 
 def split_pipe_values(values: Any) -> List[str]:

@@ -33,6 +33,7 @@ from scripts.field_utils import (
     parse_enabled,
     parse_datetime_value,
     row_value,
+    split_cli_arg_set as split_arg_values,
     split_delimited_values as split_pipe_values,
 )
 from scripts.schedule_class_windows import (
@@ -10980,16 +10981,6 @@ def append_run_summary(path: Path, mode: str, perf: PerfLog, extra_lines: Sequen
     lines = ["", "## 运行摘要", "", f"- 运行模式: {mode}", *extra_lines, "", "## 性能日志", "", *perf.markdown_lines()]
     with path.open("a", encoding="utf-8") as handle:
         handle.write("\n".join(lines) + "\n")
-
-
-def split_arg_values(values: Sequence[str]) -> Set[str]:
-    result: Set[str] = set()
-    for value in values:
-        for part in split_pipe_values(value, include_whitespace=True):
-            cleaned = clean(part)
-            if cleaned:
-                result.add(cleaned)
-    return result
 
 
 def run_fast_callback_with_timeout(callback, seconds: int = FAST_ATTEMPT_TIMEOUT_SECONDS):

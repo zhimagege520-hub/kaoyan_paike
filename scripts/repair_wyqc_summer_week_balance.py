@@ -18,7 +18,7 @@ import scheduler
 from scripts import build_camp_maintenance_schedule as maintenance
 from scripts import repair_wyqc_foundation_gaps as gap_repair
 from scripts.csv_utils import read_csv_rows, write_csv_rows as write_csv_rows_with_fields
-from scripts.field_utils import normalize_text as clean, split_delimited_values
+from scripts.field_utils import normalize_text as clean, split_cli_arg_values
 from scripts.schedule_display import week_start, weekday_label
 from scripts.schedule_outputs import write_day_table_html
 from scripts.subject_utils import CORE_PUBLIC_SUBJECTS
@@ -748,9 +748,7 @@ def write_report(
 def parse_suite_codes(values: Sequence[str]) -> List[str]:
     if not values:
         return sorted(SUITE_WEEK_SUBJECT_QUOTAS)
-    suite_codes: List[str] = []
-    for value in values:
-        suite_codes.extend(split_delimited_values(value, include_whitespace=True))
+    suite_codes = split_cli_arg_values(values)
     unknown = sorted(set(suite_codes) - set(SUITE_WEEK_SUBJECT_QUOTAS))
     if unknown:
         raise ValueError(f"未配置目标周课量的套班: {', '.join(unknown)}")

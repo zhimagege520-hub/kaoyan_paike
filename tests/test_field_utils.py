@@ -22,6 +22,8 @@ from scripts.field_utils import (
     parse_enabled,
     parse_time_minutes,
     row_value,
+    split_cli_arg_set,
+    split_cli_arg_values,
     split_delimited_values,
     split_pipe_values,
     split_time_range_text,
@@ -128,6 +130,8 @@ class FieldUtilsTest(unittest.TestCase):
             ["A", "B", "C"],
         )
         self.assertEqual(split_delimited_values(0), ["0"])
+        self.assertEqual(split_cli_arg_values(["A B，C|A", "D；E、F"]), ["A", "B", "C", "A", "D", "E", "F"])
+        self.assertEqual(split_cli_arg_set(["A B，C|A", "D；E、F"]), {"A", "B", "C", "D", "E", "F"})
 
     def test_parse_bool_recognizes_shared_true_values(self) -> None:
         self.assertTrue(parse_bool("启用"))

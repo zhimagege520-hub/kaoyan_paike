@@ -421,6 +421,8 @@ class ReleaseStaticTest(unittest.TestCase):
 
         self.assertIn("LIST_VALUE_SEPARATOR_RE", field_utils_source)
         self.assertIn("def split_delimited_values", field_utils_source)
+        self.assertIn("def split_cli_arg_values", field_utils_source)
+        self.assertIn("def split_cli_arg_set", field_utils_source)
         for source in (
             admin_source,
             scheduler_source,
@@ -434,9 +436,11 @@ class ReleaseStaticTest(unittest.TestCase):
             erp_lesson_map_source,
             camp_maintenance_source,
             quality_repair_source,
-            wyqc_summer_repair_source,
         ):
             self.assertIn("split_delimited_values", source)
+        self.assertIn("split_cli_arg_set as split_arg_values", camp_maintenance_source)
+        self.assertIn("split_cli_arg_set", quality_repair_source)
+        self.assertIn("split_cli_arg_values", wyqc_summer_repair_source)
 
         self.assertIn("normalize_iso_date_text", field_utils_source)
         self.assertIn("normalize_iso_date_text", schedule_batch_source)
@@ -446,6 +450,8 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIsNone(re.search(r"(?m)^def split_values\(", erp_export_source))
         self.assertIsNone(re.search(r"(?m)^def split_values\(", erp_lesson_map_source))
         self.assertIsNone(re.search(r"(?m)^def split_pipe_values\(", camp_maintenance_source))
+        self.assertIsNone(re.search(r"(?m)^def split_arg_values\(", camp_maintenance_source))
+        self.assertIsNone(re.search(r"(?m)^def parse_name_set\(", quality_repair_source))
         self.assertNotIn('.replace(",", "|").replace("，", "|").split("|")', erp_export_source)
         self.assertNotIn('.replace(",", "|").replace("，", "|").split("|")', erp_lesson_map_source)
         self.assertNotIn('re.split(r"[,，;；、|]+"', business_import_source)

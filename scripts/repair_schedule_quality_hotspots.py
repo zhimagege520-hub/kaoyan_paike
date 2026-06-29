@@ -7,6 +7,7 @@ import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date as Date, datetime
+from functools import partial
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
@@ -19,7 +20,7 @@ from scripts.build_camp_maintenance_schedule import (  # noqa: E402
     load_class_metadata,
 )
 from scripts.csv_utils import clean_cell as clean, read_csv_rows, write_csv_rows as write_csv_rows_with_fields  # noqa: E402
-from scripts.field_utils import split_delimited_values  # noqa: E402
+from scripts.field_utils import split_cli_arg_set, split_delimited_values  # noqa: E402
 from scripts.period_utils import PERIOD_ORDER  # noqa: E402
 from scripts.schedule_class_windows import (  # noqa: E402
     ClassWindowConstraint,
@@ -1131,8 +1132,7 @@ def append_report(report_path: Path, lines: Sequence[str], timestamp: str) -> No
             handle.write(f"- {line}\n")
 
 
-def parse_name_set(value: str) -> Set[str]:
-    return set(split_delimited_values(value, extra_separators="、"))
+parse_name_set = partial(split_cli_arg_set, extra_separators="、")
 
 
 def main() -> None:
