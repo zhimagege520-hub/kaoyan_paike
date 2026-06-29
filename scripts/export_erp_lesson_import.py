@@ -26,6 +26,7 @@ from scripts.field_utils import (  # noqa: E402
     row_value,
     split_delimited_values as split_values,
 )
+from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE  # noqa: E402
 
 
 DEFAULT_SCHEDULE = Path("outputs/batch_schedule_maintenance.csv")
@@ -34,7 +35,7 @@ DEFAULT_TEACHER_ASSIGNMENTS = Path("data/class_teacher_assignments.csv")
 DEFAULT_PRODUCT_COURSES = Path("data/product_courses.csv")
 HEADER_ROW = 2
 DATA_START_ROW = 3
-PUBLIC_SUBJECTS = {"英语", "政治", "数学", "语文"}
+PUBLIC_SUBJECTS = PUBLIC_SUBJECTS_WITH_CHINESE
 
 ERP_HEADERS = [
     "*课次ID",

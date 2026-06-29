@@ -524,6 +524,44 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIsNone(re.search(r"(?m)^def normalize_period\(", class_windows_source))
         self.assertIsNone(re.search(r"(?m)^\s*aliases\s*=\s*\{", business_import_source))
 
+    def test_public_subject_sets_live_in_shared_subject_utils(self) -> None:
+        admin_source = (ROOT / "data_admin_server.py").read_text(encoding="utf-8")
+        erp_export_source = (ROOT / "scripts" / "export_erp_lesson_import.py").read_text(encoding="utf-8")
+        erp_lesson_map_source = (ROOT / "scripts" / "build_erp_lesson_id_map.py").read_text(encoding="utf-8")
+        schedule_batch_source = (ROOT / "scripts" / "schedule_batch.py").read_text(encoding="utf-8")
+        schedule_scope_source = (ROOT / "scripts" / "schedule_scope.py").read_text(encoding="utf-8")
+        schedule_week_balance_source = (ROOT / "scripts" / "schedule_week_balance.py").read_text(encoding="utf-8")
+        audit_quality_source = (ROOT / "scripts" / "audit_schedule_quality.py").read_text(encoding="utf-8")
+        quality_hotspot_repair_source = (ROOT / "scripts" / "repair_schedule_quality_hotspots.py").read_text(encoding="utf-8")
+        halfday_repair_source = (ROOT / "scripts" / "repair_2757_halfday_blocks.py").read_text(encoding="utf-8")
+        subject_utils_source = (ROOT / "scripts" / "subject_utils.py").read_text(encoding="utf-8")
+
+        self.assertIn("PUBLIC_SUBJECTS_WITH_CHINESE", subject_utils_source)
+        self.assertIn("PUBLIC_SUBJECT_SORT_ORDER", subject_utils_source)
+        self.assertIn("from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE", admin_source)
+        self.assertIn("from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE", erp_export_source)
+        self.assertIn("from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE", erp_lesson_map_source)
+        self.assertIn("PUBLIC_SUBJECTS_WITH_CHINESE as PUBLIC_SUBJECTS", schedule_batch_source)
+        self.assertIn("PUBLIC_SUBJECT_SORT_ORDER as SUBJECT_ORDER", schedule_batch_source)
+        self.assertIn("PUBLIC_SUBJECT_SORT_ORDER as SUBJECT_ORDER", schedule_scope_source)
+        self.assertIn("PUBLIC_SUBJECT_SORT_ORDER as SUBJECT_ORDER", schedule_week_balance_source)
+        self.assertIn("PUBLIC_SUBJECTS_WITH_CHINESE as PUBLIC_SUBJECTS", audit_quality_source)
+        self.assertIn("PUBLIC_SUBJECTS_WITH_CHINESE as PUBLIC_SUBJECTS", quality_hotspot_repair_source)
+        self.assertIn("PUBLIC_SUBJECTS_WITH_CHINESE as PUBLIC_SUBJECTS", halfday_repair_source)
+        for source in (
+            admin_source,
+            erp_export_source,
+            erp_lesson_map_source,
+            schedule_batch_source,
+            schedule_scope_source,
+            schedule_week_balance_source,
+            audit_quality_source,
+            quality_hotspot_repair_source,
+            halfday_repair_source,
+        ):
+            self.assertIsNone(re.search(r'(?m)^PUBLIC_(?:TEACHER_)?SUBJECTS\s*=\s*\{"英语", "政治", "数学", "语文"\}', source))
+            self.assertIsNone(re.search(r'(?m)^SUBJECT_ORDER\s*=\s*\{"数学": 0, "英语": 1, "政治": 2, "语文": 3\}', source))
+
     def test_weekday_normalization_lives_in_shared_weekday_utils(self) -> None:
         scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")
         generator_source = (ROOT / "generate_time_slots.py").read_text(encoding="utf-8")

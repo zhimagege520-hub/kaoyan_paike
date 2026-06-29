@@ -22,13 +22,13 @@ from scripts.field_utils import normalize_text as clean, row_value
 from scripts.period_utils import PERIOD_ORDER
 from scripts.schedule_data import load_room_names
 from scripts.schedule_outputs import write_day_table_html
+from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE as PUBLIC_SUBJECTS
 
 
 DEFAULT_SCHEDULE = Path("outputs/batch_schedule_maintenance.csv")
 DEFAULT_OUTPUT_DIR = Path("outputs")
 TARGET_SUITE = "2757"
 TARGET_WINDOW = "暑假"
-PUBLIC_SUBJECTS = {"英语", "政治", "数学", "语文"}
 SECOND_SLOT = {
     "AM1": ("AM2", "上午二", "10:20", "12:20"),
     "AM2": ("AM1", "上午一", "08:00", "10:00"),

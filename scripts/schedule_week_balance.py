@@ -5,10 +5,10 @@ from datetime import date as Date
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 import scheduler
+from scripts.subject_utils import PUBLIC_SUBJECT_SORT_ORDER as SUBJECT_ORDER
 
 
 SubjectWeekBounds = Dict[str, Tuple[Optional[int], Optional[int]]]
-SUBJECT_ORDER = {"数学": 0, "英语": 1, "政治": 2, "语文": 3}
 
 
 def slot_block_key(slot_block: Tuple[scheduler.TimeSlot, ...]) -> Tuple[str, int, int, str]:

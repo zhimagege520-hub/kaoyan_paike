@@ -8,9 +8,7 @@ import scheduler
 from scripts.csv_utils import read_csv_rows
 from scripts.field_utils import normalize_text, parse_bool_default, row_value
 from scripts.schedule_data import infer_class_subject, infer_class_subject_category
-
-
-SUBJECT_ORDER = {"数学": 0, "英语": 1, "政治": 2, "语文": 3}
+from scripts.subject_utils import PUBLIC_SUBJECT_SORT_ORDER as SUBJECT_ORDER
 
 
 def date_in_range(value: str, start: Optional[str], end: Optional[str]) -> bool:

@@ -24,11 +24,12 @@ from scripts.field_utils import (
     split_delimited_values as split_values,
     split_time_range_text,
 )
+from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE
 
 
 DEFAULT_SCHEDULE = Path("outputs/batch_schedule_maintenance.csv")
 DEFAULT_OUTPUT_DIR = Path("outputs")
-PUBLIC_SUBJECTS = {"英语", "政治", "数学", "语文"}
+PUBLIC_SUBJECTS = PUBLIC_SUBJECTS_WITH_CHINESE
 
 
 def schedule_rows(path: Path, start_date: str, end_date: str, include_subjects: set[str]) -> List[Dict[str, str]]:

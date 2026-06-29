@@ -35,6 +35,7 @@ from scripts.schedule_data import (  # noqa: E402
 )
 from scripts.schedule_display import date_range, week_dates, week_start, weekday_label  # noqa: E402
 from scripts.schedule_outputs import write_day_table_html  # noqa: E402
+from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE as PUBLIC_SUBJECTS  # noqa: E402
 
 
 FIELDNAMES = [
@@ -61,7 +62,6 @@ FIELDNAMES = [
     "duration_hours",
 ]
 
-PUBLIC_SUBJECTS = {"英语", "政治", "数学", "语文"}
 PERIOD_SLOTS = {
     "AM": [("AM1", "上午一", "08:00", "10:00"), ("AM2", "上午二", "10:20", "12:20")],
     "PM": [("PM1", "下午一", "14:00", "16:00"), ("PM2", "下午二", "16:20", "18:20")],

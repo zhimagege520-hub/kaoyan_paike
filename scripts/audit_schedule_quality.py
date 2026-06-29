@@ -23,9 +23,9 @@ from scripts.schedule_data import (
     load_room_metadata as load_raw_room_metadata,
 )
 from scripts.schedule_display import week_dates, week_start
+from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE as PUBLIC_SUBJECTS
 
 
-PUBLIC_SUBJECTS = {"英语", "政治", "数学", "语文"}
 SEASONS = (
     ("summer", "暑假7-8月", "2026-07-01", "2026-08-31"),
     ("autumn", "秋季9-12月", "2026-09-01", "2026-12-13"),

@@ -56,6 +56,7 @@ from scripts.schedule_modes import (
     assignment_schedule_mode,
     class_schedule_mode_display_name,
 )
+from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE
 from scripts.table_schema import (
     BUSINESS_PRODUCT_MAPPING_FIELDNAMES,
     CLASS_CONFLICT_GROUP_FIELDNAMES,
@@ -98,7 +99,7 @@ BATCH_SCHEDULE_SCRIPT = ROOT / "scripts" / "build_camp_maintenance_schedule.py"
 BATCH_SCHEDULE_PYTHON = Path(sys.executable)
 ALLOWED_UPLOAD_SUFFIXES = {".csv", ".xlsx", ".xlsm"}
 EMPLOYEE_ID_PATTERN = re.compile(r"^\d{6}$")
-PUBLIC_TEACHER_SUBJECTS = {"英语", "政治", "数学", "语文"}
+PUBLIC_TEACHER_SUBJECTS = PUBLIC_SUBJECTS_WITH_CHINESE
 STATE_TABLE_ALIASES: Dict[str, Tuple[str, ...]] = {
     "class_conflict_groups": ("conflict_groups",),
     "locked_scheduled_lessons": ("scheduled_lessons",),

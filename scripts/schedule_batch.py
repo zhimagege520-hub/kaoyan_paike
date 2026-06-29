@@ -89,6 +89,10 @@ from scripts.schedule_week_balance import (
     sum_subject_week_quotas,
     week_key,
 )
+from scripts.subject_utils import (
+    PUBLIC_SUBJECT_SORT_ORDER as SUBJECT_ORDER,
+    PUBLIC_SUBJECTS_WITH_CHINESE as PUBLIC_SUBJECTS,
+)
 
 
 add_class_teacher_day_load = scheduler.add_class_teacher_day_load
@@ -97,8 +101,6 @@ candidate_teacher_key = scheduler.candidate_teacher_key
 candidate_hours_by_date = scheduler.candidate_hours_by_date
 task_stage_rank = scheduler.task_stage_rank_for_input
 
-SUBJECT_ORDER = {"数学": 0, "英语": 1, "政治": 2, "语文": 3}
-PUBLIC_SUBJECTS = {"英语", "政治", "数学", "语文"}
 SAME_CLASS_TEACHER_DAY_LIMIT_SUBJECTS = scheduler.SAME_CLASS_TEACHER_DAY_LIMIT_SUBJECTS
 MAX_SAME_CLASS_TEACHER_DAY_HOURS = scheduler.MAX_SAME_CLASS_TEACHER_DAY_HOURS
 SUMMER_PREFERRED_WEEKLY_HALFDAY_MAX = 11
