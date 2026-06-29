@@ -139,6 +139,7 @@ class ReleaseStaticTest(unittest.TestCase):
         business_import_source = (ROOT / "business_class_import.py").read_text(encoding="utf-8")
         pipeline_source = (ROOT / "run_scheduling_pipeline.py").read_text(encoding="utf-8")
         scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")
+        class_windows_source = (ROOT / "scripts" / "schedule_class_windows.py").read_text(encoding="utf-8")
         erp_lesson_map_source = (ROOT / "scripts" / "build_erp_lesson_id_map.py").read_text(encoding="utf-8")
         erp_adjusted_sync_source = (ROOT / "scripts" / "sync_erp_adjusted_schedule.py").read_text(encoding="utf-8")
         camp_maintenance_source = (ROOT / "scripts" / "build_camp_maintenance_schedule.py").read_text(encoding="utf-8")
@@ -151,6 +152,7 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIn("from scripts.field_utils import", business_import_source)
         self.assertIn("from scripts.field_utils import", pipeline_source)
         self.assertIn("from scripts.field_utils import", scheduler_source)
+        self.assertIn("normalize_text", class_windows_source)
         self.assertIn("from scripts.field_utils import", erp_lesson_map_source)
         self.assertIn("from scripts.field_utils import", erp_adjusted_sync_source)
         self.assertIn("normalize_blank_marker", camp_maintenance_source)
@@ -179,6 +181,10 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertNotIn("set(number_format) == {\"0\"}", pipeline_source)
         self.assertIsNone(re.search(r"str\([^\n]* or \"\"\)", scheduler_source))
         self.assertIsNone(re.search(r"str\([^\n]* or \"\"\)", pipeline_source))
+        self.assertIsNone(re.search(r'\(row\.get\([^)]*\) or ""\)\.strip\(\)', class_windows_source))
+        self.assertIsNone(re.search(r'normalize_date\(row\.get\([^)]*\) or ""\)', class_windows_source))
+        self.assertIsNone(re.search(r'is_enabled\(row\.get\([^)]*\) or ""\)', class_windows_source))
+        self.assertIsNone(re.search(r'normalize_schedule_period\(row\.get\([^)]*\) or ""', class_windows_source))
         self.assertNotIn("str(value or \"\").strip()", camp_maintenance_source)
 
     def test_repair_clean_helpers_reuse_shared_field_utils(self) -> None:
@@ -244,6 +250,7 @@ class ReleaseStaticTest(unittest.TestCase):
             admin_source,
             scheduler_source,
             schedule_batch_source,
+            class_windows_source,
             weekday_utils_source,
             window_utils_source,
             template_sync_source,

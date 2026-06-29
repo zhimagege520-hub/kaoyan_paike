@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 
 import scheduler
-from scripts.schedule_class_windows import class_window_matches
+from scripts.schedule_class_windows import class_window_matches, row_to_constraint
 from scripts.window_utils import (
     SEASON_WINDOW_ID_TO_NAME,
     expanded_window_tokens,
@@ -112,6 +112,45 @@ class WindowUtilsTest(unittest.TestCase):
         self.assertTrue(class_window_matches(row, None, {"WINDOW_SUMMER"}))
         self.assertTrue(class_window_matches(row, None, {"暑假"}))
         self.assertFalse(class_window_matches(row, None, {"WINDOW_AUTUMN"}))
+
+    def test_class_window_row_to_constraint_preserves_falsey_values_and_common_separators(self) -> None:
+        constraint = row_to_constraint(
+            {
+                "class_window_id": 0,
+                "class_id": 0,
+                "class_name": False,
+                "product_id": 0,
+                "schedule_window_id": 0,
+                "season_window_id": False,
+                "season_name": 0,
+                "schedule_window_name": False,
+                "earliest_date": "2026/7/1",
+                "earliest_period": "上午",
+                "latest_date": "2026.7.2",
+                "latest_period": "晚上",
+                "preferred_teaching_area_ids": "A1，A2",
+                "preferred_room_ids": "R1；R2",
+                "preferred_room_is_required": False,
+                "notes": 0,
+            }
+        )
+
+        self.assertEqual("0", constraint.class_window_id)
+        self.assertEqual("0", constraint.class_id)
+        self.assertEqual("False", constraint.class_name)
+        self.assertEqual("0", constraint.product_id)
+        self.assertEqual("0", constraint.schedule_window_id)
+        self.assertEqual("False", constraint.season_window_id)
+        self.assertEqual("0", constraint.season_name)
+        self.assertEqual("False", constraint.schedule_window_name)
+        self.assertEqual("2026-07-01", constraint.earliest_date)
+        self.assertEqual("AM", constraint.earliest_period)
+        self.assertEqual("2026-07-02", constraint.latest_date)
+        self.assertEqual("EVENING", constraint.latest_period)
+        self.assertEqual(frozenset({"A1", "A2"}), constraint.teaching_area_ids)
+        self.assertEqual(frozenset({"R1", "R2"}), constraint.room_ids)
+        self.assertFalse(constraint.preferred_room_is_required)
+        self.assertEqual("0", constraint.notes)
 
 
 if __name__ == "__main__":

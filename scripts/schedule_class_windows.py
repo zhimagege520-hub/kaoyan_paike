@@ -6,7 +6,12 @@ from typing import Dict, Iterable, List, Mapping, Optional, Set
 
 import scheduler
 from scripts.csv_utils import read_csv_rows
-from scripts.field_utils import normalize_iso_date_text as normalize_date, parse_enabled, split_pipe_values
+from scripts.field_utils import (
+    normalize_iso_date_text as normalize_date,
+    normalize_text,
+    parse_enabled,
+    split_delimited_values,
+)
 from scripts.period_utils import normalize_period as normalize_schedule_period
 from scripts.schedule_data import load_room_metadata
 from scripts.window_utils import expanded_window_tokens
@@ -47,7 +52,7 @@ def class_window_matches(
     schedule_window_ids: Optional[Set[str]],
     season_window_ids: Optional[Set[str]],
 ) -> bool:
-    if schedule_window_ids and (row.get("schedule_window_id") or "").strip() not in schedule_window_ids:
+    if schedule_window_ids and normalize_text(row.get("schedule_window_id")) not in schedule_window_ids:
         return False
     if season_window_ids:
         season_tokens = expanded_window_tokens(
@@ -68,7 +73,7 @@ def room_ids_by_area_for_path(path: Path) -> Dict[str, frozenset[str]]:
     for room_id, room in rooms.items():
         if not is_enabled(room.get("is_active", "")):
             continue
-        area_id = (room.get("teaching_area_id") or "").strip()
+        area_id = normalize_text(room.get("teaching_area_id"))
         if area_id:
             result.setdefault(area_id, set()).add(room_id)
     return {area_id: frozenset(room_ids) for area_id, room_ids in result.items()}
@@ -88,27 +93,27 @@ def row_to_constraint(
     row: Dict[str, str],
     room_ids_by_area: Optional[Mapping[str, frozenset[str]]] = None,
 ) -> ClassWindowConstraint:
-    teaching_area_ids = frozenset(split_pipe_values(row.get("preferred_teaching_area_ids") or ""))
-    room_ids = frozenset(split_pipe_values(row.get("preferred_room_ids") or ""))
+    teaching_area_ids = frozenset(split_delimited_values(row.get("preferred_teaching_area_ids")))
+    room_ids = frozenset(split_delimited_values(row.get("preferred_room_ids")))
     if not room_ids and teaching_area_ids and room_ids_by_area:
         room_ids = expand_area_room_ids(teaching_area_ids, room_ids_by_area)
     return ClassWindowConstraint(
-        class_window_id=(row.get("class_window_id") or "").strip(),
-        class_id=(row.get("class_id") or "").strip(),
-        class_name=(row.get("class_name") or "").strip(),
-        product_id=(row.get("product_id") or "").strip(),
-        schedule_window_id=(row.get("schedule_window_id") or "").strip(),
-        season_window_id=(row.get("season_window_id") or "").strip(),
-        season_name=(row.get("season_name") or "").strip(),
-        schedule_window_name=(row.get("schedule_window_name") or "").strip(),
-        earliest_date=normalize_date(row.get("earliest_date") or ""),
-        earliest_period=normalize_schedule_period(row.get("earliest_period") or "", "AM") or "",
-        latest_date=normalize_date(row.get("latest_date") or ""),
-        latest_period=normalize_schedule_period(row.get("latest_period") or "", "EVENING") or "",
+        class_window_id=normalize_text(row.get("class_window_id")),
+        class_id=normalize_text(row.get("class_id")),
+        class_name=normalize_text(row.get("class_name")),
+        product_id=normalize_text(row.get("product_id")),
+        schedule_window_id=normalize_text(row.get("schedule_window_id")),
+        season_window_id=normalize_text(row.get("season_window_id")),
+        season_name=normalize_text(row.get("season_name")),
+        schedule_window_name=normalize_text(row.get("schedule_window_name")),
+        earliest_date=normalize_date(row.get("earliest_date")),
+        earliest_period=normalize_schedule_period(row.get("earliest_period"), "AM") or "",
+        latest_date=normalize_date(row.get("latest_date")),
+        latest_period=normalize_schedule_period(row.get("latest_period"), "EVENING") or "",
         teaching_area_ids=teaching_area_ids,
         room_ids=room_ids,
-        preferred_room_is_required=is_enabled(row.get("preferred_room_is_required") or ""),
-        notes=(row.get("notes") or "").strip(),
+        preferred_room_is_required=is_enabled(row.get("preferred_room_is_required")),
+        notes=normalize_text(row.get("notes")),
     )
 
 
@@ -168,10 +173,10 @@ def load_class_window_constraints(
     room_ids_by_area = room_ids_by_area if room_ids_by_area is not None else room_ids_by_area_for_path(path)
     by_class: Dict[str, List[ClassWindowConstraint]] = {}
     for row in read_csv_rows(path):
-        class_id = (row.get("class_id") or "").strip()
+        class_id = normalize_text(row.get("class_id"))
         if not class_id or (class_ids and class_id not in class_ids):
             continue
-        if included_only and not is_enabled(row.get("is_class_window_included") or ""):
+        if included_only and not is_enabled(row.get("is_class_window_included")):
             continue
         if not class_window_matches(row, schedule_window_ids, season_window_ids):
             continue
@@ -195,10 +200,10 @@ def load_class_window_constraint_items(
     room_ids_by_area = room_ids_by_area if room_ids_by_area is not None else room_ids_by_area_for_path(path)
     by_class: Dict[str, List[ClassWindowConstraint]] = {}
     for row in read_csv_rows(path):
-        class_id = (row.get("class_id") or "").strip()
+        class_id = normalize_text(row.get("class_id"))
         if not class_id or (class_ids and class_id not in class_ids):
             continue
-        if included_only and not is_enabled(row.get("is_class_window_included") or ""):
+        if included_only and not is_enabled(row.get("is_class_window_included")):
             continue
         if not class_window_matches(row, schedule_window_ids, season_window_ids):
             continue
@@ -221,7 +226,7 @@ def class_window_constraints_by_suite_code(
 ) -> Dict[str, Dict[str, ClassWindowConstraint]]:
     by_suite: Dict[str, Dict[str, ClassWindowConstraint]] = {}
     for class_id, constraint in class_constraints.items():
-        suite_code = (class_metadata.get(class_id, {}).get("suite_code") or "").strip()
+        suite_code = normalize_text(class_metadata.get(class_id, {}).get("suite_code"))
         if not suite_code or (suite_codes and suite_code not in suite_codes):
             continue
         by_suite.setdefault(suite_code, {})[class_id] = constraint
