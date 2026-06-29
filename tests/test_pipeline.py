@@ -2974,7 +2974,7 @@ class SchedulingPipelineTest(unittest.TestCase):
         update_class_lock_flags(state, ["C1"], Path("/tmp/professional"))
 
         self.assertTrue(state["classes"][0]["is_manual_schedule_locked"])
-        self.assertTrue(state["classes"][0]["is_schedule_locked"])
+        self.assertFalse(state["classes"][0]["is_schedule_locked"])
         self.assertIn("不参与自动排课", state["classes"][0]["notes"])
         self.assertFalse(state["classes"][1]["is_manual_schedule_locked"])
         self.assertFalse(state["classes"][1]["is_schedule_locked"])

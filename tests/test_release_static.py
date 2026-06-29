@@ -337,6 +337,7 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIn("parse_datetime_value", import_locked_source)
         self.assertIn("parse_datetime_value", camp_maintenance_source)
         self.assertIn("is_manual_schedule_locked", import_locked_source)
+        self.assertNotIn('cls["is_schedule_locked"] =', import_locked_source)
         self.assertNotIn("def class_is_movable_public", wyqc_foundation_gap_source)
         self.assertNotIn("datetime.strptime", import_locked_source)
         self.assertNotIn("datetime.strptime", camp_maintenance_source)
