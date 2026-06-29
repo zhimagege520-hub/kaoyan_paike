@@ -8,6 +8,7 @@ from scripts.time_slot_templates import (
     DEFAULT_LESSON_TEMPLATES,
     adjacent_halfday_slot_map,
     default_lesson_template_rows,
+    display_lesson_slot_rows,
     lesson_slot_order,
     period_slot_specs,
     standard_slot_specs_by_period,
@@ -84,6 +85,18 @@ class TimeSlotTemplatesTest(unittest.TestCase):
                 ("PM1", "下午一", "14:00", "16:00"),
                 ("PM2", "下午二", "16:20", "18:20"),
             ),
+        )
+        self.assertEqual(
+            display_lesson_slot_rows(("EVENING",)),
+            [
+                {
+                    "id": "EVENING1",
+                    "period": "EVENING",
+                    "label": "晚上",
+                    "start_time": "19:00",
+                    "end_time": "21:00",
+                }
+            ],
         )
         self.assertEqual(lesson_slot_order(), {"AM1": 0, "AM2": 1, "PM1": 2, "PM2": 3, "EVENING1": 4})
         self.assertEqual(adjacent_halfday_slot_map()["AM1"], ("AM2", "上午二", "10:20", "12:20"))

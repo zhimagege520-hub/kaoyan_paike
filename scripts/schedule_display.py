@@ -6,16 +6,10 @@ from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 import scheduler
 from scripts.period_utils import PERIOD_LABELS
+from scripts.time_slot_templates import display_lesson_slot_rows
 from scripts.weekday_utils import WEEKDAY_LABELS, weekday_label_for_date
 
 
-STANDARD_DISPLAY_SLOTS = (
-    {"id": "AM1", "period": "AM", "label": "上午一", "start_time": "08:00", "end_time": "10:00"},
-    {"id": "AM2", "period": "AM", "label": "上午二", "start_time": "10:20", "end_time": "12:20"},
-    {"id": "PM1", "period": "PM", "label": "下午一", "start_time": "14:00", "end_time": "16:00"},
-    {"id": "PM2", "period": "PM", "label": "下午二", "start_time": "16:20", "end_time": "18:20"},
-    {"id": "EVENING1", "period": "EVENING", "label": "晚上一", "start_time": "19:00", "end_time": "21:00"},
-)
 SUBJECT_COLORS = {
     "数学": "#2f6f73",
     "英语": "#3d6fa8",
@@ -78,8 +72,7 @@ def time_to_minutes(value: str) -> Optional[int]:
 
 
 def standard_display_slots(periods: Sequence[str]) -> List[Dict[str, str]]:
-    allowed_periods = set(periods)
-    return [dict(slot) for slot in STANDARD_DISPLAY_SLOTS if slot["period"] in allowed_periods]
+    return display_lesson_slot_rows(tuple(periods))
 
 
 def assignment_display_slot_ids(slots: Tuple[scheduler.TimeSlot, ...], periods: Sequence[str]) -> List[str]:

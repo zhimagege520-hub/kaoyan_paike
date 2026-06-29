@@ -100,6 +100,19 @@ def period_slot_specs(periods: tuple[str, ...] | None = None) -> dict[str, tuple
     return {period: tuple(values) for period, values in specs.items()}
 
 
+def display_lesson_slot_rows(periods: tuple[str, ...] | None = None) -> list[dict[str, str]]:
+    return [
+        {
+            "id": lesson_slot_code(template),
+            "period": str(template["period"]),
+            "label": str(template["name"]),
+            "start_time": str(template["start_time"]),
+            "end_time": str(template["end_time"]),
+        }
+        for template in lesson_templates_for_periods(periods)
+    ]
+
+
 def lesson_slot_order() -> dict[str, int]:
     return {lesson_slot_code(template): index for index, template in enumerate(DEFAULT_LESSON_TEMPLATES)}
 
