@@ -46,13 +46,13 @@
 项目仓库：
 
 ```text
-https://github.com/zhimagege520-hub/kaoyan_paike
+https://github.com/zmgg2026/kaoyan_paike
 ```
 
 本机需要 Python 3.11 或更高版本。首次使用按下面顺序执行：
 
 ```bash
-git clone https://github.com/zhimagege520-hub/kaoyan_paike.git
+git clone https://github.com/zmgg2026/kaoyan_paike.git
 cd kaoyan_paike
 python3 -m pip install -r requirements.txt
 bash scripts/verify_release.sh

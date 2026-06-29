@@ -91,6 +91,8 @@ class DocumentationStaticTest(unittest.TestCase):
         self.assertIn("| 要改程序时读 | 11. 程序调整的正确顺序 |", guide)
         self.assertIn("bash scripts/verify_release.sh", guide)
         self.assertIn("./scripts/start_admin.sh", guide)
+        self.assertIn("https://github.com/zmgg2026/kaoyan_paike", guide)
+        self.assertNotIn("zhimagege520-hub", guide)
         self.assertIn("http://127.0.0.1:8765", guide)
         self.assertIn("排课运行维护", guide)
         self.assertIn("scripts/audit_schedule_coverage.py", guide)
