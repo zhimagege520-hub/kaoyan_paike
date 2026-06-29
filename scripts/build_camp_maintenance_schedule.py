@@ -10994,7 +10994,7 @@ def append_run_summary(path: Path, mode: str, perf: PerfLog, extra_lines: Sequen
 def split_arg_values(values: Sequence[str]) -> Set[str]:
     result: Set[str] = set()
     for value in values:
-        for part in re.split(r"[,，|;\s]+", value or ""):
+        for part in split_pipe_values(value, include_whitespace=True):
             cleaned = clean(part)
             if cleaned:
                 result.add(cleaned)

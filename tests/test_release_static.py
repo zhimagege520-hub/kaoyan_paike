@@ -208,6 +208,7 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertNotIn('.replace(",", "|").replace("，", "|").split("|")', erp_export_source)
         self.assertNotIn('.replace(",", "|").replace("，", "|").split("|")', erp_lesson_map_source)
         self.assertNotIn('re.split(r"[,，|;\\s]+"', admin_source)
+        self.assertNotIn('re.split(r"[,，|;\\s]+"', camp_maintenance_source)
 
     def test_erp_date_time_normalization_lives_in_shared_field_utils(self) -> None:
         field_utils_source = (ROOT / "scripts" / "field_utils.py").read_text(encoding="utf-8")

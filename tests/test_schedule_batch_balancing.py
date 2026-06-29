@@ -26,6 +26,7 @@ from scripts.build_camp_maintenance_schedule import (
     student_experience_warning_lines,
     class_window_venue_rebuild_suite_codes,
     run_summer_rebuild_attempts,
+    split_arg_values,
     summer_schedule_input_for_suites,
     teacher_same_day_campus_warning_lines,
 )
@@ -125,6 +126,9 @@ class ScheduleScopeDateTest(unittest.TestCase):
         self.assertEqual(normalize_date("2026/7/1"), "2026-07-01")
         self.assertEqual(normalize_date("2026.7.1"), "2026-07-01")
         self.assertEqual(normalize_date("20260701"), "2026-07-01")
+
+    def test_split_arg_values_uses_shared_list_parser(self) -> None:
+        self.assertEqual(split_arg_values(["C1 C2，C3|C1", "C4； C5"]), {"C1", "C2", "C3", "C4", "C5"})
 
 
 def make_teacher_travel_assignment(
