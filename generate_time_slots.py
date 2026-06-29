@@ -8,51 +8,12 @@ from pathlib import Path
 from typing import List, Set
 
 from scripts.field_utils import normalize_iso_date_text
+from scripts.time_slot_templates import DEFAULT_LESSON_TEMPLATES
 from scripts.weekday_utils import SUNDAY, parse_weekday_set
 
 
-DEFAULT_DAY_SLOTS = [
-    {
-        "period": "AM",
-        "name": "上午一",
-        "order": 1,
-        "start_time": "08:00",
-        "end_time": "10:00",
-        "duration_hours": 2,
-    },
-    {
-        "period": "AM",
-        "name": "上午二",
-        "order": 2,
-        "start_time": "10:20",
-        "end_time": "12:20",
-        "duration_hours": 2,
-    },
-    {
-        "period": "PM",
-        "name": "下午一",
-        "order": 1,
-        "start_time": "14:00",
-        "end_time": "16:00",
-        "duration_hours": 2,
-    },
-    {
-        "period": "PM",
-        "name": "下午二",
-        "order": 2,
-        "start_time": "16:20",
-        "end_time": "18:20",
-        "duration_hours": 2,
-    },
-    {
-        "period": "EVENING",
-        "name": "晚上",
-        "order": 1,
-        "start_time": "19:00",
-        "end_time": "21:00",
-        "duration_hours": 2,
-    },
-]
+TIME_SLOT_OUTPUT_FIELDS = ("period", "name", "order", "start_time", "end_time", "duration_hours")
+
 
 def parse_date(value: str, label: str = "日期") -> date:
     return date.fromisoformat(normalize_iso_date_text(value, label))
@@ -101,14 +62,14 @@ def generate_time_slots(
     while current <= end:
         if not should_exclude_day(current, excluded_weekdays, sunday_policy):
             date_text = current.isoformat()
-            for slot in DEFAULT_DAY_SLOTS:
+            for slot in DEFAULT_LESSON_TEMPLATES:
                 if not slot_allowed(slot, slot_set):
                     continue
                 slots.append(
                     {
-                        "id": f"{date_text}-{slot['period']}-{slot['order']}",
+                        "id": f"{date_text}-{slot['period']}-{slot['suffix']}",
                         "date": date_text,
-                        **slot,
+                        **{field: slot[field] for field in TIME_SLOT_OUTPUT_FIELDS},
                     }
                 )
         current += timedelta(days=1)

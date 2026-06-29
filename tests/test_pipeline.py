@@ -412,6 +412,11 @@ class SchedulingPipelineTest(unittest.TestCase):
             self.assertEqual(rows[0]["class_id"], "C_DEMO_01")
             self.assertEqual(rows[0]["duration_hours"], "4")
             self.assertEqual(rows[0]["period"], "AM")
+            with (source / "time_slots.csv").open(encoding="utf-8") as handle:
+                example_time_slots = list(csv.DictReader(handle))
+            self.assertEqual({row["season_window_id"] for row in example_time_slots}, {"WINDOW_SUMMER"})
+            self.assertEqual(example_time_slots[1]["start_time"], "10:20")
+            self.assertEqual(example_time_slots[1]["end_time"], "12:20")
 
     def test_preflight_validates_scheduler_input_and_writes_missing_teacher_template(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2908,6 +2913,7 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(lookups["product_lines"], data_admin_server.PRODUCT_LINE_OPTIONS)
         self.assertEqual(lookups["period_options"], data_admin_server.PERIOD_OPTIONS)
         self.assertEqual(lookups["period_labels"], data_admin_server.PERIOD_LABELS)
+        self.assertEqual(lookups["lesson_templates"], list(data_admin_server.DEFAULT_LESSON_TEMPLATES))
         self.assertEqual(lookups["weekday_options"], data_admin_server.WEEKDAY_LABELS)
         self.assertEqual(lookups["teacher_genders"], data_admin_server.TEACHER_GENDER_OPTIONS)
         self.assertEqual(lookups["teacher_roles"], data_admin_server.TEACHER_ROLE_OPTIONS)

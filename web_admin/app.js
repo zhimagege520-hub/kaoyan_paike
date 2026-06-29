@@ -824,11 +824,15 @@ function schedulePeriods() {
 
 function schedulePeriodIds() {
   const ids = lookupOptions("period_options");
-  return ids.length ? ids : uniqueList(defaultLessonTemplates.map((template) => template.period));
+  return ids.length ? ids : uniqueList(lessonTemplates().map((template) => template.period));
 }
 
 function periodLabel(periodId) {
   return lookupRecord("period_labels")[periodId] || periodId;
+}
+
+function lessonTemplates() {
+  return arrayValues(state.lookups?.lesson_templates);
 }
 
 function weekdays() {
@@ -2216,14 +2220,6 @@ function editableCheckboxCell(listName, index, field, value, label = "启用") {
   return `<label class="inline-check"><input type="checkbox" data-list="${html(listName)}" data-index="${index}" data-field="${html(field)}" ${value ? "checked" : ""}>${html(label)}</label>`;
 }
 
-const defaultLessonTemplates = [
-  { period: "AM", suffix: "1", name: "上午一", order: 1, start_time: "08:00", end_time: "10:00" },
-  { period: "AM", suffix: "2", name: "上午二", order: 2, start_time: "10:20", end_time: "12:20" },
-  { period: "PM", suffix: "1", name: "下午一", order: 1, start_time: "14:00", end_time: "16:00" },
-  { period: "PM", suffix: "2", name: "下午二", order: 2, start_time: "16:20", end_time: "18:20" },
-  { period: "EVENING", suffix: "1", name: "晚上", order: 1, start_time: "19:00", end_time: "21:00" },
-];
-
 function pad2(value) {
   return String(value).padStart(2, "0");
 }
@@ -2330,6 +2326,7 @@ function buildTimeSlotForWindow(window, date, template) {
   const weekdayBlocked = arrayValues(defaults.blocked_weekdays).includes(weekday);
   const notAllowedByWindow = allowedWeekdays.length && !allowedWeekdays.includes(weekday);
   const blackoutReasons = blackoutReasonsForDate(dateText);
+  const slotSuffix = template.suffix || template.order || "";
   const reasons = [
     weekdayBlocked ? `${window.season_name || "该"}窗口${weekday}默认不可排` : "",
     notAllowedByWindow ? "不在该窗口默认可排星期内" : "",
@@ -2337,7 +2334,7 @@ function buildTimeSlotForWindow(window, date, template) {
   ].filter(Boolean);
   const isUsable = reasons.length === 0;
   return {
-    id: `${dateText}-${template.period}-${template.suffix}`,
+    id: `${dateText}-${template.period}-${slotSuffix}`,
     date: dateText,
     calendar_year: date.getFullYear(),
     schedule_window_id: window.schedule_window_id,
@@ -2351,7 +2348,7 @@ function buildTimeSlotForWindow(window, date, template) {
     order: template.order,
     start_time: template.start_time,
     end_time: template.end_time,
-    duration_hours: 2,
+    duration_hours: Number(template.duration_hours || 2),
     is_usable: isUsable,
     availability_source: isUsable ? "默认可用" : (blackoutReasons.length ? "全局停课/默认规则" : "默认不可用"),
     unavailable_reason: reasons.join("；"),
@@ -2374,7 +2371,7 @@ function generateTimeSlotsForWindow(windowIndex) {
   state.time_slots = state.time_slots || [];
   const existingIds = new Set(state.time_slots.map((slot) => slot.id).filter(Boolean));
   const allowedPeriods = arrayValues(window.default_allowed_periods);
-  const templates = defaultLessonTemplates.filter((template) => !allowedPeriods.length || allowedPeriods.includes(template.period));
+  const templates = lessonTemplates().filter((template) => !allowedPeriods.length || allowedPeriods.includes(template.period));
   let added = 0;
   let skipped = 0;
   const cursor = new Date(startDate);

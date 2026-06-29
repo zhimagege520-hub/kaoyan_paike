@@ -143,6 +143,8 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertIn("function schedulePeriodIds()", source)
         self.assertIn('lookupOptions("period_options")', source)
         self.assertIn('lookupRecord("period_labels")', source)
+        self.assertIn("return arrayValues(state.lookups?.lesson_templates);", source)
+        self.assertIn("lessonTemplates().filter", source)
         self.assertIn("return schedulePeriodIds().map((id) => ({ id, name: periodLabel(id) }));", source)
         self.assertIn("default_allowed_periods: schedulePeriodIds()", source)
         self.assertIn("const periodOptions = schedulePeriodIds();", source)
@@ -151,6 +153,7 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertIn("selectOptions(schedulePeriodIds(), cls.end_period", source)
         self.assertNotIn('["AM", "PM", "EVENING"]', source)
         self.assertNotIn('const periodOptions = ["AM", "PM", "EVENING"];', source)
+        self.assertNotIn("const defaultLessonTemplates = [", source)
 
     def test_weekday_options_use_lookups(self) -> None:
         source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")

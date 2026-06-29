@@ -654,8 +654,18 @@ class ReleaseStaticTest(unittest.TestCase):
     def test_time_slot_generator_reuses_shared_date_normalization(self) -> None:
         generator_source = (ROOT / "generate_time_slots.py").read_text(encoding="utf-8")
         pipeline_source = (ROOT / "run_scheduling_pipeline.py").read_text(encoding="utf-8")
+        admin_source = (ROOT / "data_admin_server.py").read_text(encoding="utf-8")
+        web_admin_source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
+        time_slot_templates_source = (ROOT / "scripts" / "time_slot_templates.py").read_text(encoding="utf-8")
 
         self.assertIn("from scripts.field_utils import normalize_iso_date_text", generator_source)
+        self.assertIn("from scripts.time_slot_templates import DEFAULT_LESSON_TEMPLATES", generator_source)
+        self.assertIn("from scripts.time_slot_templates import DEFAULT_LESSON_TEMPLATES, default_lesson_template_rows", admin_source)
+        self.assertIn('"lesson_templates": default_lesson_template_rows()', admin_source)
+        self.assertIn("DEFAULT_LESSON_TEMPLATES", time_slot_templates_source)
+        self.assertIn("state.lookups?.lesson_templates", web_admin_source)
+        self.assertNotIn("DEFAULT_DAY_SLOTS = [", generator_source)
+        self.assertNotIn("const defaultLessonTemplates = [", web_admin_source)
         self.assertNotIn("datetime.strptime", generator_source)
         self.assertIn("normalize_iso_date_text", pipeline_source)
         self.assertNotIn("date.fromisoformat(value)", pipeline_source)
