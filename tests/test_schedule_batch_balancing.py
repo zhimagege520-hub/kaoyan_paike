@@ -31,8 +31,13 @@ from scripts.build_camp_maintenance_schedule import (
     summer_schedule_input_for_suites,
     teacher_same_day_campus_warning_lines,
 )
+from scripts.repair_2726_summer_week_balance import clean as repair_2726_clean
+from scripts.repair_2757_halfday_blocks import clean as repair_2757_clean
+from scripts.repair_public_coverage_gaps import clean as repair_public_coverage_clean
 from scripts.repair_schedule_quality_hotspots import parse_name_set as parse_repair_name_set
-from scripts.repair_wyqc_summer_week_balance import parse_suite_codes
+from scripts.repair_wyqc_foundation_deadlines import clean as repair_wyqc_deadline_clean
+from scripts.repair_wyqc_foundation_gaps import clean as repair_wyqc_gap_clean
+from scripts.repair_wyqc_summer_week_balance import clean as repair_wyqc_summer_clean, parse_suite_codes
 from scripts.schedule_constraints import (
     assignment_constraint_sets,
     assignments_conflicting_with_candidate,
@@ -40,7 +45,7 @@ from scripts.schedule_constraints import (
     class_teacher_day_loads,
     place_candidate,
 )
-from scripts.schedule_conflicts import teacher_time_conflict_lines
+from scripts.schedule_conflicts import clean as conflict_clean, teacher_time_conflict_lines
 from scripts.schedule_data import assignment_course_tag
 from scripts.schedule_display import (
     assignment_display_slot_ids,
@@ -129,6 +134,24 @@ class ScheduleScopeDateTest(unittest.TestCase):
         self.assertEqual(maintenance_clean(0), "0")
         self.assertEqual(maintenance_clean(False), "False")
         self.assertEqual(maintenance_clean("无"), "")
+
+    def test_repair_clean_helpers_preserve_falsey_non_empty_values(self) -> None:
+        repair_cleaners = [
+            repair_2726_clean,
+            repair_2757_clean,
+            repair_public_coverage_clean,
+            repair_wyqc_deadline_clean,
+            repair_wyqc_gap_clean,
+            repair_wyqc_summer_clean,
+        ]
+        for cleaner in repair_cleaners:
+            self.assertEqual(cleaner(0), "0")
+            self.assertEqual(cleaner(False), "False")
+            self.assertEqual(cleaner(" A "), "A")
+
+        self.assertEqual(conflict_clean(0), "0")
+        self.assertEqual(conflict_clean(False), "False")
+        self.assertEqual(conflict_clean("无"), "")
 
     def test_normalize_date_uses_shared_import_formats(self) -> None:
         self.assertEqual(normalize_date("2026/7/1"), "2026-07-01")

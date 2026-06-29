@@ -7,11 +7,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import scheduler
 from scripts.csv_utils import write_csv_rows
-
-
-def clean(value: object) -> str:
-    text = str(value or "").strip()
-    return "" if text in {"", "-", "—", "无", "暂无", "NULL", "N/A", "None"} else text
+from scripts.field_utils import normalize_blank_marker as clean
 
 
 def minutes(value: str) -> Optional[int]:

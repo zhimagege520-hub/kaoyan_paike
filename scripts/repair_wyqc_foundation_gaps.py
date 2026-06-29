@@ -18,6 +18,7 @@ import scheduler
 from scripts import audit_schedule_coverage as coverage
 from scripts import build_camp_maintenance_schedule as maintenance
 from scripts.csv_utils import write_csv_rows as write_csv_rows_with_fields
+from scripts.field_utils import normalize_text as clean
 from scripts.schedule_display import assignment_standard_lesson_count, week_start
 from scripts.schedule_outputs import write_batch_csv, write_day_table_html
 
@@ -26,11 +27,6 @@ PUBLIC_SUBJECTS = maintenance.SUMMER_PUBLIC_SUBJECTS
 TARGET_STAGES = {"基础", "强化"}
 TARGET_PRODUCTS = maintenance.WYQC_PRODUCTS
 PUBLIC_HALFDAY_HOURS = 4
-
-
-def clean(value: object) -> str:
-    return str(value or "").strip()
-
 
 def suite_window(suite_code: str) -> Tuple[str, str]:
     return (

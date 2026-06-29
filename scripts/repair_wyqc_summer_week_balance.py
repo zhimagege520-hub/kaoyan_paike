@@ -18,7 +18,7 @@ import scheduler
 from scripts import build_camp_maintenance_schedule as maintenance
 from scripts import repair_wyqc_foundation_gaps as gap_repair
 from scripts.csv_utils import read_csv_rows, write_csv_rows as write_csv_rows_with_fields
-from scripts.field_utils import split_delimited_values
+from scripts.field_utils import normalize_text as clean, split_delimited_values
 from scripts.schedule_display import week_start, weekday_label
 from scripts.schedule_outputs import write_day_table_html
 
@@ -79,11 +79,6 @@ SUITE_WEEK_SUBJECT_QUOTAS: Dict[str, Dict[Tuple[str, str], int]] = {
         ("2026-08-24", "英语"): 3,
     },
 }
-
-
-def clean(value: object) -> str:
-    return str(value or "").strip()
-
 
 def max_consecutive_days(date_values: Iterable[str]) -> int:
     days = sorted({Date.fromisoformat(value) for value in date_values if value})

@@ -179,6 +179,28 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertNotIn("set(number_format) == {\"0\"}", pipeline_source)
         self.assertNotIn("str(value or \"\").strip()", camp_maintenance_source)
 
+    def test_repair_clean_helpers_reuse_shared_field_utils(self) -> None:
+        modules = [
+            ROOT / "scripts" / "repair_2726_summer_week_balance.py",
+            ROOT / "scripts" / "repair_2757_halfday_blocks.py",
+            ROOT / "scripts" / "repair_public_coverage_gaps.py",
+            ROOT / "scripts" / "repair_wyqc_foundation_deadlines.py",
+            ROOT / "scripts" / "repair_wyqc_foundation_gaps.py",
+            ROOT / "scripts" / "repair_wyqc_summer_week_balance.py",
+            ROOT / "scripts" / "schedule_conflicts.py",
+        ]
+        offenders = []
+        for path in modules:
+            source = path.read_text(encoding="utf-8")
+            if "from scripts.field_utils import" not in source:
+                offenders.append(f"{path.relative_to(ROOT)} does not import field_utils")
+            if re.search(r"(?m)^def clean\(", source):
+                offenders.append(f"{path.relative_to(ROOT)} defines local clean")
+            if 'str(value or "").strip()' in source:
+                offenders.append(f"{path.relative_to(ROOT)} clears falsey values with value-or-empty")
+
+        self.assertEqual([], offenders)
+
     def test_boolean_parsing_lives_in_shared_field_utils(self) -> None:
         field_utils_source = (ROOT / "scripts" / "field_utils.py").read_text(encoding="utf-8")
         publish_server_source = (ROOT / "schedule_publish_server.py").read_text(encoding="utf-8")

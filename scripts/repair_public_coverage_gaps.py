@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path:
 import scheduler
 from scripts import build_camp_maintenance_schedule as maintenance
 from scripts.csv_utils import read_csv_rows, read_csv_with_fieldnames, write_csv_rows as write_csv_rows_with_fields
-from scripts.field_utils import split_delimited_values
+from scripts.field_utils import normalize_text as clean, split_delimited_values
 from scripts.schedule_data import load_class_metadata, load_room_names
 from scripts.schedule_display import week_start, weekday_label
 from scripts.schedule_outputs import write_day_table_html
@@ -48,9 +48,6 @@ PERIOD_SLOTS = {
 PERIOD_ORDER = {"AM": 0, "PM": 1, "EVENING": 2}
 SLOT_ORDER = {"AM1": 0, "AM2": 1, "PM1": 2, "PM2": 3, "EVENING1": 4}
 SUBJECT_ORDER = {"数学": 0, "政治": 1, "英语": 2}
-
-def clean(value: object) -> str:
-    return str(value or "").strip()
 
 
 def iter_dates(start: str, end: str) -> Iterable[str]:

@@ -18,6 +18,7 @@ if str(ROOT) not in sys.path:
 
 import scripts.build_camp_maintenance_schedule as maintenance
 from scripts.csv_utils import read_csv_with_fieldnames, write_csv_rows
+from scripts.field_utils import normalize_text as clean
 from scripts.schedule_data import load_room_names
 from scripts.schedule_outputs import write_day_table_html
 
@@ -34,11 +35,6 @@ SECOND_SLOT = {
     "PM2": ("PM1", "下午一", "14:00", "16:00"),
 }
 PERIOD_ORDER = {"AM": 0, "PM": 1, "EVENING": 2}
-
-
-def clean(value: object) -> str:
-    return str(value or "").strip()
-
 
 def read_csv(path: Path) -> Tuple[List[str], List[Dict[str, str]]]:
     return read_csv_with_fieldnames(path)
