@@ -675,7 +675,7 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
             None,
             {"PM"},
             {"R_202"},
-            quarters={"春季"},
+            window_names={"春季"},
         )
 
         self.assertEqual([slot.id for slot in filtered.time_slots], ["2026-07-02-PM"])
@@ -831,7 +831,7 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
             None,
             None,
             class_window_constraints=constraints,
-            quarters={"暑假"},
+            window_names={"暑假"},
         )
 
         filtered_class = filtered.classes["CLASS_A"]
@@ -966,12 +966,69 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
             None,
             None,
             class_window_constraints=constraints,
-            quarters={"暑假"},
+            window_names={"暑假"},
         )
 
         filtered_class = filtered.classes["CLASS_AREA"]
         self.assertEqual(filtered_class.room_ids, {"R_A1", "R_A2"})
         self.assertEqual(filtered_class.requirements[0].room_ids, {"R_A1", "R_A2"})
+
+    def test_filtered_schedule_input_keeps_legacy_quarters_keyword_as_alias(self) -> None:
+        slot = scheduler.TimeSlot("TS1", "2026-07-01", "周三", "AM", "AM1", "08:00", "10:00")
+        cls = scheduler.SchoolClass(
+            id="CLASS_A",
+            name="测试班",
+            product_id="P1",
+            product_name="测试产品",
+            size=20,
+            room_ids={"R1"},
+            start_date=None,
+            start_period=None,
+            end_date=None,
+            end_period=None,
+            first_lesson_date=None,
+            first_lesson_period=None,
+            stage_order={"基础": 0},
+            requirements=[
+                scheduler.Requirement(
+                    subject_category="公共课",
+                    subject="英语",
+                    quarter="暑假",
+                    stage="基础",
+                    course_module="词汇",
+                    course_group="基础组",
+                    teacher_id="T1",
+                    teacher_name="张老师",
+                    total_hours=2,
+                    block_hours=2,
+                    room_ids={"R1"},
+                )
+            ],
+        )
+        source = scheduler.ScheduleInput(
+            time_slots=[slot],
+            rooms={"R1": scheduler.Room("R1")},
+            classes={"CLASS_A": cls},
+            conflict_groups={},
+            class_conflict_groups={},
+            locked_assignments=[],
+        )
+
+        filtered = filtered_schedule_input(
+            source,
+            ["CLASS_A"],
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            quarters={"暑假"},
+        )
+
+        self.assertEqual(filtered.classes["CLASS_A"].requirements[0].quarter, "暑假")
 
     def test_suite_window_summary_keeps_class_rooms_separate(self) -> None:
         class_constraints = {

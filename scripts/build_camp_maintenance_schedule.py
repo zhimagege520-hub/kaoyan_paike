@@ -1697,7 +1697,7 @@ def summer_schedule_input_for_suites(
         end_period=end_constraint.latest_period,
         periods={"AM", "PM"},
         room_ids=None,
-        quarters={"暑假"},
+        window_names={"暑假"},
         class_window_constraints=class_window_constraints,
     )
     return summer_input, class_ids

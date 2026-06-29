@@ -435,6 +435,9 @@ class ReleaseStaticTest(unittest.TestCase):
     def test_window_normalization_lives_in_shared_window_utils(self) -> None:
         scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")
         class_windows_source = (ROOT / "scripts" / "schedule_class_windows.py").read_text(encoding="utf-8")
+        schedule_batch_source = (ROOT / "scripts" / "schedule_batch.py").read_text(encoding="utf-8")
+        schedule_scope_source = (ROOT / "scripts" / "schedule_scope.py").read_text(encoding="utf-8")
+        camp_maintenance_source = (ROOT / "scripts" / "build_camp_maintenance_schedule.py").read_text(encoding="utf-8")
         window_utils_source = (ROOT / "scripts" / "window_utils.py").read_text(encoding="utf-8")
 
         self.assertIn("from scripts.window_utils import", scheduler_source)
@@ -445,6 +448,10 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIsNone(re.search(r"(?m)^SEASON_WINDOW_NAME_TO_ID\s*=", scheduler_source))
         self.assertIsNone(re.search(r"(?m)^def expanded_window_tokens\(", scheduler_source))
         self.assertNotIn("season_tokens = {", class_windows_source)
+        self.assertIn("window_names", schedule_scope_source)
+        self.assertIn("window_names=window_names", schedule_batch_source)
+        self.assertNotIn("quarters = season_names_for_constraints", schedule_batch_source)
+        self.assertNotIn("quarters={", camp_maintenance_source)
 
     def test_cli_scripts_import_project_modules_with_bootstrap(self) -> None:
         project_import = re.compile(

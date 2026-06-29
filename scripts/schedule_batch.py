@@ -2908,7 +2908,7 @@ def main() -> None:
     end_period = (args.end_period or "").upper() or None
     class_metadata = load_class_metadata(args.data_dir)
     class_window_constraints = {}
-    quarters = None
+    window_names = None
 
     if not args.ignore_class_window_boundaries and (schedule_window_ids or season_window_ids):
         class_window_constraints = load_class_window_constraints(
@@ -2926,7 +2926,7 @@ def main() -> None:
         start_period = start_period or boundary_start_period
         end_date = end_date or boundary_end_date
         end_period = end_period or boundary_end_period
-        quarters = season_names_for_constraints(class_window_constraints.values()) or None
+        window_names = season_names_for_constraints(class_window_constraints.values()) or None
 
     source = scheduler.load_input(args.input)
     locked_csv_paths = [Path(path) for path in split_values(args.locked_csvs)]
@@ -2944,7 +2944,7 @@ def main() -> None:
         end_period=end_period,
         periods=periods,
         room_ids=room_ids,
-        quarters=quarters,
+        window_names=window_names,
         class_window_constraints=class_window_constraints,
     )
     if args.strategy == "camp-balanced":

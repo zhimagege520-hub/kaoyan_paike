@@ -61,8 +61,13 @@ def filter_classes(
     class_ids: Sequence[str],
     stages: Optional[Set[str]],
     subjects: Optional[Set[str]],
+    window_names: Optional[Set[str]] = None,
+    *,
     quarters: Optional[Set[str]] = None,
 ) -> Dict[str, scheduler.SchoolClass]:
+    if window_names is None:
+        window_names = quarters
+
     def requirement_matches_stage_filter(requirement: scheduler.Requirement) -> bool:
         if not stages:
             return True
@@ -73,11 +78,11 @@ def filter_classes(
         if class_id not in schedule_input.classes:
             raise ValueError(f"班级不存在: {class_id}")
         cls = schedule_input.classes[class_id]
-        class_has_quarters = any(requirement.quarter for requirement in cls.requirements)
+        class_has_window_names = any(requirement.quarter for requirement in cls.requirements)
         requirements = [
             requirement
             for requirement in cls.requirements
-            if (not quarters or not class_has_quarters or (requirement.quarter or "") in quarters)
+            if (not window_names or not class_has_window_names or (requirement.quarter or "") in window_names)
             and requirement_matches_stage_filter(requirement)
             and (not subjects or requirement.subject in subjects)
         ]
@@ -116,10 +121,14 @@ def filtered_schedule_input(
     end_period: Optional[str],
     periods: Optional[Set[str]],
     room_ids: Optional[Set[str]],
-    quarters: Optional[Set[str]] = None,
+    window_names: Optional[Set[str]] = None,
     class_window_constraints: Optional[Dict[str, Any]] = None,
+    *,
+    quarters: Optional[Set[str]] = None,
 ) -> scheduler.ScheduleInput:
-    classes = filter_classes(source, class_ids, stages, subjects, quarters)
+    if window_names is None:
+        window_names = quarters
+    classes = filter_classes(source, class_ids, stages, subjects, window_names)
     if room_ids:
         classes = {
             class_id: replace(
