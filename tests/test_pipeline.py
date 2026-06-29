@@ -2931,7 +2931,7 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(normalized["preferred_room_ids"], ["R1", "R2"])
         self.assertTrue(normalized["preferred_room_is_required"])
         self.assertTrue(normalized["is_manual_schedule_locked"])
-        self.assertTrue(normalized["is_schedule_locked"])
+        self.assertNotIn("is_schedule_locked", normalized)
         self.assertEqual(normalized["requirements"][0]["total_hours"], 4)
         self.assertEqual(normalized["teacher_assignments"][0]["actual_scheduled_class_id"], "C1")
         self.assertEqual(normalized["teacher_assignments"][0]["teacher_id"], "000001")
@@ -2947,7 +2947,7 @@ class SchedulingPipelineTest(unittest.TestCase):
         )
 
         self.assertFalse(normalized["is_manual_schedule_locked"])
-        self.assertFalse(normalized["is_schedule_locked"])
+        self.assertNotIn("is_schedule_locked", normalized)
 
     def test_professional_import_marks_current_manual_lock_field(self) -> None:
         from scripts.import_locked_professional_schedules import update_class_lock_flags

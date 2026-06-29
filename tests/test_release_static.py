@@ -215,6 +215,7 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertEqual([], offenders)
 
     def test_boolean_parsing_lives_in_shared_field_utils(self) -> None:
+        admin_source = (ROOT / "data_admin_server.py").read_text(encoding="utf-8")
         field_utils_source = (ROOT / "scripts" / "field_utils.py").read_text(encoding="utf-8")
         publish_server_source = (ROOT / "schedule_publish_server.py").read_text(encoding="utf-8")
         schedule_scope_source = (ROOT / "scripts" / "schedule_scope.py").read_text(encoding="utf-8")
@@ -224,6 +225,8 @@ class ReleaseStaticTest(unittest.TestCase):
 
         self.assertIn("TRUE_VALUES", field_utils_source)
         self.assertIn('"on"', field_utils_source)
+        self.assertIn("is_manual_schedule_locked", admin_source)
+        self.assertNotIn('cls.get("is_schedule_locked")', admin_source)
         self.assertIn("parse_bool", publish_server_source)
         self.assertIn("parse_bool_default", schedule_scope_source)
         self.assertNotIn('(row.get("is_schedule_locked") or "").strip() in', schedule_scope_source)

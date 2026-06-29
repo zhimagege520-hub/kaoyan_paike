@@ -1094,7 +1094,6 @@ def normalized_class_lock_fields(cls: Dict[str, Any]) -> Dict[str, bool]:
     is_locked = normalize_bool(lock_value)
     return {
         "is_manual_schedule_locked": is_locked,
-        "is_schedule_locked": is_locked,
     }
 
 
@@ -2266,7 +2265,7 @@ def build_scheduler_input(
     area_by_id = {area["id"]: area for area in state["teaching_areas"] if area.get("id")}
     class_window_rows = scheduler_class_window_boundaries(state, room_groups)
 
-    schedulable_classes = [cls for cls in state["classes"] if not normalize_bool(cls.get("is_schedule_locked"))]
+    schedulable_classes = [cls for cls in state["classes"] if not normalize_bool(cls.get("is_manual_schedule_locked"))]
     classes_with_window_boundaries = class_ids_with_window_boundaries(state)
     referenced_product_ids = {cls["product_id"] for cls in schedulable_classes if cls.get("product_id")}
     product_meta = product_catalog(state["products"], state["product_courses"])
