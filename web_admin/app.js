@@ -95,8 +95,8 @@ const productTagFilterFields = [
   { field: "subject", label: "科目", placeholder: "全部科目" },
   { field: "course_nature", label: "课程性质", placeholder: "全部性质" },
 ];
-const stageOrder = ["导学", "基础", "强化", "冲刺", "一轮", "二轮", "三轮", "四轮"];
-const stageOrderIndex = new Map(stageOrder.map((stage, index) => [stage, index]));
+let stageOrder = [];
+let stageOrderIndex = new Map();
 const seasonWindowOrder = ["寒假", "春季", "暑假", "秋季"];
 const seasonWindowOrderIndex = new Map(seasonWindowOrder.map((name, index) => [name, index]));
 const visibleRowLimits = {
@@ -270,6 +270,8 @@ async function loadData() {
   state.business_product_mappings = state.business_product_mappings || [];
   state.teachers = state.teachers || [];
   state.products = state.products || [];
+  state.lookups = state.lookups || {};
+  hydrateStageOrder();
   hydrateLabels();
   selected.areaId = selected.areaId || state.teaching_areas[0]?.id || "";
   selected.productId = selected.productId || products()[0]?.id || "";
@@ -286,6 +288,11 @@ async function refreshResultStatus() {
   } catch (error) {
     resultStatus = { ok: false, error: error.message, template: null, results: [] };
   }
+}
+
+function hydrateStageOrder() {
+  stageOrder = arrayValues(state.lookups?.stage_order);
+  stageOrderIndex = new Map(stageOrder.map((stage, index) => [stage, index]));
 }
 
 function hydrateLabels() {

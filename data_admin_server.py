@@ -338,6 +338,7 @@ def build_lookups(
         "product_lines": ["考研复试", "考研集训营", "考研无忧", "考研个性化", "考研其他", "专升本", "四六级"],
         "subjects": sorted(subjects),
         "window_names": sorted(window_names),
+        "stage_order": list(DEFAULT_STAGE_ORDER),
         "stages": sort_stage_values(stages),
         "course_modules": sorted(modules),
         "course_groups": sorted(groups),

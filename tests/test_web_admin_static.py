@@ -103,8 +103,11 @@ class WebAdminStaticTest(unittest.TestCase):
     def test_stage_order_uses_current_business_stage_sequence(self) -> None:
         source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
 
-        self.assertIn('const stageOrder = ["导学", "基础", "强化", "冲刺", "一轮", "二轮", "三轮", "四轮"];', source)
+        self.assertIn("let stageOrder = [];", source)
+        self.assertIn("hydrateStageOrder();", source)
+        self.assertIn("stageOrder = arrayValues(state.lookups?.stage_order);", source)
         self.assertIn(r"const numbered = text.match(/^(导学)(\d+)$/);", source)
+        self.assertNotIn('["导学", "基础", "强化", "冲刺", "一轮", "二轮", "三轮", "四轮"]', source)
         self.assertNotIn('const stageOrder = ["导学", "专项", "基础", "强化", "冲刺", "一轮", "二轮", "三轮", "四轮", "复试"];', source)
         self.assertNotIn(r"const numbered = text.match(/^(导学|专项)(\d+)$/);", source)
 
