@@ -371,6 +371,7 @@ class ReleaseStaticTest(unittest.TestCase):
         field_utils_source = (ROOT / "scripts" / "field_utils.py").read_text(encoding="utf-8")
         admin_source = (ROOT / "data_admin_server.py").read_text(encoding="utf-8")
         scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")
+        pipeline_source = (ROOT / "run_scheduling_pipeline.py").read_text(encoding="utf-8")
         schedule_batch_source = (ROOT / "scripts" / "schedule_batch.py").read_text(encoding="utf-8")
         schedule_scope_source = (ROOT / "scripts" / "schedule_scope.py").read_text(encoding="utf-8")
         class_windows_source = (ROOT / "scripts" / "schedule_class_windows.py").read_text(encoding="utf-8")
@@ -390,6 +391,7 @@ class ReleaseStaticTest(unittest.TestCase):
         for source in (
             admin_source,
             scheduler_source,
+            pipeline_source,
             schedule_batch_source,
             class_windows_source,
             weekday_utils_source,
@@ -417,6 +419,7 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertNotIn('re.split(r"[|,，;；/、]+"', scheduler_source)
         self.assertNotIn('re.split(r"[/|,，;；、\\s]+"', scheduler_source)
         self.assertNotIn('re.split(r"[,，|;\\s]+"', admin_source)
+        self.assertNotIn('re.split(r"[、，,；;]+"', pipeline_source)
         self.assertNotIn('re.split(r"[,，|;\\s]+"', camp_maintenance_source)
         self.assertNotIn('value.split(",")', quality_repair_source)
         self.assertNotIn('value.split(",")', teacher_travel_repair_source)

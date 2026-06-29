@@ -2795,6 +2795,21 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(requirements[2].class_id, "C2")
         self.assertEqual(requirements[2].product_id, "")
 
+    def test_missing_teacher_requirements_use_shared_list_separators(self) -> None:
+        error = "班级 C1 的产品 P1 缺少课程老师安排: 英语/基础/阅读类；政治/基础/毛史类，数学/强化/数学类、管综/冲刺/写作类"
+
+        requirements = parse_missing_teacher_requirements(error)
+
+        self.assertEqual(
+            [(item.subject, item.stage, item.course_group) for item in requirements],
+            [
+                ("英语", "基础", "阅读类"),
+                ("政治", "基础", "毛史类"),
+                ("数学", "强化", "数学类"),
+                ("管综", "冲刺", "写作类"),
+            ],
+        )
+
     def test_missing_teacher_rows_are_derived_from_structured_requirements(self) -> None:
         requirements = parse_missing_teacher_requirements(
             "班级 C1 的产品 P1 缺少课程老师安排: 英语/基础/阅读类\n"

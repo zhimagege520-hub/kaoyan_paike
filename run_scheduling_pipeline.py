@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import re
 import shutil
 import sys
 from dataclasses import dataclass, field
@@ -15,7 +14,7 @@ import scheduler
 from business_class_import import BusinessDataError, convert_business_tables
 from generate_time_slots import generate_time_slots, parse_weekdays
 from scripts.csv_utils import clean_csv_rows, read_csv_with_fieldnames, write_csv_rows
-from scripts.field_utils import normalize_excel_cell_text, normalize_text
+from scripts.field_utils import normalize_excel_cell_text, normalize_text, split_delimited_values
 from scripts.product_catalog import product_catalog as shared_product_catalog
 from scripts.template_tables import (
     BUSINESS_SOURCE_TABLES,
@@ -611,7 +610,7 @@ def parse_missing_teacher_requirements(error: str) -> List[MissingTeacherRequire
             product_id = product_id.strip()
         else:
             class_id = class_text.strip()
-        for label in re.split(r"[、，,；;]+", labels_text):
+        for label in split_delimited_values(labels_text, extra_separators="、"):
             parts = [part.strip() for part in label.strip().split("/") if part.strip()]
             if len(parts) < 3:
                 continue
