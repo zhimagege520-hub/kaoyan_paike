@@ -7,6 +7,7 @@ from business_class_import import infer_period
 from scripts.period_utils import (
     PERIOD_LABELS,
     PERIOD_ORDER,
+    PERIOD_OPTIONS,
     VALID_PERIODS,
     normalize_period,
     period_from_time_text,
@@ -30,7 +31,10 @@ class PeriodUtilsTest(unittest.TestCase):
         self.assertEqual(period_sort_value("MIDDAY"), 99)
 
     def test_period_labels_are_shared_for_display_surfaces(self) -> None:
+        self.assertEqual(PERIOD_OPTIONS, ["AM", "PM", "EVENING"])
         self.assertEqual(PERIOD_LABELS, {"AM": "上午", "PM": "下午", "EVENING": "晚上"})
+        self.assertEqual(VALID_PERIODS, set(PERIOD_OPTIONS))
+        self.assertEqual(PERIOD_ORDER, {period: index for index, period in enumerate(PERIOD_OPTIONS)})
 
     def test_period_from_time_text_uses_configurable_day_evening_cutoff(self) -> None:
         self.assertEqual(period_from_time_text("08:00"), "AM")

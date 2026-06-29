@@ -133,6 +133,21 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertNotIn('selectOptions(["考研", "专升本", "四六级"], product.project', source)
         self.assertNotIn('return ["考研复试", "考研集训营", "考研无忧", "考研个性化", "考研其他", "专升本", "四六级"];', source)
 
+    def test_schedule_period_options_use_lookups(self) -> None:
+        source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn("function schedulePeriodIds()", source)
+        self.assertIn('lookupOptions("period_options")', source)
+        self.assertIn('lookupRecord("period_labels")', source)
+        self.assertIn("return schedulePeriodIds().map((id) => ({ id, name: periodLabel(id) }));", source)
+        self.assertIn("default_allowed_periods: schedulePeriodIds()", source)
+        self.assertIn("const periodOptions = schedulePeriodIds();", source)
+        self.assertIn("selectOptions(schedulePeriodIds(), cls.start_period", source)
+        self.assertIn("selectOptions(schedulePeriodIds(), cls.first_lesson_period", source)
+        self.assertIn("selectOptions(schedulePeriodIds(), cls.end_period", source)
+        self.assertNotIn('["AM", "PM", "EVENING"]', source)
+        self.assertNotIn('const periodOptions = ["AM", "PM", "EVENING"];', source)
+
     def test_teacher_resource_options_use_lookups(self) -> None:
         source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
 

@@ -509,6 +509,8 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertNotIn("datetime.strptime", camp_maintenance_source)
 
     def test_period_normalization_lives_in_shared_period_utils(self) -> None:
+        admin_source = (ROOT / "data_admin_server.py").read_text(encoding="utf-8")
+        web_admin_source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
         scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")
         business_import_source = (ROOT / "business_class_import.py").read_text(encoding="utf-8")
         class_windows_source = (ROOT / "scripts" / "schedule_class_windows.py").read_text(encoding="utf-8")
@@ -532,9 +534,15 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIn("from scripts.period_utils import", quality_hotspot_repair_source)
         self.assertIn("from scripts.period_utils import PERIOD_LABELS", schedule_display_source)
         self.assertIn("from scripts.period_utils import PERIOD_LABELS", schedule_outputs_source)
+        self.assertIn("PERIOD_OPTIONS", period_utils_source)
         self.assertIn("VALID_PERIODS", period_utils_source)
         self.assertIn("PERIOD_ORDER", period_utils_source)
         self.assertIn("PERIOD_LABELS", period_utils_source)
+        self.assertIn("from scripts.period_utils import PERIOD_LABELS, PERIOD_OPTIONS", admin_source)
+        self.assertIn('"period_options": list(PERIOD_OPTIONS)', admin_source)
+        self.assertIn('"period_labels": dict(PERIOD_LABELS)', admin_source)
+        self.assertIn('lookupOptions("period_options")', web_admin_source)
+        self.assertNotIn('["AM", "PM", "EVENING"]', web_admin_source)
         self.assertIsNone(re.search(r"(?m)^VALID_PERIODS\s*=", scheduler_source))
         for source in (
             scheduler_source,

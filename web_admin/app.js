@@ -817,11 +817,16 @@ function teacherNameOptions() {
 }
 
 function schedulePeriods() {
-  return [
-    { id: "AM", name: "上午" },
-    { id: "PM", name: "下午" },
-    { id: "EVENING", name: "晚上" },
-  ];
+  return schedulePeriodIds().map((id) => ({ id, name: periodLabel(id) }));
+}
+
+function schedulePeriodIds() {
+  const ids = lookupOptions("period_options");
+  return ids.length ? ids : uniqueList(defaultLessonTemplates.map((template) => template.period));
+}
+
+function periodLabel(periodId) {
+  return lookupRecord("period_labels")[periodId] || periodId;
 }
 
 function weekdays() {
@@ -1325,6 +1330,11 @@ function arrayValues(value) {
 
 function lookupOptions(key) {
   return arrayValues(state.lookups?.[key]);
+}
+
+function lookupRecord(key) {
+  const value = state.lookups?.[key];
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
 function uniqueList(values) {
@@ -2276,7 +2286,7 @@ function nextScheduleWindowDraft() {
     season_name: seasonName,
     start_date: startDate,
     end_date: endDate,
-    default_allowed_periods: ["AM", "PM", "EVENING"],
+    default_allowed_periods: schedulePeriodIds(),
     default_allowed_weekdays: weekdays(),
     is_active: true,
     notes: `${seasonName}排课窗口；课节明细可在本页批量生成`,
@@ -2892,7 +2902,7 @@ function classWindowTable(rows) {
   if (!rows.length) return document.querySelector("#emptyStateTemplate").innerHTML;
   const classSelectOptions = classOptions();
   const windowSelectOptions = scheduleWindowOptions();
-  const periodOptions = ["AM", "PM", "EVENING"];
+  const periodOptions = schedulePeriodIds();
   return `
     <div class="table-wrap segmented-table class-window-edit-table">
       <table>
@@ -5215,11 +5225,11 @@ function classMetaTable(rows) {
                   <td><input type="number" data-entity="class" data-id="${html(cls.id)}" data-field="size" value="${html(cls.size)}"></td>
                   <td>${classStageCheckboxOptions(cls)}</td>
                   <td><input type="date" data-entity="class" data-id="${html(cls.id)}" data-field="start_date" value="${html(cls.start_date)}"></td>
-                  <td><select data-entity="class" data-id="${html(cls.id)}" data-field="start_period">${selectOptions(["AM", "PM", "EVENING"], cls.start_period, "不限制")}</select></td>
+                  <td><select data-entity="class" data-id="${html(cls.id)}" data-field="start_period">${selectOptions(schedulePeriodIds(), cls.start_period, "不限制")}</select></td>
                   <td><input type="date" data-entity="class" data-id="${html(cls.id)}" data-field="first_lesson_date" value="${html(cls.first_lesson_date)}"></td>
-                  <td><select data-entity="class" data-id="${html(cls.id)}" data-field="first_lesson_period">${selectOptions(["AM", "PM", "EVENING"], cls.first_lesson_period, "不限制")}</select></td>
+                  <td><select data-entity="class" data-id="${html(cls.id)}" data-field="first_lesson_period">${selectOptions(schedulePeriodIds(), cls.first_lesson_period, "不限制")}</select></td>
                   <td><input type="date" data-entity="class" data-id="${html(cls.id)}" data-field="end_date" value="${html(cls.end_date)}"></td>
-                  <td><select data-entity="class" data-id="${html(cls.id)}" data-field="end_period">${selectOptions(["AM", "PM", "EVENING"], cls.end_period, "不限制")}</select></td>
+                  <td><select data-entity="class" data-id="${html(cls.id)}" data-field="end_period">${selectOptions(schedulePeriodIds(), cls.end_period, "不限制")}</select></td>
                   <td>${classTeachingAreaPicker(cls)}</td>
                   <td>
                     ${classRoomPicker(cls)}
@@ -5892,8 +5902,8 @@ function addTeacher() {
 }
 
 function defaultScheduleRuleTemplates() {
-  const day = ["AM", "PM"];
-  const evening = ["EVENING"];
+  const day = schedulePeriodIds().filter((period) => period !== "EVENING");
+  const evening = schedulePeriodIds().filter((period) => period === "EVENING");
   const monSat = ["周一", "周二", "周三", "周四", "周五", "周六"];
   const tueSat = ["周二", "周三", "周四", "周五", "周六"];
   const tueFri = ["周二", "周三", "周四", "周五"];

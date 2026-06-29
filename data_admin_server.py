@@ -60,6 +60,7 @@ from scripts.resource_catalog import (
     TEACHER_ROLE_OPTIONS,
     TEACHER_SUBJECT_TYPE_OPTIONS,
 )
+from scripts.period_utils import PERIOD_LABELS, PERIOD_OPTIONS
 from scripts.schedule_modes import (
     assignment_is_shared,
     assignment_reference_class_id,
@@ -353,6 +354,8 @@ def build_lookups(
         "stage_order": list(DEFAULT_STAGE_ORDER),
         "stages": sort_stage_values(stages),
         "public_teacher_subjects": sorted(PUBLIC_TEACHER_SUBJECTS, key=subject_sort_value),
+        "period_options": list(PERIOD_OPTIONS),
+        "period_labels": dict(PERIOD_LABELS),
         "teacher_genders": list(TEACHER_GENDER_OPTIONS),
         "teacher_roles": list(TEACHER_ROLE_OPTIONS),
         "teacher_employment_types": list(TEACHER_EMPLOYMENT_TYPE_OPTIONS),

@@ -2906,6 +2906,8 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(teachers["000002"]["name"], "补齐老师")
         self.assertEqual(lookups["product_projects"], data_admin_server.PRODUCT_PROJECT_OPTIONS)
         self.assertEqual(lookups["product_lines"], data_admin_server.PRODUCT_LINE_OPTIONS)
+        self.assertEqual(lookups["period_options"], data_admin_server.PERIOD_OPTIONS)
+        self.assertEqual(lookups["period_labels"], data_admin_server.PERIOD_LABELS)
         self.assertEqual(lookups["teacher_genders"], data_admin_server.TEACHER_GENDER_OPTIONS)
         self.assertEqual(lookups["teacher_roles"], data_admin_server.TEACHER_ROLE_OPTIONS)
         self.assertEqual(lookups["teacher_employment_types"], data_admin_server.TEACHER_EMPLOYMENT_TYPE_OPTIONS)
