@@ -938,6 +938,8 @@ class SchedulingPipelineTest(unittest.TestCase):
                                 "quarter": "暑假",
                                 "stage": "基础",
                                 "course_group": "高数",
+                                "course_code": "MATH001",
+                                "course_name": "高数基础",
                                 "teacher_id": "T1",
                                 "teacher_name": "张老师",
                                 "total_hours": 2,
@@ -974,6 +976,8 @@ class SchedulingPipelineTest(unittest.TestCase):
             for item in scheduler_input["classes"][0]["requirements"]
         }
         self.assertEqual("暑假", exported_requirements["基础"]["window_name"])
+        self.assertEqual("MATH001", exported_requirements["基础"]["course_code"])
+        self.assertEqual("高数基础", exported_requirements["基础"]["course_name"])
         self.assertNotIn("quarter", exported_requirements["基础"])
         self.assertNotIn("teaching_area_ids", exported_requirements["基础"])
         self.assertNotIn("room_ids", exported_requirements["基础"])
@@ -2919,7 +2923,7 @@ class SchedulingPipelineTest(unittest.TestCase):
                 "preferred_room_ids": "R1|R2",
                 "必须指定教室": "是",
                 "不自动排课": "是",
-                "requirements": [{"subject": "数学", "quarter": "暑假", "total_hours": "4"}],
+                "requirements": [{"subject": "数学", "quarter": "暑假", "course_code": "MATH001", "course_name": "高数基础", "total_hours": "4"}],
                 "teacher_assignments": [{"subject": "数学", "teacher_id": "000001", "teacher_name": "王老师"}],
             }
         )
@@ -2941,6 +2945,8 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertTrue(normalized["is_manual_schedule_locked"])
         self.assertNotIn("is_schedule_locked", normalized)
         self.assertEqual(normalized["requirements"][0]["window_name"], "暑假")
+        self.assertEqual(normalized["requirements"][0]["course_code"], "MATH001")
+        self.assertEqual(normalized["requirements"][0]["course_name"], "高数基础")
         self.assertNotIn("quarter", normalized["requirements"][0])
         self.assertEqual(normalized["requirements"][0]["total_hours"], 4)
         self.assertEqual(normalized["teacher_assignments"][0]["actual_scheduled_class_id"], "C1")

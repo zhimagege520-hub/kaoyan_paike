@@ -1154,6 +1154,8 @@ def normalize_class_requirement(requirement: Dict[str, Any]) -> Dict[str, Any]:
         "stage": normalize_text(requirement.get("stage")),
         "course_module": normalize_text(requirement.get("course_module")),
         "course_group": normalize_text(requirement.get("course_group")),
+        "course_code": normalize_blank_marker(requirement.get("course_code") or requirement.get("课程编码") or requirement.get("课程编号")),
+        "course_name": normalize_blank_marker(requirement.get("course_name") or requirement.get("课程名称") or requirement.get("课程内容")),
         "teacher_id": normalize_text(requirement.get("teacher_id")),
         "teacher_name": normalize_text(requirement.get("teacher_name")),
         "total_hours": normalize_int(requirement.get("total_hours")),
