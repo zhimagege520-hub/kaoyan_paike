@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.csv_utils import clean_cell as clean, read_csv_rows, write_csv_rows
+from scripts.period_utils import PERIOD_ORDER
 from scripts.schedule_data import (
     load_area_links as load_raw_area_links,
     load_area_metadata as load_raw_area_metadata,
@@ -25,7 +26,6 @@ from scripts.schedule_display import week_dates, week_start
 
 
 PUBLIC_SUBJECTS = {"英语", "政治", "数学", "语文"}
-PERIOD_ORDER = {"AM": 0, "PM": 1, "EVENING": 2}
 SEASONS = (
     ("summer", "暑假7-8月", "2026-07-01", "2026-08-31"),
     ("autumn", "秋季9-12月", "2026-09-01", "2026-12-13"),

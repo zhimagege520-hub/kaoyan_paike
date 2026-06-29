@@ -18,6 +18,7 @@ import scheduler
 from scripts import build_camp_maintenance_schedule as maintenance
 from scripts.csv_utils import read_csv_rows, read_csv_with_fieldnames, write_csv_rows as write_csv_rows_with_fields
 from scripts.field_utils import normalize_text as clean, split_delimited_values
+from scripts.period_utils import PERIOD_ORDER
 from scripts.schedule_data import load_class_metadata, load_room_names
 from scripts.schedule_display import week_start, weekday_label
 from scripts.schedule_outputs import write_day_table_html
@@ -45,7 +46,6 @@ PERIOD_SLOTS = {
         ("PM2", "下午二", "16:20", "18:20"),
     ],
 }
-PERIOD_ORDER = {"AM": 0, "PM": 1, "EVENING": 2}
 SLOT_ORDER = {"AM1": 0, "AM2": 1, "PM1": 2, "PM2": 3, "EVENING1": 4}
 SUBJECT_ORDER = {"数学": 0, "政治": 1, "英语": 2}
 

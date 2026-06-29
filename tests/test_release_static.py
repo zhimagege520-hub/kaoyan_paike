@@ -486,19 +486,34 @@ class ReleaseStaticTest(unittest.TestCase):
         business_import_source = (ROOT / "business_class_import.py").read_text(encoding="utf-8")
         class_windows_source = (ROOT / "scripts" / "schedule_class_windows.py").read_text(encoding="utf-8")
         erp_adjusted_sync_source = (ROOT / "scripts" / "sync_erp_adjusted_schedule.py").read_text(encoding="utf-8")
+        audit_quality_source = (ROOT / "scripts" / "audit_schedule_quality.py").read_text(encoding="utf-8")
+        public_gap_repair_source = (ROOT / "scripts" / "repair_public_coverage_gaps.py").read_text(encoding="utf-8")
+        halfday_repair_source = (ROOT / "scripts" / "repair_2757_halfday_blocks.py").read_text(encoding="utf-8")
+        quality_hotspot_repair_source = (ROOT / "scripts" / "repair_schedule_quality_hotspots.py").read_text(encoding="utf-8")
         period_utils_source = (ROOT / "scripts" / "period_utils.py").read_text(encoding="utf-8")
 
         self.assertIn("from scripts.period_utils import", scheduler_source)
         self.assertIn("from scripts.period_utils import", business_import_source)
         self.assertIn("from scripts.period_utils import", class_windows_source)
         self.assertIn("from scripts.period_utils import", erp_adjusted_sync_source)
+        self.assertIn("from scripts.period_utils import", audit_quality_source)
+        self.assertIn("from scripts.period_utils import", public_gap_repair_source)
+        self.assertIn("from scripts.period_utils import", halfday_repair_source)
+        self.assertIn("from scripts.period_utils import", quality_hotspot_repair_source)
         self.assertIn("VALID_PERIODS", period_utils_source)
         self.assertIn("PERIOD_ORDER", period_utils_source)
         self.assertIsNone(re.search(r"(?m)^VALID_PERIODS\s*=", scheduler_source))
-        self.assertIsNone(re.search(r"(?m)^PERIOD_ORDER\s*=", scheduler_source))
+        for source in (
+            scheduler_source,
+            erp_adjusted_sync_source,
+            audit_quality_source,
+            public_gap_repair_source,
+            halfday_repair_source,
+            quality_hotspot_repair_source,
+        ):
+            self.assertIsNone(re.search(r"(?m)^PERIOD_ORDER\s*=", source))
         self.assertIsNone(re.search(r"(?m)^def period_sort_value\(", scheduler_source))
         self.assertIsNone(re.search(r"(?m)^def normalize_period\(", class_windows_source))
-        self.assertIsNone(re.search(r"(?m)^PERIOD_ORDER\s*=", erp_adjusted_sync_source))
         self.assertIsNone(re.search(r"(?m)^\s*aliases\s*=\s*\{", business_import_source))
 
     def test_weekday_normalization_lives_in_shared_weekday_utils(self) -> None:

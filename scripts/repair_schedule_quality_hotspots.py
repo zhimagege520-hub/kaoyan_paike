@@ -20,6 +20,7 @@ from scripts.build_camp_maintenance_schedule import (  # noqa: E402
 )
 from scripts.csv_utils import clean_cell as clean, read_csv_rows, write_csv_rows as write_csv_rows_with_fields  # noqa: E402
 from scripts.field_utils import split_delimited_values  # noqa: E402
+from scripts.period_utils import PERIOD_ORDER  # noqa: E402
 from scripts.schedule_class_windows import (  # noqa: E402
     ClassWindowConstraint,
     load_class_window_constraint_items,
@@ -61,7 +62,6 @@ FIELDNAMES = [
 ]
 
 PUBLIC_SUBJECTS = {"英语", "政治", "数学", "语文"}
-PERIOD_ORDER = {"AM": 0, "PM": 1, "EVENING": 2}
 PERIOD_SLOTS = {
     "AM": [("AM1", "上午一", "08:00", "10:00"), ("AM2", "上午二", "10:20", "12:20")],
     "PM": [("PM1", "下午一", "14:00", "16:00"), ("PM2", "下午二", "16:20", "18:20")],
