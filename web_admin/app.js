@@ -147,7 +147,7 @@ let selected = {
   batchSubProducts: "",
   courseFilters: {
     keyword: "",
-    quarter: "",
+    window_name: "",
     stage: "",
     course_module: "",
     course_name: "",
@@ -1473,15 +1473,23 @@ function compareSeasonWindowValues(a, b) {
 function compareProductCourseRows(a, b) {
   const left = a.course || {};
   const right = b.course || {};
-  const leftWindow = left.window_name || left.quarter || "";
-  const rightWindow = right.window_name || right.quarter || "";
+  const leftWindow = productCourseWindowName(left);
+  const rightWindow = productCourseWindowName(right);
   return compareSeasonWindowValues(leftWindow, rightWindow)
     || compareStageValues(left.stage, right.stage)
     || Number(left.stage_priority || 0) - Number(right.stage_priority || 0)
     || String(left.course_group || "").localeCompare(String(right.course_group || ""), "zh-CN")
-    || Number(left.module_priority_in_group || left.module_priority || 0) - Number(right.module_priority_in_group || right.module_priority || 0)
+    || Number(productCourseModulePriority(left)) - Number(productCourseModulePriority(right))
     || String(left.course_module || "").localeCompare(String(right.course_module || ""), "zh-CN")
     || String(left.course_name || "").localeCompare(String(right.course_name || ""), "zh-CN");
+}
+
+function productCourseWindowName(course) {
+  return course?.window_name || course?.quarter || "";
+}
+
+function productCourseModulePriority(course) {
+  return course?.module_priority_in_group || course?.module_priority || 0;
 }
 
 function setByIndex(listName, index, field, value) {
@@ -1664,7 +1672,7 @@ function pruneClassWindowRoomSelection(item) {
 function emptyCourseFilters() {
   return {
     keyword: "",
-    quarter: "",
+    window_name: "",
     stage: "",
     course_module: "",
     course_name: "",
@@ -1673,19 +1681,19 @@ function emptyCourseFilters() {
 }
 
 function courseFilterFields() {
-  return ["quarter", "stage", "course_module", "course_name", "course_group"];
+  return ["window_name", "stage", "course_module", "course_name", "course_group"];
 }
 
 function uniqueCourseValues(rows, field) {
   const values = [
     ...new Set(
       rows
-        .map(({ course }) => (field === "quarter" ? course.window_name || course.quarter : course[field]))
+        .map(({ course }) => (field === "window_name" ? productCourseWindowName(course) : course[field]))
         .filter(Boolean),
     ),
   ];
   if (field === "stage") return sortStageValues(values);
-  if (field === "quarter") return values.sort(compareSeasonWindowValues);
+  if (field === "window_name") return values.sort(compareSeasonWindowValues);
   return values.sort((a, b) => String(a).localeCompare(String(b), "zh-CN"));
 }
 
@@ -1739,7 +1747,7 @@ function normalizeCourseFilters(rows) {
 function courseMatchesFilters(course) {
   const filters = selected.courseFilters;
   for (const field of courseFilterFields()) {
-    const value = field === "quarter" ? course.window_name || course.quarter : course[field];
+    const value = field === "window_name" ? productCourseWindowName(course) : course[field];
     if (filters[field] && value !== filters[field]) return false;
   }
   const keyword = filters.keyword.trim().toLowerCase();
@@ -1756,12 +1764,12 @@ function courseMatchesFilters(course) {
     course.capacity_type,
     course.subject_category,
     course.subject,
-    course.window_name || course.quarter,
+    productCourseWindowName(course),
     course.stage,
     course.stage_priority,
     course.course_group,
     course.course_module,
-    course.module_priority,
+    productCourseModulePriority(course),
     course.course_code,
     course.course_name,
     course.total_hours,
@@ -1790,7 +1798,7 @@ function courseFilterControls(rows) {
   return `
     <div class="filter-bar">
       <label><span>关键词</span><input data-action="course-filter" data-field="keyword" value="${html(selected.courseFilters.keyword)}" placeholder="窗口期 / 阶段 / 模块 / 分组 / 课程"></label>
-      <label><span>排课窗口期</span><select data-action="course-filter" data-field="quarter">${selectOptions(uniqueCourseValues(rows, "quarter"), selected.courseFilters.quarter, "全部窗口期")}</select></label>
+      <label><span>排课窗口期</span><select data-action="course-filter" data-field="window_name">${selectOptions(uniqueCourseValues(rows, "window_name"), selected.courseFilters.window_name, "全部窗口期")}</select></label>
       <label><span>阶段</span><select data-action="course-filter" data-field="stage">${selectOptions(uniqueCourseValues(rows, "stage"), selected.courseFilters.stage, "全部阶段")}</select></label>
       <label><span>模块</span><select data-action="course-filter" data-field="course_module">${selectOptions(uniqueCourseValues(rows, "course_module"), selected.courseFilters.course_module, "全部模块")}</select></label>
       <label><span>课程名称</span><select data-action="course-filter" data-field="course_name">${selectOptions(uniqueCourseValues(rows, "course_name"), selected.courseFilters.course_name, "全部课程名称")}</select></label>
@@ -5731,16 +5739,15 @@ function addCourse() {
     product_name: product?.name || "",
     subject_category: product?.subject_category || "公共课",
     subject: product?.subject || "",
-    quarter: "",
+    window_name: "",
     stage: "",
     stage_priority: 0,
     course_group: "",
     course_module: "",
-    module_priority: 0,
+    module_priority_in_group: 0,
     course_code: "",
     course_name: "",
     total_hours: 0,
-    block_hours: 2,
     notes: "",
   });
   render();
@@ -6638,10 +6645,10 @@ function handleValueChange(target, event = null) {
     if (target.dataset.list === "product_courses") {
       const course = state.product_courses[Number(target.dataset.index)];
       if (course && target.dataset.field === "window_name") {
-        course.quarter = course.window_name;
+        delete course.quarter;
       }
       if (course && target.dataset.field === "module_priority_in_group") {
-        course.module_priority = course.module_priority_in_group;
+        delete course.module_priority;
       }
       if (course && ["subject", "course_module"].includes(target.dataset.field) && (!course.course_name || !course.course_code)) {
         const defaultsForModule = productCourseNameTagDefaults().get(productCourseModuleKey(course));

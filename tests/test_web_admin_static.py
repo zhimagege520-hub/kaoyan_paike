@@ -174,6 +174,26 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertNotIn("teacher.identity = value;", source)
         self.assertNotIn("teacher.teacher_type = value;", source)
 
+    def test_product_course_editor_writes_current_fields_only(self) -> None:
+        source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn("function productCourseWindowName", source)
+        self.assertIn("function productCourseModulePriority", source)
+        self.assertIn('data-field="window_name"', source)
+        self.assertIn('selected.courseFilters.window_name', source)
+        self.assertIn('return ["window_name", "stage", "course_module", "course_name", "course_group"];', source)
+        self.assertIn("delete course.quarter;", source)
+        self.assertIn("delete course.module_priority;", source)
+
+        start = source.index("function addCourse()")
+        end = source.index("\nfunction productCourseModuleKey", start)
+        body = source[start:end]
+        self.assertIn("window_name: \"\",", body)
+        self.assertIn("module_priority_in_group: 0,", body)
+        self.assertNotIn("quarter:", body)
+        self.assertNotIn("module_priority:", body)
+        self.assertNotIn("block_hours:", body)
+
     def test_publish_page_uses_utf8_markdown_previews(self) -> None:
         source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
         index = (ROOT / "web_admin" / "index.html").read_text(encoding="utf-8")
