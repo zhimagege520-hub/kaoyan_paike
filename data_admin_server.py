@@ -80,6 +80,7 @@ from scripts.table_schema import (
     TEACHING_AREA_LINK_FIELDNAMES,
     TIME_SLOT_FIELDNAMES,
 )
+from scripts.window_utils import expanded_window_tokens
 
 
 ROOT = Path(__file__).resolve().parent
@@ -407,12 +408,14 @@ def course_lookup_sets(product_courses: List[Dict[str, Any]]) -> Tuple[Set[str],
     for course in product_courses:
         for key, bucket in (
             ("subject", subjects),
-            ("quarter", quarters),
+            ("window_name", quarters),
             ("stage", stages),
             ("course_module", modules),
             ("course_group", groups),
         ):
             value = normalize_text(course.get(key))
+            if key == "window_name" and not value:
+                value = normalize_text(course.get("quarter"))
             if value:
                 bucket.add(value)
     return subjects, quarters, stages, modules, groups
@@ -600,15 +603,129 @@ def normalized_resource_tables(payload: Dict[str, Any]) -> Dict[str, List[Dict[s
 
 
 def normalized_product_tables(payload: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
-    product_courses = [normalize_product_course(course) for course in payload.get("product_courses", [])]
+    raw_product_courses = list(payload.get("product_courses", []))
+    product_courses = [normalize_product_course(course) for course in raw_product_courses]
+    product_schedule_rules = [
+        normalize_product_rule(rule)
+        for rule in payload.get("product_schedule_rules", [])
+    ]
+    product_schedule_rules.extend(legacy_product_course_block_rules(raw_product_courses, product_schedule_rules))
     return {
         "products": merge_products(payload.get("products", []), product_courses),
         "product_courses": product_courses,
-        "product_schedule_rules": [
-            normalize_product_rule(rule)
-            for rule in payload.get("product_schedule_rules", [])
-        ],
+        "product_schedule_rules": product_schedule_rules,
     }
+
+
+def legacy_product_course_block_rules(
+    product_courses: List[Dict[str, Any]],
+    existing_rules: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    generated: List[Dict[str, Any]] = []
+    coverage_rules = list(existing_rules)
+    for course in product_courses:
+        block_hours = normalize_float(course.get("block_hours"))
+        product_id = normalize_text(course.get("product_id"))
+        if not product_id or block_hours <= 0:
+            continue
+        window_name = product_course_window_name(course)
+        key = (
+            product_id,
+            window_name,
+            normalize_text(course.get("subject")),
+            normalize_text(course.get("stage")),
+            normalize_text(course.get("course_module")),
+            normalize_text(course.get("course_group")),
+        )
+        if fill_existing_product_course_block_rule(key, block_hours, coverage_rules):
+            continue
+        if product_course_block_rule_exists(key, coverage_rules):
+            continue
+        generated_rule = normalize_product_rule(
+            {
+                "rule_id": f"LEGACY_COURSE_BLOCK_{len(generated) + 1}",
+                "product_id": product_id,
+                "product_name": normalize_text(course.get("product_name")),
+                "window_name": window_name,
+                "subject": normalize_text(course.get("subject")),
+                "stage": normalize_text(course.get("stage")),
+                "course_module": normalize_text(course.get("course_module")),
+                "course_group": normalize_text(course.get("course_group")),
+                "block_hours": block_hours,
+                "notes": "由旧产品课程课时表 block_hours 自动迁移；新模板请维护 09_产品窗口排课规则表。",
+            }
+        )
+        generated.append(generated_rule)
+        coverage_rules.append(generated_rule)
+    return generated
+
+
+def fill_existing_product_course_block_rule(
+    course_key: Tuple[str, str, str, str, str, str],
+    block_hours: float,
+    rules: List[Dict[str, Any]],
+) -> bool:
+    for rule in rules:
+        if normalize_float(rule.get("block_hours")) > 0:
+            continue
+        if not product_course_rule_covers_key(rule, course_key):
+            continue
+        rule["block_hours"] = block_hours
+        note = normalize_text(rule.get("notes"))
+        migration_note = "旧产品课程课时表 block_hours 已迁移到本规则。"
+        rule["notes"] = f"{note}；{migration_note}" if note else migration_note
+        return True
+    return False
+
+
+def product_course_block_rule_exists(
+    course_key: Tuple[str, str, str, str, str, str],
+    rules: List[Dict[str, Any]],
+) -> bool:
+    for rule in rules:
+        if normalize_float(rule.get("block_hours")) <= 0:
+            continue
+        if product_course_rule_covers_key(rule, course_key):
+            return True
+    return False
+
+
+def product_course_rule_covers_key(
+    rule: Dict[str, Any],
+    course_key: Tuple[str, str, str, str, str, str],
+) -> bool:
+    product_id, window_name, subject, stage, course_module, course_group = course_key
+    if normalize_text(rule.get("product_id")) != product_id:
+        return False
+    rule_window_tokens = expanded_window_tokens(
+        rule.get("window_name"),
+        rule.get("season_window_id"),
+        rule.get("schedule_window_id"),
+    )
+    course_window_tokens = expanded_window_tokens(window_name)
+    if rule_window_tokens and course_window_tokens and not (rule_window_tokens & course_window_tokens):
+        return False
+    for rule_value, course_value in (
+        (normalize_text(rule.get("subject")), subject),
+        (normalize_text(rule.get("stage")), stage),
+        (normalize_text(rule.get("course_module")), course_module),
+        (normalize_text(rule.get("course_group")), course_group),
+    ):
+        if rule_value and rule_value != course_value:
+            return False
+    return True
+
+
+def product_course_window_name(course: Dict[str, Any]) -> str:
+    return normalize_text(
+        course.get("window_name")
+        or course.get("quarter")
+        or course.get("排课窗口期")
+        or course.get("窗口期")
+        or course.get("season")
+        or course.get("季度")
+        or course.get("季度标签")
+    )
 
 
 def normalized_class_tables(payload: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
@@ -837,38 +954,25 @@ def normalize_product(product: Dict[str, Any]) -> Dict[str, Any]:
 
 def normalize_product_course(course: Dict[str, Any]) -> Dict[str, Any]:
     product_name = normalize_text(course.get("product_name"))
+    window_name = product_course_window_name(course)
+    module_priority = normalize_int(
+        course.get("module_priority_in_group")
+        or course.get("module_priority")
+        or course.get("模块优先级")
+        or course.get("course_module_priority")
+    )
     return {
         "row": normalize_int(course.get("row")),
         "product_id": normalize_text(course.get("product_id")),
         "product_name": product_name,
         "subject_category": normalize_text(course.get("subject_category")),
         "subject": normalize_text(course.get("subject")),
-        "window_name": normalize_text(course.get("window_name")) or normalize_text(course.get("quarter")),
-        "quarter": normalize_text(
-            course.get("quarter")
-            or course.get("window_name")
-            or course.get("排课窗口期")
-            or course.get("窗口期")
-            or course.get("season")
-            or course.get("季度")
-            or course.get("季度标签")
-        ),
+        "window_name": window_name,
         "stage": normalize_text(course.get("stage")),
         "stage_priority": normalize_int(course.get("stage_priority") or course.get("阶段优先级")),
         "course_group": normalize_text(course.get("course_group")),
         "course_module": normalize_text(course.get("course_module")),
-        "module_priority_in_group": normalize_int(
-            course.get("module_priority_in_group")
-            or course.get("module_priority")
-            or course.get("模块优先级")
-            or course.get("course_module_priority")
-        ),
-        "module_priority": normalize_int(
-            course.get("module_priority")
-            or course.get("module_priority_in_group")
-            or course.get("模块优先级")
-            or course.get("course_module_priority")
-        ),
+        "module_priority_in_group": module_priority,
         "course_code": normalize_text(
             course.get("course_code")
             or course.get("课程编码")
@@ -881,7 +985,6 @@ def normalize_product_course(course: Dict[str, Any]) -> Dict[str, Any]:
             or course.get("课程名称")
         ),
         "total_hours": normalize_int(course.get("total_hours")),
-        "block_hours": normalize_int(course.get("block_hours")),
         "notes": normalize_text(course.get("notes")),
     }
 
@@ -2051,16 +2154,18 @@ def scheduler_product_payloads(
             {
                 "subject_category": course["subject_category"],
                 "subject": course["subject"],
-                "quarter": course.get("quarter", ""),
+                "quarter": course.get("window_name") or course.get("quarter", ""),
                 "stage": course["stage"],
                 "course_module": course["course_module"],
                 "course_group": course["course_group"],
                 "course_code": course.get("course_code", ""),
                 "course_name": course.get("course_name", ""),
                 "total_hours": course["total_hours"],
-                "block_hours": course["block_hours"],
             }
         )
+        legacy_block_hours = normalize_int(course.get("block_hours"))
+        if legacy_block_hours:
+            product["requirements"][-1]["block_hours"] = legacy_block_hours
     return list(products.values())
 
 

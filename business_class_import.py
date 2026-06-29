@@ -429,7 +429,7 @@ def shared_assignments_for_full_merges(
         product_id = selected_product_ids.get(source_id, "")
         for course in courses_by_product.get(product_id, []):
             subject = normalize_text(course.get("subject"))
-            stage = normalize_text(course.get("quarter")) or normalize_text(course.get("stage"))
+            stage = course_window_name(course) or normalize_text(course.get("stage"))
             course_group = normalize_text(course.get("course_group"))
             key = (source_id, product_id, subject, stage, course_group)
             if key in seen:
@@ -538,6 +538,9 @@ def product_courses_by_id(payload: Mapping[str, Any]) -> Dict[str, List[Dict[str
     courses: Dict[str, List[Dict[str, Any]]] = {}
     for raw in payload.get("product_courses", []):
         course = data_admin_server.normalize_product_course(dict(raw))
+        legacy_block_hours = normalize_int(raw.get("block_hours"))
+        if legacy_block_hours:
+            course["block_hours"] = legacy_block_hours
         if course["product_id"]:
             courses.setdefault(course["product_id"], []).append(course)
     return courses
@@ -591,7 +594,7 @@ def aggregate_product_courses(
                     "product_name": aggregate_name,
                     "subject_category": normalize_text(course.get("subject_category")),
                     "subject": normalize_text(course.get("subject")),
-                    "quarter": normalize_text(course.get("quarter")),
+                    "window_name": course_window_name(course),
                     "stage": normalize_text(course.get("stage")),
                     "course_module": normalize_text(course.get("course_module")),
                     "course_group": normalize_text(course.get("course_group")),
@@ -611,7 +614,7 @@ def aggregate_product_courses(
                 "product_name": item["product_name"],
                 "subject_category": item["subject_category"],
                 "subject": item["subject"],
-                "quarter": item["quarter"],
+                "window_name": item["window_name"],
                 "stage": item["stage"],
                 "course_module": item["course_module"],
                 "course_group": item["course_group"],
@@ -620,11 +623,15 @@ def aggregate_product_courses(
                 "notes": "聚合来源: " + "|".join(item["source_product_ids"]),
             }
         )
-    return sorted(rows, key=lambda row: (row["subject"], row["quarter"], row["stage"], row["course_module"], row["course_group"]))
+    return sorted(rows, key=lambda row: (row["subject"], row["window_name"], row["stage"], row["course_module"], row["course_group"]))
 
 
 CourseKey = Tuple[str, str, str, str, str]
 AssignmentKey = Tuple[str, str, str, str]
+
+
+def course_window_name(course: Mapping[str, Any]) -> str:
+    return normalize_text(course.get("window_name")) or normalize_text(course.get("quarter"))
 
 
 def assignment_key(row: Mapping[str, Any]) -> AssignmentKey:
@@ -639,7 +646,7 @@ def assignment_key(row: Mapping[str, Any]) -> AssignmentKey:
 def course_key(course: Mapping[str, Any]) -> CourseKey:
     return (
         normalize_text(course.get("subject")),
-        normalize_text(course.get("quarter")),
+        course_window_name(course),
         normalize_text(course.get("stage")),
         normalize_text(course.get("course_module")),
         normalize_text(course.get("course_group")),
@@ -650,7 +657,7 @@ def course_assignment_key(course: Mapping[str, Any], product_id: str = "") -> As
     return (
         normalize_text(product_id or course.get("product_id")),
         normalize_text(course.get("subject")),
-        normalize_text(course.get("quarter")) or normalize_text(course.get("stage")),
+        course_window_name(course) or normalize_text(course.get("stage")),
         normalize_text(course.get("course_group")),
     )
 
@@ -758,7 +765,7 @@ def make_requirement(
     requirement = {
         "subject_category": normalize_text(course.get("subject_category")),
         "subject": normalize_text(course.get("subject")),
-        "quarter": normalize_text(course.get("quarter")),
+        "quarter": course_window_name(course),
         "stage": normalize_text(course.get("stage")),
         "course_module": normalize_text(course.get("course_module")),
         "course_group": normalize_text(course.get("course_group")),

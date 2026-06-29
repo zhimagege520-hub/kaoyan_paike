@@ -1544,6 +1544,112 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(assignments[1]["teacher_id"], "000001")
         self.assertEqual(assignments[2]["teacher_name"], "张老师")
 
+    def test_normalize_product_course_outputs_current_fields_only(self) -> None:
+        normalized = data_admin_server.normalize_product_course(
+            {
+                "product_id": "P1",
+                "product_name": "考研暑假营-英语",
+                "subject_category": "公共课",
+                "subject": "英语",
+                "quarter": "暑假",
+                "stage": "基础",
+                "module_priority": 3,
+                "block_hours": 4,
+                "teaching_area_ids": "A1",
+                "course_module": "词汇",
+                "course_group": "阅读类",
+                "total_hours": 8,
+            }
+        )
+
+        self.assertEqual(normalized["window_name"], "暑假")
+        self.assertEqual(normalized["module_priority_in_group"], 3)
+        for old_field in ("quarter", "module_priority", "block_hours", "teaching_area_ids"):
+            self.assertNotIn(old_field, normalized)
+
+    def test_normalize_payload_migrates_legacy_course_block_hours_to_rules(self) -> None:
+        state = data_admin_server.normalize_payload(
+            {
+                "products": [{"id": "P1", "name": "考研暑假营-英语"}],
+                "product_courses": [
+                    {
+                        "product_id": "P1",
+                        "product_name": "考研暑假营-英语",
+                        "subject": "英语",
+                        "quarter": "暑假",
+                        "stage": "基础",
+                        "course_module": "词汇",
+                        "course_group": "阅读类",
+                        "total_hours": 8,
+                        "block_hours": 4,
+                    }
+                ],
+            }
+        )
+
+        self.assertNotIn("block_hours", state["product_courses"][0])
+        self.assertEqual(len(state["product_schedule_rules"]), 1)
+        migrated_rule = state["product_schedule_rules"][0]
+        self.assertEqual(migrated_rule["product_id"], "P1")
+        self.assertEqual(migrated_rule["window_name"], "暑假")
+        self.assertEqual(migrated_rule["block_hours"], 4)
+        self.assertIn("旧产品课程课时表 block_hours 自动迁移", migrated_rule["notes"])
+
+    def test_scheduler_product_payload_uses_window_name_and_rule_block_hours(self) -> None:
+        state = data_admin_server.normalize_payload(
+            {
+                "teaching_areas": [{"id": "A1", "name": "主校区"}],
+                "rooms": [{"id": "R1", "name": "101", "teaching_area_id": "A1", "capacity": 50, "is_active": "是"}],
+                "teachers": [{"employee_id": "T1", "name": "张老师"}],
+                "products": [{"id": "P1", "name": "考研暑假营-英语", "subject": "英语"}],
+                "product_courses": [
+                    {
+                        "product_id": "P1",
+                        "product_name": "考研暑假营-英语",
+                        "subject": "英语",
+                        "window_name": "暑假",
+                        "stage": "基础",
+                        "course_module": "词汇",
+                        "course_group": "阅读类",
+                        "total_hours": 4,
+                    }
+                ],
+                "product_schedule_rules": [
+                    {
+                        "rule_id": "RULE_P1_SUMMER",
+                        "product_id": "P1",
+                        "season_window_id": "WINDOW_SUMMER",
+                        "window_name": "暑假",
+                        "allowed_periods": "AM|PM",
+                        "allowed_weekdays": "周一|周二",
+                        "block_hours": 4,
+                    }
+                ],
+                "classes": [],
+                "time_slots": [],
+                "class_conflict_groups": [],
+                "teaching_area_links": [],
+                "global_blackout_dates": [],
+            }
+        )
+
+        product_payloads = data_admin_server.scheduler_product_payloads(
+            state["product_courses"],
+            data_admin_server.product_catalog(state["products"], state["product_courses"]),
+            {"P1"},
+        )
+
+        requirement = product_payloads[0]["requirements"][0]
+        self.assertEqual(requirement["quarter"], "暑假")
+        self.assertNotIn("block_hours", requirement)
+
+        scheduler_rules = data_admin_server.scheduler_rules(state["product_schedule_rules"], {"P1"})
+        parsed_product = scheduler.parse_products(
+            [{"id": "P1", "name": "考研暑假营-英语", "requirements": [requirement]}],
+            scheduler.group_schedule_rules_by_product(scheduler_rules),
+        )["P1"]
+        self.assertEqual(parsed_product.requirements[0].block_hours, 4)
+
     def test_scheduler_rules_export_preserves_season_window(self) -> None:
         rules = [
             data_admin_server.normalize_product_rule(
