@@ -1561,13 +1561,30 @@ class SchedulingPipelineTest(unittest.TestCase):
             )
         ]
 
-        exported = data_admin_server.scheduler_rules(rules, {"P1"}, {"P1": {"name": "测试产品"}})
+        exported = data_admin_server.scheduler_rules(rules, {"P1"})
 
         self.assertEqual(len(exported), 1)
         self.assertEqual(exported[0]["season_window_id"], "WINDOW_SUMMER")
         self.assertEqual(exported[0]["window_name"], "暑假")
         self.assertEqual(exported[0]["max_hours_per_class_per_day"], 4)
         self.assertEqual(exported[0]["max_blocks_per_class_per_day"], 1)
+
+    def test_scheduler_rules_do_not_expand_legacy_matching_fields_directly(self) -> None:
+        exported = data_admin_server.scheduler_rules(
+            [
+                {
+                    "rule_id": "RULE_LEGACY",
+                    "scope_type": "all",
+                    "product_ids": "P1",
+                    "product_name_keywords": "测试",
+                    "block_hours_override": 4,
+                    "allowed_periods": ["AM"],
+                }
+            ],
+            {"P1"},
+        )
+
+        self.assertEqual(exported, [])
 
     def test_normalize_product_rule_strips_legacy_matching_fields(self) -> None:
         normalized = data_admin_server.normalize_product_rule(

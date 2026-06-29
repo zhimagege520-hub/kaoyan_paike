@@ -2180,7 +2180,7 @@ def build_scheduler_input(
         "teaching_areas": scheduler_teaching_area_payloads(state["teaching_areas"]),
         "teaching_area_links": list(state.get("teaching_area_links", [])),
         "products": products,
-        "product_schedule_rules": scheduler_rules(state["product_schedule_rules"], referenced_product_ids, product_meta),
+        "product_schedule_rules": scheduler_rules(state["product_schedule_rules"], referenced_product_ids),
         "classes": classes,
         "conflict_groups": scheduler_conflict_groups(state, classes, state.get("locked_scheduled_lessons", [])),
         "locked_lessons": scheduler_locked_lessons(state.get("locked_scheduled_lessons", [])),
@@ -2378,71 +2378,46 @@ def scheduler_class_requirements(cls: Dict[str, Any]) -> List[Dict[str, Any]]:
     return requirements
 
 
-def matching_rule_product_ids(
-    rule: Dict[str, Any],
-    referenced_product_ids: Set[str],
-    catalog: Dict[str, Dict[str, str]],
-) -> List[str]:
-    scope_type = normalize_text(rule.get("scope_type")) or "product_ids"
-    if scope_type == "all":
-        return sorted(referenced_product_ids)
-    if scope_type == "keywords":
-        keywords = split_id_list(rule.get("product_name_keywords"))
-        matched = []
-        for product_id in referenced_product_ids:
-            product_name = catalog.get(product_id, {}).get("name", product_id)
-            if any(keyword in product_name for keyword in keywords):
-                matched.append(product_id)
-        return sorted(matched)
-
-    product_ids = set(split_id_list(rule.get("product_ids")))
-    if rule.get("product_id"):
-        product_ids.add(rule["product_id"])
-    return sorted(product_id for product_id in product_ids if product_id in referenced_product_ids)
-
-
 def scheduler_rules(
     rules: List[Dict[str, Any]],
     referenced_product_ids: Set[str],
-    catalog: Dict[str, Dict[str, str]],
 ) -> List[Dict[str, Any]]:
     result = []
     for rule in rules:
+        product_id = normalize_text(rule.get("product_id"))
+        if not product_id or product_id not in referenced_product_ids:
+            continue
         block_hours = normalize_float(rule.get("block_hours"))
-        block_hours_override = normalize_int(rule.get("block_hours_override"))
         max_hours_per_class_per_day = normalize_float(rule.get("max_hours_per_class_per_day"))
         max_blocks_per_class_per_day = normalize_int(rule.get("max_blocks_per_class_per_day"))
         min_weekly_hours = normalize_float(rule.get("min_weekly_hours"))
         max_weekly_hours = normalize_float(rule.get("max_weekly_hours"))
-        for product_id in matching_rule_product_ids(rule, referenced_product_ids, catalog):
-            item = {
-                "product_id": product_id,
-                "subject": rule.get("subject") or None,
-                "stage": rule.get("stage") or None,
-                "course_module": rule.get("course_module") or None,
-                "course_group": rule.get("course_group") or None,
-                "season_window_id": rule.get("season_window_id") or None,
-                "window_name": rule.get("window_name") or None,
-                "schedule_window_id": rule.get("schedule_window_id") or None,
-                "start_date": rule.get("start_date") or None,
-                "end_date": rule.get("end_date") or None,
-                "allowed_periods": rule.get("allowed_periods", []),
-                "allowed_weekdays": rule.get("allowed_weekdays", []),
-                "excluded_weekdays": rule.get("excluded_weekdays", []),
-            }
-            if block_hours > 0:
-                item["block_hours"] = block_hours
-            elif block_hours_override > 0:
-                item["block_hours_override"] = block_hours_override
-            if max_hours_per_class_per_day > 0:
-                item["max_hours_per_class_per_day"] = max_hours_per_class_per_day
-            if max_blocks_per_class_per_day > 0:
-                item["max_blocks_per_class_per_day"] = max_blocks_per_class_per_day
-            if min_weekly_hours > 0:
-                item["min_weekly_hours"] = min_weekly_hours
-            if max_weekly_hours > 0:
-                item["max_weekly_hours"] = max_weekly_hours
-            result.append({key: value for key, value in item.items() if value not in ("", None, [])})
+        item = {
+            "product_id": product_id,
+            "subject": rule.get("subject") or None,
+            "stage": rule.get("stage") or None,
+            "course_module": rule.get("course_module") or None,
+            "course_group": rule.get("course_group") or None,
+            "season_window_id": rule.get("season_window_id") or None,
+            "window_name": rule.get("window_name") or None,
+            "schedule_window_id": rule.get("schedule_window_id") or None,
+            "start_date": rule.get("start_date") or None,
+            "end_date": rule.get("end_date") or None,
+            "allowed_periods": rule.get("allowed_periods", []),
+            "allowed_weekdays": rule.get("allowed_weekdays", []),
+            "excluded_weekdays": rule.get("excluded_weekdays", []),
+        }
+        if block_hours > 0:
+            item["block_hours"] = block_hours
+        if max_hours_per_class_per_day > 0:
+            item["max_hours_per_class_per_day"] = max_hours_per_class_per_day
+        if max_blocks_per_class_per_day > 0:
+            item["max_blocks_per_class_per_day"] = max_blocks_per_class_per_day
+        if min_weekly_hours > 0:
+            item["min_weekly_hours"] = min_weekly_hours
+        if max_weekly_hours > 0:
+            item["max_weekly_hours"] = max_weekly_hours
+        result.append({key: value for key, value in item.items() if value not in ("", None, [])})
     return result
 
 

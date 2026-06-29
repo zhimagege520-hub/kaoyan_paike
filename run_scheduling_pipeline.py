@@ -378,11 +378,9 @@ def expanded_rules_for_state(state: Dict[str, Any]) -> List[Dict[str, Any]]:
     referenced_product_ids = {
         cls["product_id"] for cls in state["classes"] if cls.get("product_id")
     }
-    catalog = shared_product_catalog(state["products"], state["product_courses"])
     return data_admin_server.scheduler_rules(
         state["product_schedule_rules"],
         referenced_product_ids,
-        catalog,
     )
 
 
