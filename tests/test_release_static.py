@@ -171,7 +171,9 @@ class ReleaseStaticTest(unittest.TestCase):
     def test_list_value_splitting_lives_in_shared_field_utils(self) -> None:
         field_utils_source = (ROOT / "scripts" / "field_utils.py").read_text(encoding="utf-8")
         scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")
+        schedule_batch_source = (ROOT / "scripts" / "schedule_batch.py").read_text(encoding="utf-8")
         schedule_scope_source = (ROOT / "scripts" / "schedule_scope.py").read_text(encoding="utf-8")
+        class_windows_source = (ROOT / "scripts" / "schedule_class_windows.py").read_text(encoding="utf-8")
         weekday_utils_source = (ROOT / "scripts" / "weekday_utils.py").read_text(encoding="utf-8")
         window_utils_source = (ROOT / "scripts" / "window_utils.py").read_text(encoding="utf-8")
         template_sync_source = (ROOT / "scripts" / "sync_template_workbook_to_admin_data.py").read_text(encoding="utf-8")
@@ -183,7 +185,7 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIn("def split_delimited_values", field_utils_source)
         for source in (
             scheduler_source,
-            schedule_scope_source,
+            schedule_batch_source,
             weekday_utils_source,
             window_utils_source,
             template_sync_source,
@@ -193,6 +195,11 @@ class ReleaseStaticTest(unittest.TestCase):
         ):
             self.assertIn("split_delimited_values", source)
 
+        self.assertIn("normalize_iso_date_text", field_utils_source)
+        self.assertIn("normalize_iso_date_text", schedule_batch_source)
+        self.assertIn("normalize_iso_date_text", class_windows_source)
+        self.assertIsNone(re.search(r"(?m)^def split_values\(", schedule_scope_source))
+        self.assertIsNone(re.search(r"(?m)^def normalize_date\(", schedule_scope_source))
         self.assertIsNone(re.search(r"(?m)^def split_values\(", erp_export_source))
         self.assertIsNone(re.search(r"(?m)^def split_values\(", erp_lesson_map_source))
         self.assertIsNone(re.search(r"(?m)^def split_pipe_values\(", camp_maintenance_source))

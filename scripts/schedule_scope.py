@@ -1,28 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import date as Date
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 import scheduler
 from scripts.csv_utils import read_csv_rows
-from scripts.field_utils import normalize_date_text, split_delimited_values
 from scripts.schedule_data import infer_class_subject, infer_class_subject_category
 
 
 SUBJECT_ORDER = {"数学": 0, "英语": 1, "政治": 2, "语文": 3}
-
-
-def split_values(value: str) -> List[str]:
-    return split_delimited_values(value)
-
-
-def normalize_date(value: str) -> str:
-    text = normalize_date_text(value)
-    if not text:
-        return ""
-    return Date.fromisoformat(text).isoformat()
 
 
 def date_in_range(value: str, start: Optional[str], end: Optional[str]) -> bool:

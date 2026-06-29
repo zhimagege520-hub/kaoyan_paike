@@ -15,6 +15,8 @@ if str(ROOT) not in sys.path:
 
 import scheduler
 from scripts.csv_utils import read_csv_rows
+from scripts.field_utils import normalize_iso_date_text as normalize_date
+from scripts.field_utils import split_delimited_values as split_values
 from scripts.schedule_class_windows import (
     bounds_for_constraints,
     load_class_window_constraints,
@@ -64,10 +66,8 @@ from scripts.schedule_scope import (
     filter_classes,
     filter_time_slots,
     filtered_schedule_input,
-    normalize_date,
     selected_conflict_groups,
     slot_in_range,
-    split_values,
 )
 from scripts.schedule_week_balance import (
     SubjectWeekBounds,

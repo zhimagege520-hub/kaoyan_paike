@@ -53,7 +53,8 @@ from scripts.schedule_outputs import (
     write_batch_csv,
     write_day_table_html,
 )
-from scripts.schedule_scope import class_ids_for_suite_codes, filtered_schedule_input, normalize_date
+from scripts.field_utils import normalize_iso_date_text as normalize_date
+from scripts.schedule_scope import class_ids_for_suite_codes, filtered_schedule_input
 from scripts.schedule_first_lesson import (
     assignments_preserve_first_lesson_modules,
     first_lesson_candidate_allowed,

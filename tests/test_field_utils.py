@@ -8,6 +8,7 @@ from scripts.field_utils import (
     is_blank_marker,
     normalize_blank_marker,
     normalize_date_text,
+    normalize_iso_date_text,
     normalize_excel_text,
     normalize_float,
     normalize_int,
@@ -61,6 +62,8 @@ class FieldUtilsTest(unittest.TestCase):
         self.assertEqual(normalize_date_text("待确认"), "待确认")
         self.assertEqual(display_date_text("2026/7/1"), "2026/07/01")
         self.assertEqual(display_date_text("待确认"), "待确认")
+        self.assertEqual(normalize_iso_date_text("2026.7.1"), "2026-07-01")
+        self.assertEqual(normalize_iso_date_text(""), "")
 
     def test_parse_date_value_raises_with_label_for_invalid_values(self) -> None:
         self.assertEqual(parse_date_value("2026/7/1", "开课日期"), date(2026, 7, 1))

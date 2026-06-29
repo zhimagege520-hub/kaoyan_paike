@@ -101,6 +101,16 @@ def display_date_text(value: Any, separator: str = "/") -> str:
     return normalized.replace("-", separator)
 
 
+def normalize_iso_date_text(value: Any, label: str = "日期") -> str:
+    text = normalize_date_text(value)
+    if not text:
+        return ""
+    try:
+        return Date.fromisoformat(text).isoformat()
+    except ValueError as exc:
+        raise ValueError(f"{label} 日期格式无法识别: {normalize_text(value)}") from exc
+
+
 def parse_date_value(value: Any, label: str = "日期") -> Date:
     text = normalize_date_text(value)
     try:

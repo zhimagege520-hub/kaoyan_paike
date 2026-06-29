@@ -6,10 +6,9 @@ from typing import Dict, Iterable, List, Mapping, Optional, Set
 
 import scheduler
 from scripts.csv_utils import read_csv_rows
-from scripts.field_utils import parse_enabled, split_pipe_values
+from scripts.field_utils import normalize_iso_date_text as normalize_date, parse_enabled, split_pipe_values
 from scripts.period_utils import normalize_period as normalize_schedule_period
 from scripts.schedule_data import load_room_metadata
-from scripts.schedule_scope import normalize_date
 from scripts.window_utils import expanded_window_tokens
 
 
