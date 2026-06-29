@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+from datetime import datetime
 import unittest
 
 import scheduler
 from business_class_import import infer_period
 from scripts.build_camp_maintenance_schedule import period_for_time as maintenance_period_for_time
+from scripts.import_locked_professional_schedules import period_for as locked_professional_period_for
 from scripts.period_utils import (
     PERIOD_LABELS,
     PERIOD_ORDER,
     PERIOD_OPTIONS,
     VALID_PERIODS,
     normalize_period,
+    period_from_minutes,
     period_from_time_text,
     period_sort_value,
 )
@@ -42,6 +45,8 @@ class PeriodUtilsTest(unittest.TestCase):
         self.assertEqual(period_from_time_text("16:20"), "PM")
         self.assertEqual(period_from_time_text("18:20"), "PM")
         self.assertEqual(period_from_time_text("18:20", pm_end_minutes=18 * 60), "EVENING")
+        self.assertEqual(period_from_time_text("12:30", am_end_minutes=12 * 60, pm_end_minutes=19 * 60), "PM")
+        self.assertEqual(period_from_minutes(12 * 60 - 1, am_end_minutes=12 * 60), "AM")
         self.assertEqual(period_from_time_text("坏数据"), "")
 
     def test_scheduler_reexports_shared_period_helpers_for_compatibility(self) -> None:
@@ -61,6 +66,12 @@ class PeriodUtilsTest(unittest.TestCase):
         self.assertEqual(maintenance_period_for_time("13:00"), "PM")
         self.assertEqual(maintenance_period_for_time("17:59"), "PM")
         self.assertEqual(maintenance_period_for_time("18:00"), "EVENING")
+
+    def test_locked_professional_import_period_for_reuses_shared_cutoffs(self) -> None:
+        self.assertEqual(locked_professional_period_for(datetime(2026, 7, 1, 11, 59)), "AM")
+        self.assertEqual(locked_professional_period_for(datetime(2026, 7, 1, 12, 0)), "PM")
+        self.assertEqual(locked_professional_period_for(datetime(2026, 7, 1, 18, 59)), "PM")
+        self.assertEqual(locked_professional_period_for(datetime(2026, 7, 1, 19, 0)), "EVENING")
 
 
 if __name__ == "__main__":

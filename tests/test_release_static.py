@@ -513,6 +513,7 @@ class ReleaseStaticTest(unittest.TestCase):
 
         self.assertIn("def parse_datetime_value", field_utils_source)
         self.assertIn("parse_datetime_value", import_locked_source)
+        self.assertIn("period_from_minutes", import_locked_source)
         self.assertIn("parse_datetime_value", camp_maintenance_source)
         self.assertIn("is_manual_schedule_locked", import_locked_source)
         self.assertNotIn('cls["is_schedule_locked"] =', import_locked_source)
@@ -522,6 +523,7 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertNotIn("def class_is_movable_public", wyqc_foundation_gap_source)
         self.assertNotIn("datetime.strptime", import_locked_source)
         self.assertNotIn("datetime.strptime", camp_maintenance_source)
+        self.assertNotIn("current < time(", import_locked_source)
 
     def test_period_normalization_lives_in_shared_period_utils(self) -> None:
         admin_source = (ROOT / "data_admin_server.py").read_text(encoding="utf-8")

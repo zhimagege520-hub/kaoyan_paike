@@ -27,6 +27,7 @@ from data_admin_server import (
     split_id_list,
 )
 from scripts.field_utils import parse_datetime_value, row_value
+from scripts.period_utils import period_from_minutes
 
 
 CLASS_ID_RE = re.compile(r"(KY[A-Z]+[0-9]+)")
@@ -85,12 +86,11 @@ def parse_optional_float(value: Any) -> Optional[float]:
 
 
 def period_for(start_dt: datetime) -> str:
-    current = start_dt.time()
-    if current < time(12, 0):
-        return "AM"
-    if current < time(19, 0):
-        return "PM"
-    return "EVENING"
+    return period_from_minutes(
+        start_dt.hour * 60 + start_dt.minute,
+        am_end_minutes=12 * 60,
+        pm_end_minutes=19 * 60,
+    )
 
 
 def unique(values: Iterable[str]) -> List[str]:

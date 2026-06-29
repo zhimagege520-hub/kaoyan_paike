@@ -40,15 +40,29 @@ def period_sort_value(period: Any) -> int:
     return PERIOD_ORDER.get(normalized or "", 99)
 
 
-def period_from_minutes(start_minutes: Optional[int], pm_end_minutes: int = 18 * 60 + 30) -> str:
+def period_from_minutes(
+    start_minutes: Optional[int],
+    *,
+    am_end_minutes: int = 13 * 60,
+    pm_end_minutes: int = 18 * 60 + 30,
+) -> str:
     if start_minutes is None:
         return ""
-    if start_minutes < 13 * 60:
+    if start_minutes < am_end_minutes:
         return "AM"
     if start_minutes < pm_end_minutes:
         return "PM"
     return "EVENING"
 
 
-def period_from_time_text(start_time: Any, pm_end_minutes: int = 18 * 60 + 30) -> str:
-    return period_from_minutes(parse_time_minutes(start_time), pm_end_minutes=pm_end_minutes)
+def period_from_time_text(
+    start_time: Any,
+    *,
+    am_end_minutes: int = 13 * 60,
+    pm_end_minutes: int = 18 * 60 + 30,
+) -> str:
+    return period_from_minutes(
+        parse_time_minutes(start_time),
+        am_end_minutes=am_end_minutes,
+        pm_end_minutes=pm_end_minutes,
+    )
