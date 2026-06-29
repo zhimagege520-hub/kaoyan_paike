@@ -53,6 +53,29 @@ def schedule_input_with_requirement(req: scheduler.Requirement) -> scheduler.Sch
 
 
 class RequirementKeyTest(unittest.TestCase):
+    def test_class_requirement_selection_prefers_current_selected_stages_field(self) -> None:
+        product = scheduler.Product(
+            id="P1",
+            name="测试产品",
+            requirements=[
+                scheduler.ProductRequirement("公共课", "英语", "暑假", "基础", "词汇", "阅读类", 2, 2),
+                scheduler.ProductRequirement("公共课", "英语", "暑假", "强化", "阅读", "阅读类", 2, 2),
+            ],
+        )
+
+        selected = scheduler.select_product_requirements_for_class(
+            "C1",
+            product,
+            {
+                "id": "C1",
+                "subject": "英语",
+                "selected_stages": "基础",
+                "stages": "强化",
+            },
+        )
+
+        self.assertEqual([item.stage for item in selected], ["基础"])
+
     def test_mapping_object_and_history_keys_share_core_requirement_key(self) -> None:
         row = {
             "subject": "英语",

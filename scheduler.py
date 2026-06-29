@@ -1507,7 +1507,11 @@ def select_product_requirements_for_class(
     raw_class: dict,
 ) -> List[ProductRequirement]:
     class_subject = raw_class.get("subject")
-    class_stages = parse_string_set(raw_class.get("stages", raw_class.get("stage")))
+    class_stages = parse_string_set(
+        raw_class.get("selected_stages")
+        or raw_class.get("stages")
+        or raw_class.get("stage")
+    )
     subject_requirements = [
         product_req for product_req in product.requirements
         if not class_subject or product_req.subject == class_subject

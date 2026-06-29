@@ -735,7 +735,8 @@ class SchedulingPipelineTest(unittest.TestCase):
 
         self.assertEqual([item["id"] for item in scheduler_input["products"]], ["P_ACTIVE"])
         self.assertEqual([item["id"] for item in scheduler_input["classes"]], ["C_ACTIVE"])
-        self.assertEqual(scheduler_input["classes"][0]["stages"], ["基础"])
+        self.assertEqual(scheduler_input["classes"][0]["selected_stages"], ["基础"])
+        self.assertNotIn("stages", scheduler_input["classes"][0])
         self.assertEqual(
             [item["product_id"] for item in scheduler_input["product_schedule_rules"]],
             ["P_ACTIVE"],
@@ -2926,7 +2927,7 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(normalized["standard_capacity"], 80)
         self.assertEqual(normalized["capacity_type"], "班课")
         self.assertEqual(normalized["selected_stages"], ["基础", "强化"])
-        self.assertEqual(normalized["stages"], ["基础", "强化"])
+        self.assertNotIn("stages", normalized)
         self.assertEqual(normalized["first_lesson_date"], "2026-07-02")
         self.assertEqual(normalized["first_lesson_period"], "AM")
         self.assertEqual(normalized["preferred_teaching_area_ids"], ["A1", "A2"])
@@ -2962,7 +2963,7 @@ class SchedulingPipelineTest(unittest.TestCase):
         )
 
         self.assertEqual(normalized["selected_stages"], ["基础"])
-        self.assertEqual(normalized["stages"], ["基础"])
+        self.assertNotIn("stages", normalized)
 
     def test_professional_import_marks_current_manual_lock_field(self) -> None:
         from scripts.import_locked_professional_schedules import update_class_lock_flags
