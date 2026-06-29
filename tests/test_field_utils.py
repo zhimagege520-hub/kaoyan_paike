@@ -113,6 +113,8 @@ class FieldUtilsTest(unittest.TestCase):
     def test_parse_bool_recognizes_shared_true_values(self) -> None:
         self.assertTrue(parse_bool("启用"))
         self.assertTrue(parse_bool("纳入"))
+        self.assertTrue(parse_bool("锁定"))
+        self.assertTrue(parse_bool("on"))
         self.assertFalse(parse_bool("no"))
         self.assertFalse(parse_bool("未知"))
 

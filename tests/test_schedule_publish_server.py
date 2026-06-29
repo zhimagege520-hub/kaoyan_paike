@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import http.cookiejar
+import os
 import tempfile
 import threading
 import unittest
@@ -32,6 +33,21 @@ def start_server(output_dir: Path) -> tuple[schedule_publish_server.SchedulePubl
 
 
 class SchedulePublishServerTest(unittest.TestCase):
+    def test_env_bool_uses_shared_truthy_values_without_widening_default(self) -> None:
+        name = "SCHEDULE_VIEWER_TEST_BOOL"
+        previous = os.environ.pop(name, None)
+        try:
+            self.assertTrue(schedule_publish_server.env_bool(name, True))
+            os.environ[name] = "on"
+            self.assertTrue(schedule_publish_server.env_bool(name, False))
+            os.environ[name] = ""
+            self.assertFalse(schedule_publish_server.env_bool(name, True))
+        finally:
+            if previous is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = previous
+
     def test_auth_gate_and_readonly_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp)

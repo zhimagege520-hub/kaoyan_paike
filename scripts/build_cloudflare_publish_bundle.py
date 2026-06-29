@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from scripts.csv_utils import write_csv_rows
+from scripts.field_utils import parse_bool
 
 DEFAULT_OUTPUT_DIR = ROOT / "outputs"
 DEFAULT_BUNDLE_DIR = DEFAULT_OUTPUT_DIR / "cloudflare_schedule_publish"
@@ -54,7 +55,7 @@ def validate_no_public_coverage_gaps(output_dir: Path) -> None:
         meta = metadata.get(class_id)
         if not meta or meta.subject_category != "公共课":
             continue
-        if meta.is_locked.strip().lower() in {"是", "1", "true", "yes", "y"}:
+        if parse_bool(meta.is_locked):
             continue
         expected = float(expected_totals[class_id])
         scheduled = float(scheduled_totals[class_id])

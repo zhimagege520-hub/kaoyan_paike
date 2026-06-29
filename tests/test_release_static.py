@@ -168,6 +168,23 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertNotIn("datetime.strptime(candidate, fmt)", business_import_source)
         self.assertNotIn("data_admin_server.normalize_text", pipeline_source)
 
+    def test_boolean_parsing_lives_in_shared_field_utils(self) -> None:
+        field_utils_source = (ROOT / "scripts" / "field_utils.py").read_text(encoding="utf-8")
+        publish_server_source = (ROOT / "schedule_publish_server.py").read_text(encoding="utf-8")
+        coverage_source = (ROOT / "scripts" / "audit_schedule_coverage.py").read_text(encoding="utf-8")
+        cloudflare_source = (ROOT / "scripts" / "build_cloudflare_publish_bundle.py").read_text(encoding="utf-8")
+        camp_maintenance_source = (ROOT / "scripts" / "build_camp_maintenance_schedule.py").read_text(encoding="utf-8")
+
+        self.assertIn("TRUE_VALUES", field_utils_source)
+        self.assertIn('"on"', field_utils_source)
+        self.assertIn("parse_bool", publish_server_source)
+        for source in (coverage_source, cloudflare_source, camp_maintenance_source):
+            self.assertIn("parse_bool", source)
+            self.assertNotIn('.lower() in {"是", "1", "true", "yes", "y"}', source)
+            self.assertNotIn('.lower() in {"1", "true", "yes", "是"}', source)
+        self.assertIn("parse_enabled", camp_maintenance_source)
+        self.assertNotIn('.lower() not in {"0", "false", "no", "否"}', camp_maintenance_source)
+
     def test_list_value_splitting_lives_in_shared_field_utils(self) -> None:
         field_utils_source = (ROOT / "scripts" / "field_utils.py").read_text(encoding="utf-8")
         admin_source = (ROOT / "data_admin_server.py").read_text(encoding="utf-8")

@@ -19,6 +19,8 @@ from typing import Optional
 from urllib.parse import parse_qs, urlparse
 import html as html_lib
 
+from scripts.field_utils import parse_bool
+
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_OUTPUT_DIR = ROOT / "outputs"
@@ -76,7 +78,7 @@ def env_bool(name: str, default: bool = False) -> bool:
     raw = os.environ.get(name)
     if raw is None:
         return default
-    return raw.strip().lower() in {"1", "true", "yes", "y", "on"}
+    return parse_bool(raw)
 
 
 @dataclass(frozen=True)

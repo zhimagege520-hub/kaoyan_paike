@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 
 import scheduler
 from scripts.csv_utils import clean_cell as clean, read_csv_rows, write_csv_rows
+from scripts.field_utils import parse_bool
 from scripts.schedule_data import load_class_metadata as load_raw_class_metadata
 
 
@@ -134,7 +135,7 @@ def key_row(key: CoverageKey, meta: Dict[str, ClassMeta]) -> dict:
 
 
 def is_truthy(value: str) -> bool:
-    return clean(value).lower() in {"是", "1", "true", "yes", "y"}
+    return parse_bool(value)
 
 
 def is_public_auto_class(info: ClassMeta) -> bool:

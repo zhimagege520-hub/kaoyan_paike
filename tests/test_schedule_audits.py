@@ -37,6 +37,9 @@ class ScheduleAuditTest(unittest.TestCase):
         self.assertEqual(info.subject_category, "公共课")
         self.assertTrue(is_public_auto_class(info))
 
+        info.is_locked = "锁定"
+        self.assertFalse(is_public_auto_class(info))
+
     def test_quality_audit_uses_shared_compact_class_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             data_dir = Path(tmp)

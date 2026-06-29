@@ -5,7 +5,7 @@ from datetime import date as Date, datetime, time as Time
 from typing import Any, Iterable, List, Optional, Tuple
 
 
-TRUE_VALUES = {"1", "true", "yes", "y", "是", "对", "启用", "可用", "纳入", "锁定"}
+TRUE_VALUES = {"1", "true", "yes", "y", "on", "是", "对", "启用", "可用", "纳入", "锁定"}
 FALSE_VALUES = {"0", "false", "no", "n", "否", "错", "停用", "禁用", "不可用", "不纳入"}
 BLANK_MARKERS = {"", "-", "—", "无", "暂无", "NULL", "N/A", "None"}
 BASE_LIST_VALUE_SEPARATORS = "|,，;；"

@@ -21,7 +21,12 @@ if str(ROOT) not in sys.path:
 
 import scheduler
 from scripts.csv_utils import read_csv_rows
-from scripts.field_utils import parse_datetime_value, split_delimited_values as split_pipe_values
+from scripts.field_utils import (
+    parse_bool,
+    parse_enabled,
+    parse_datetime_value,
+    split_delimited_values as split_pipe_values,
+)
 from scripts.schedule_class_windows import (
     ClassWindowConstraint,
     load_class_window_constraint_items,
@@ -352,11 +357,13 @@ GLOBAL_REPAIR_MAX_SECONDS = int(os.environ.get("GLOBAL_REPAIR_MAX_SECONDS", "180
 ALLOW_PUBLISH_WITH_TEACHER_CONFLICTS = os.environ.get(
     "ALLOW_PUBLISH_WITH_TEACHER_CONFLICTS",
     "",
-).strip().lower() in {"1", "true", "yes", "是"}
+)
+ALLOW_PUBLISH_WITH_TEACHER_CONFLICTS = parse_bool(ALLOW_PUBLISH_WITH_TEACHER_CONFLICTS)
 ALLOW_PUBLISH_WITH_COVERAGE_GAPS = os.environ.get(
     "ALLOW_PUBLISH_WITH_COVERAGE_GAPS",
     "",
-).strip().lower() in {"1", "true", "yes", "是"}
+)
+ALLOW_PUBLISH_WITH_COVERAGE_GAPS = parse_bool(ALLOW_PUBLISH_WITH_COVERAGE_GAPS)
 
 
 class FastAttemptTimeout(ValueError):
@@ -1874,7 +1881,7 @@ def build_summer_assignments(
     if not suite_codes:
         return [], missing_suite_codes, [], []
 
-    rebuild_summer = os.environ.get("REBUILD_SUMMER", "").strip().lower() in {"1", "true", "yes", "是"}
+    rebuild_summer = parse_bool(os.environ.get("REBUILD_SUMMER", ""))
     existing: List[scheduler.Assignment] = []
     suites_to_schedule = list(suite_codes)
     conflict_rebuild_suites: List[str] = []
@@ -10332,7 +10339,7 @@ def schedule_conflict_lines(
 
 
 def class_is_locked_for_coverage(class_meta: Dict[str, str]) -> bool:
-    return clean(class_meta.get("is_schedule_locked")).lower() in {"是", "1", "true", "yes", "y"}
+    return parse_bool(class_meta.get("is_schedule_locked"))
 
 
 def public_coverage_gap_rows_from_totals(
@@ -11145,14 +11152,10 @@ def build_fast_summer_assignments(
         return [], []
     class_metadata = load_class_metadata(data_dir)
     suite_window_constraints = load_summer_suite_window_constraints(data_dir, class_metadata)
-    priority_suite_code_list = [
-        item.strip()
-        for item in (
-            os.environ.get("FAST_PRIORITY_SUITE_CODES")
-            or os.environ.get("FAST_PROTECTED_SUITE_CODES", "")
-        ).split(",")
-        if item.strip()
-    ]
+    priority_suite_code_list = split_pipe_values(
+        os.environ.get("FAST_PRIORITY_SUITE_CODES")
+        or os.environ.get("FAST_PROTECTED_SUITE_CODES", "")
+    )
     priority_suite_codes = set(priority_suite_code_list)
     priority_order = {suite_code: index for index, suite_code in enumerate(priority_suite_code_list)}
     result: List[scheduler.Assignment] = []
@@ -11963,19 +11966,16 @@ def run_fast(
     warning_lines = [
         f"以下套班不在当前快速重排批次内，已保留上一版课表；如需调整请全量重算: {', '.join(sorted(unsupported_suites))}"
     ] if unsupported_suites else []
-    allow_previous_public_adjustment = os.environ.get(
-        "FAST_ALLOW_PREVIOUS_PUBLIC_ADJUSTMENT",
-        "",
-    ).strip().lower() in {"1", "true", "yes", "是"}
-    protect_fast_target_classes = os.environ.get(
-        "FAST_PROTECT_TARGET_CLASSES",
-        "1",
-    ).strip().lower() not in {"0", "false", "no", "否"}
-    protected_suite_codes_override = {
-        item.strip()
-        for item in os.environ.get("FAST_PROTECTED_SUITE_CODES", "").split(",")
-        if item.strip()
-    }
+    allow_previous_public_adjustment = parse_bool(
+        os.environ.get("FAST_ALLOW_PREVIOUS_PUBLIC_ADJUSTMENT", "")
+    )
+    protect_fast_target_classes = parse_enabled(
+        os.environ.get("FAST_PROTECT_TARGET_CLASSES", "1"),
+        default=True,
+    )
+    protected_suite_codes_override = set(
+        split_pipe_values(os.environ.get("FAST_PROTECTED_SUITE_CODES", ""))
+    )
     if allow_previous_public_adjustment:
         warning_lines.append("本次快速重排允许移动非目标公共课，目标套班排好后作为保护课表。")
     if allow_previous_public_adjustment and not protect_fast_target_classes:
@@ -11985,36 +11985,25 @@ def run_fast(
             "本次快速重排仅保护指定优先套班: "
             + ", ".join(sorted(protected_suite_codes_override))
         )
-    protect_prior_target_suites_for_generation = os.environ.get(
-        "FAST_PROTECT_PRIOR_TARGET_SUITES",
-        "1" if protect_fast_target_classes else "0",
-    ).strip().lower() not in {"0", "false", "no", "否"}
+    protect_prior_target_suites_value = os.environ.get("FAST_PROTECT_PRIOR_TARGET_SUITES")
+    if protect_prior_target_suites_value is None:
+        protect_prior_target_suites_value = "1" if protect_fast_target_classes else "0"
+    protect_prior_target_suites_for_generation = parse_enabled(
+        protect_prior_target_suites_value,
+        default=True,
+    )
     if protect_prior_target_suites_for_generation and not protect_fast_target_classes:
         warning_lines.append("本次快速重排生成阶段保护前序目标套班，冲突修复阶段仍允许目标套班微调。")
     additional_phase = fast_additional_phase()
     autumn_only_additional = False
     if additional_phase in {"autumn", "fall", "秋季"}:
         warning_lines.append("本次快速重排仅处理无忧秋/无忧春秋季段，保留 7-8 月既有课表。")
-    priority_context_suite_codes = {
-        item.strip()
-        for item in os.environ.get("FAST_PRIORITY_CONTEXT_SUITE_CODES", "").split(",")
-        if item.strip()
-    }
-    locked_reused_suite_codes = {
-        item.strip()
-        for item in os.environ.get("FAST_LOCKED_SUITE_CODES", "").split(",")
-        if item.strip()
-    }
-    repair_locked_suite_codes = {
-        item.strip()
-        for item in os.environ.get("FAST_REPAIR_LOCKED_SUITE_CODES", "").split(",")
-        if item.strip()
-    }
-    last_resort_repair_suite_codes = {
-        item.strip()
-        for item in os.environ.get("FAST_LAST_RESORT_REPAIR_SUITE_CODES", "").split(",")
-        if item.strip()
-    }
+    priority_context_suite_codes = set(
+        split_pipe_values(os.environ.get("FAST_PRIORITY_CONTEXT_SUITE_CODES", ""))
+    )
+    locked_reused_suite_codes = set(split_pipe_values(os.environ.get("FAST_LOCKED_SUITE_CODES", "")))
+    repair_locked_suite_codes = set(split_pipe_values(os.environ.get("FAST_REPAIR_LOCKED_SUITE_CODES", "")))
+    last_resort_repair_suite_codes = set(split_pipe_values(os.environ.get("FAST_LAST_RESORT_REPAIR_SUITE_CODES", "")))
     if priority_context_suite_codes:
         warning_lines.append(
             "本次快速重排在生成优先套班时参考上下文套班: "
