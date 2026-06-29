@@ -148,6 +148,15 @@ class WebAdminStaticTest(unittest.TestCase):
         self.assertNotIn('["AM", "PM", "EVENING"]', source)
         self.assertNotIn('const periodOptions = ["AM", "PM", "EVENING"];', source)
 
+    def test_weekday_options_use_lookups(self) -> None:
+        source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn("function weekdays()", source)
+        self.assertIn('return lookupOptions("weekday_options");', source)
+        self.assertIn('default_allowed_weekdays: weekdays()', source)
+        self.assertIn('listCheckboxOptions("product_schedule_rules", index, "allowed_weekdays", weekdays()', source)
+        self.assertNotIn('return ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];', source)
+
     def test_teacher_resource_options_use_lookups(self) -> None:
         source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
 

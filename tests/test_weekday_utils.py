@@ -8,6 +8,7 @@ from business_class_import import weekday_name
 from generate_time_slots import parse_weekdays
 from scripts.weekday_utils import (
     SUNDAY,
+    WEEKDAY_LABELS,
     normalize_weekday,
     parse_weekday_set,
     weekday_label_for_date,
@@ -40,6 +41,7 @@ class WeekdayUtilsTest(unittest.TestCase):
         self.assertEqual(weekday_name(date(2026, 7, 1)), "周三")
 
     def test_weekday_labels_are_shared_for_dates_and_indexes(self) -> None:
+        self.assertEqual(WEEKDAY_LABELS, ["周一", "周二", "周三", "周四", "周五", "周六", "周日"])
         self.assertEqual(weekday_label_for_index(0), "周一")
         self.assertEqual(weekday_label_for_date("2026-07-01"), "周三")
         self.assertEqual(weekday_label_for_date(date(2026, 7, 5)), "周日")

@@ -628,6 +628,8 @@ class ReleaseStaticTest(unittest.TestCase):
             self.assertNotIn('{"数学": "AM", "英语": "PM", "政治": "PM"}', source)
 
     def test_weekday_normalization_lives_in_shared_weekday_utils(self) -> None:
+        admin_source = (ROOT / "data_admin_server.py").read_text(encoding="utf-8")
+        web_admin_source = (ROOT / "web_admin" / "app.js").read_text(encoding="utf-8")
         scheduler_source = (ROOT / "scheduler.py").read_text(encoding="utf-8")
         generator_source = (ROOT / "generate_time_slots.py").read_text(encoding="utf-8")
         business_import_source = (ROOT / "business_class_import.py").read_text(encoding="utf-8")
@@ -638,12 +640,16 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIn("from scripts.weekday_utils import", generator_source)
         self.assertIn("from scripts.weekday_utils import", business_import_source)
         self.assertIn("from scripts.weekday_utils import", schedule_display_source)
+        self.assertIn("from scripts.weekday_utils import WEEKDAY_LABELS", admin_source)
         self.assertIn("WEEKDAY_ALIASES", weekday_utils_source)
         self.assertIn("WEEKDAY_LABELS", weekday_utils_source)
+        self.assertIn('"weekday_options": list(WEEKDAY_LABELS)', admin_source)
+        self.assertIn('lookupOptions("weekday_options")', web_admin_source)
         self.assertIsNone(re.search(r"(?m)^WEEKDAY_ALIASES\s*=", scheduler_source))
         self.assertIsNone(re.search(r"(?m)^WEEKDAY_ALIASES\s*=", generator_source))
         self.assertIsNone(re.search(r"(?m)^WEEKDAY_LABELS\s*=", schedule_display_source))
         self.assertNotIn('["周一", "周二", "周三", "周四", "周五", "周六", "周日"]', business_import_source)
+        self.assertNotIn('return ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];', web_admin_source)
 
     def test_time_slot_generator_reuses_shared_date_normalization(self) -> None:
         generator_source = (ROOT / "generate_time_slots.py").read_text(encoding="utf-8")

@@ -92,6 +92,7 @@ from scripts.table_schema import (
     TEACHING_AREA_LINK_FIELDNAMES,
     TIME_SLOT_FIELDNAMES,
 )
+from scripts.weekday_utils import WEEKDAY_LABELS
 from scripts.window_utils import SEASON_WINDOW_ORDER, expanded_window_tokens
 
 
@@ -356,6 +357,7 @@ def build_lookups(
         "public_teacher_subjects": sorted(PUBLIC_TEACHER_SUBJECTS, key=subject_sort_value),
         "period_options": list(PERIOD_OPTIONS),
         "period_labels": dict(PERIOD_LABELS),
+        "weekday_options": list(WEEKDAY_LABELS),
         "teacher_genders": list(TEACHER_GENDER_OPTIONS),
         "teacher_roles": list(TEACHER_ROLE_OPTIONS),
         "teacher_employment_types": list(TEACHER_EMPLOYMENT_TYPE_OPTIONS),
