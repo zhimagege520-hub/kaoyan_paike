@@ -302,6 +302,8 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertNotIn("data_admin_server.normalize_int", business_import_source)
         self.assertIn("parse_date_value", business_import_source)
         self.assertIn("parse_time_minutes", business_import_source)
+        self.assertIn("period_from_time_text", camp_maintenance_source)
+        self.assertNotIn('start.split(":", 1)', camp_maintenance_source)
         self.assertNotIn('cls.get("stages") or cls.get("selected_stages")', admin_source)
         self.assertNotIn('"stages": cls["stages"]', admin_source)
         self.assertNotIn('"stages": selected_stages', admin_source)

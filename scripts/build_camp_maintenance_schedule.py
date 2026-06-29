@@ -75,6 +75,7 @@ from scripts.schedule_scope import (
     class_ids_for_suite_codes as raw_class_ids_for_suite_codes,
     filtered_schedule_input,
 )
+from scripts.period_utils import period_from_time_text
 from scripts.schedule_week_balance import (
     average_subject_week_bounds_from_counts,
     balanced_week_quotas,
@@ -543,12 +544,10 @@ def time_text(value: object) -> str:
 
 
 def period_for_time(start: str) -> str:
-    hour = int(start.split(":", 1)[0])
-    if hour < 13:
-        return "AM"
-    if hour < 18:
-        return "PM"
-    return "EVENING"
+    period = period_from_time_text(start, pm_end_minutes=18 * 60)
+    if not period:
+        raise ValueError(f"无法识别历史课表起始时间: {start}")
+    return period
 
 
 def stage_for_display_date(value: str) -> str:

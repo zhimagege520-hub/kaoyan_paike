@@ -4,6 +4,7 @@ import unittest
 
 import scheduler
 from business_class_import import infer_period
+from scripts.build_camp_maintenance_schedule import period_for_time as maintenance_period_for_time
 from scripts.period_utils import (
     PERIOD_LABELS,
     PERIOD_ORDER,
@@ -54,6 +55,12 @@ class PeriodUtilsTest(unittest.TestCase):
         self.assertEqual(infer_period("", "18:20"), "PM")
         self.assertEqual(infer_period("", "18:40"), "EVENING")
         self.assertEqual(period_for_time("18:20", "19:00"), ("EVENING", "EVENING-18:20-19:00", "晚上"))
+
+    def test_maintenance_period_for_time_reuses_shared_cutoffs(self) -> None:
+        self.assertEqual(maintenance_period_for_time("12:59"), "AM")
+        self.assertEqual(maintenance_period_for_time("13:00"), "PM")
+        self.assertEqual(maintenance_period_for_time("17:59"), "PM")
+        self.assertEqual(maintenance_period_for_time("18:00"), "EVENING")
 
 
 if __name__ == "__main__":
