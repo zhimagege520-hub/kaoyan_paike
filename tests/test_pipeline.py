@@ -254,6 +254,12 @@ class SchedulingPipelineTest(unittest.TestCase):
             data_admin_server.sort_stage_values(["基础", "导学2", "导学1"]),
         )
 
+    def test_scheduler_stage_names_use_shared_extended_list_parser(self) -> None:
+        self.assertEqual(
+            scheduler.ordered_stage_names("导学/基础、强化|冲刺，基础"),
+            ["导学", "基础", "强化", "冲刺"],
+        )
+
     def test_cli_parser_accepts_preflight_mode(self) -> None:
         args = build_parser().parse_args(["--source", "incoming", "--preflight"])
 

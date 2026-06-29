@@ -381,14 +381,7 @@ def candidate_avoids_same_class_teacher_day_limit(
 
 
 def region_tokens(region_tag: str) -> Set[str]:
-    text = (region_tag or "").strip()
-    if not text:
-        return set()
-    return {
-        item.strip()
-        for item in re.split(r"[/|,，;；、\s]+", text)
-        if item.strip()
-    }
+    return set(split_delimited_values(region_tag, include_whitespace=True, extra_separators="/、"))
 
 
 def room_area_id(room: Optional[Room]) -> str:
@@ -1431,16 +1424,9 @@ def build_class_requirements(
 
 
 def ordered_stage_names(values: object) -> List[str]:
-    if values is None:
-        return []
-    if isinstance(values, str):
-        raw_items = re.split(r"[|,，;；/、]+", values)
-    else:
-        raw_items = [str(item) for item in values]  # type: ignore[union-attr]
     result: List[str] = []
     seen: Set[str] = set()
-    for item in raw_items:
-        stage = item.strip()
+    for stage in split_delimited_values(values, extra_separators="/、"):
         if stage and stage not in seen:
             result.append(stage)
             seen.add(stage)

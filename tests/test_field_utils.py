@@ -103,6 +103,11 @@ class FieldUtilsTest(unittest.TestCase):
         self.assertEqual(split_delimited_values("数学|英语，政治;语文"), ["数学", "英语", "政治", "语文"])
         self.assertEqual(split_delimited_values("A B|C"), ["A B", "C"])
         self.assertEqual(split_delimited_values("A B|C，D", include_whitespace=True), ["A", "B", "C", "D"])
+        self.assertEqual(split_delimited_values("A/B、C", extra_separators="/、"), ["A", "B", "C"])
+        self.assertEqual(
+            split_delimited_values("A / B、C", include_whitespace=True, extra_separators="/、"),
+            ["A", "B", "C"],
+        )
         self.assertEqual(split_delimited_values(0), ["0"])
 
     def test_parse_bool_recognizes_shared_true_values(self) -> None:

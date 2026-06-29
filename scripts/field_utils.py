@@ -8,8 +8,9 @@ from typing import Any, Iterable, List, Optional, Tuple
 TRUE_VALUES = {"1", "true", "yes", "y", "是", "对", "启用", "可用", "纳入", "锁定"}
 FALSE_VALUES = {"0", "false", "no", "n", "否", "错", "停用", "禁用", "不可用", "不纳入"}
 BLANK_MARKERS = {"", "-", "—", "无", "暂无", "NULL", "N/A", "None"}
-LIST_VALUE_SEPARATOR_RE = re.compile(r"[|,，;；]+")
-LIST_VALUE_WITH_WHITESPACE_SEPARATOR_RE = re.compile(r"[|,，;；\s]+")
+BASE_LIST_VALUE_SEPARATORS = "|,，;；"
+LIST_VALUE_SEPARATOR_RE = re.compile(f"[{re.escape(BASE_LIST_VALUE_SEPARATORS)}]+")
+LIST_VALUE_WITH_WHITESPACE_SEPARATOR_RE = re.compile(f"[{re.escape(BASE_LIST_VALUE_SEPARATORS)}\\s]+")
 
 
 def normalize_text(value: Any) -> str:
@@ -191,10 +192,22 @@ def split_time_range_text(value: Any) -> Tuple[str, str]:
     return normalize_time_text(start), normalize_time_text(end)
 
 
-def split_delimited_values(values: Any, *, include_whitespace: bool = False) -> List[str]:
+def list_value_separator(include_whitespace: bool = False, extra_separators: str = "") -> re.Pattern[str]:
+    if not extra_separators:
+        return LIST_VALUE_WITH_WHITESPACE_SEPARATOR_RE if include_whitespace else LIST_VALUE_SEPARATOR_RE
+    whitespace = r"\s" if include_whitespace else ""
+    return re.compile(f"[{re.escape(BASE_LIST_VALUE_SEPARATORS + extra_separators)}{whitespace}]+")
+
+
+def split_delimited_values(
+    values: Any,
+    *,
+    include_whitespace: bool = False,
+    extra_separators: str = "",
+) -> List[str]:
     if values is None:
         return []
-    separator = LIST_VALUE_WITH_WHITESPACE_SEPARATOR_RE if include_whitespace else LIST_VALUE_SEPARATOR_RE
+    separator = list_value_separator(include_whitespace, extra_separators)
     if isinstance(values, str):
         items: Iterable[Any] = separator.split(values)
     elif isinstance(values, (list, tuple, set)):

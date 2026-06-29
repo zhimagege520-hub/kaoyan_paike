@@ -181,6 +181,7 @@ class ReleaseStaticTest(unittest.TestCase):
         erp_export_source = (ROOT / "scripts" / "export_erp_lesson_import.py").read_text(encoding="utf-8")
         erp_lesson_map_source = (ROOT / "scripts" / "build_erp_lesson_id_map.py").read_text(encoding="utf-8")
         camp_maintenance_source = (ROOT / "scripts" / "build_camp_maintenance_schedule.py").read_text(encoding="utf-8")
+        business_import_source = (ROOT / "business_class_import.py").read_text(encoding="utf-8")
 
         self.assertIn("LIST_VALUE_SEPARATOR_RE", field_utils_source)
         self.assertIn("def split_delimited_values", field_utils_source)
@@ -207,6 +208,9 @@ class ReleaseStaticTest(unittest.TestCase):
         self.assertIsNone(re.search(r"(?m)^def split_pipe_values\(", camp_maintenance_source))
         self.assertNotIn('.replace(",", "|").replace("，", "|").split("|")', erp_export_source)
         self.assertNotIn('.replace(",", "|").replace("，", "|").split("|")', erp_lesson_map_source)
+        self.assertNotIn('re.split(r"[,，;；、|]+"', business_import_source)
+        self.assertNotIn('re.split(r"[|,，;；/、]+"', scheduler_source)
+        self.assertNotIn('re.split(r"[/|,，;；、\\s]+"', scheduler_source)
         self.assertNotIn('re.split(r"[,，|;\\s]+"', admin_source)
         self.assertNotIn('re.split(r"[,，|;\\s]+"', camp_maintenance_source)
 

@@ -9,7 +9,14 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, 
 
 import data_admin_server
 from scripts.csv_utils import write_csv_rows
-from scripts.field_utils import is_blank_marker, normalize_int, normalize_text, parse_date_value, parse_time_minutes
+from scripts.field_utils import (
+    is_blank_marker,
+    normalize_int,
+    normalize_text,
+    parse_date_value,
+    parse_time_minutes,
+    split_delimited_values,
+)
 from scripts.period_utils import VALID_PERIODS, normalize_period, period_from_time_text
 from scripts.product_catalog import product_catalog as shared_product_catalog
 from scripts.weekday_utils import weekday_label_for_date
@@ -103,9 +110,9 @@ def clamp_date(value: date, lower: date, upper: date) -> date:
 
 def split_codes(value: Any) -> List[str]:
     return [
-        item.strip()
-        for item in re.split(r"[,，;；、|]+", normalize_text(value))
-        if not is_blank_marker(item.strip())
+        item
+        for item in split_delimited_values(value, extra_separators="、")
+        if not is_blank_marker(item)
     ]
 
 
