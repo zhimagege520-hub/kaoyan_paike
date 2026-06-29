@@ -27,19 +27,28 @@ from scripts.field_utils import (
     row_value,
 )
 from scripts.schedule_display import weekday_label
+from scripts.time_slot_templates import period_slot_specs
 
 
 DEFAULT_SCHEDULE = Path("outputs/batch_schedule_maintenance.csv")
 DEFAULT_CLASSES = Path("data/classes.csv")
 DEFAULT_OUTPUT_DIR = Path("outputs")
 
+ERP_REVIEW_SLOT_LABEL_OVERRIDES = {
+    "EVENING1": "晚上一",
+}
+
 SLOTS = [
-    ("AM1", "上午一 08:00-10:00"),
-    ("AM2", "上午二 10:20-12:20"),
-    ("PM1", "下午一 14:00-16:00"),
-    ("PM2", "下午二 16:20-18:20"),
-    ("EVENING1", "晚上一 19:00-21:00"),
+    (slot_id, f"{ERP_REVIEW_SLOT_LABEL_OVERRIDES.get(slot_id, slot_label)} {start_time}-{end_time}")
+    for slots in period_slot_specs().values()
+    for slot_id, slot_label, start_time, end_time in slots
 ]
+
+SLOT_BY_START_TIME = {
+    start_time: slot_id
+    for slots in period_slot_specs().values()
+    for slot_id, _slot_label, start_time, _end_time in slots
+}
 SUBJECT_FILL = {
     "英语": "DDEBFF",
     "政治": "FFE3DC",
@@ -79,27 +88,13 @@ def row_slot(row: Dict[str, str]) -> str:
     if slot:
         return slot
     start = clean(row.get("start_time"))
-    mapping = {
-        "08:00": "AM1",
-        "10:20": "AM2",
-        "14:00": "PM1",
-        "16:20": "PM2",
-        "19:00": "EVENING1",
-    }
-    return mapping.get(start, clean(row.get("period")))
+    return SLOT_BY_START_TIME.get(start, clean(row.get("period")))
 
 
 def result_slot(row: Dict[str, str]) -> str:
     text = clean(row.get("时间"))
     start = text.split("~", 1)[0] if "~" in text else text
-    mapping = {
-        "08:00": "AM1",
-        "10:20": "AM2",
-        "14:00": "PM1",
-        "16:20": "PM2",
-        "19:00": "EVENING1",
-    }
-    return mapping.get(start, start)
+    return SLOT_BY_START_TIME.get(start, start)
 
 
 def suite_for_class(class_id: str, classes: Dict[str, Dict[str, str]]) -> str:

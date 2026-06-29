@@ -6,7 +6,7 @@ from collections import Counter
 from scripts import export_erp_adjusted_lesson_import
 from scripts import export_erp_lesson_import
 from scripts import sync_erp_adjusted_schedule
-from scripts.build_failed_erp_class_schedule_review import lesson_text
+from scripts.build_failed_erp_class_schedule_review import SLOTS, lesson_text, result_slot, row_slot
 
 
 class ErpScheduleWindowFieldTest(unittest.TestCase):
@@ -79,6 +79,22 @@ class ErpScheduleWindowFieldTest(unittest.TestCase):
 
         self.assertIn("暑假/基础/词汇", text)
         self.assertNotIn("旧窗口", text)
+
+    def test_failed_review_slots_reuse_shared_lesson_templates(self) -> None:
+        self.assertEqual(
+            SLOTS,
+            [
+                ("AM1", "上午一 08:00-10:00"),
+                ("AM2", "上午二 10:20-12:20"),
+                ("PM1", "下午一 14:00-16:00"),
+                ("PM2", "下午二 16:20-18:20"),
+                ("EVENING1", "晚上一 19:00-21:00"),
+            ],
+        )
+        self.assertEqual(row_slot({"start_time": "16:20", "period": "PM"}), "PM2")
+        self.assertEqual(row_slot({"lesson_slot": "CUSTOM", "start_time": "16:20"}), "CUSTOM")
+        self.assertEqual(result_slot({"时间": "19:00~21:00"}), "EVENING1")
+        self.assertEqual(result_slot({"时间": "20:00~22:00"}), "20:00")
 
 
 if __name__ == "__main__":
