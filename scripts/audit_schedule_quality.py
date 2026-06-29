@@ -5,7 +5,7 @@ import argparse
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from datetime import date as Date, datetime, timedelta
+from datetime import date as Date, datetime
 from pathlib import Path
 from statistics import pstdev
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts.calendar_utils import week_dates, week_range, week_start
 from scripts.csv_utils import clean_cell as clean, read_csv_rows, write_csv_rows
 from scripts.period_utils import PERIOD_ORDER
 from scripts.schedule_data import (
@@ -22,7 +23,6 @@ from scripts.schedule_data import (
     load_class_metadata as load_raw_class_metadata,
     load_room_metadata as load_raw_room_metadata,
 )
-from scripts.schedule_display import week_dates, week_start
 from scripts.subject_utils import PUBLIC_SUBJECTS_WITH_CHINESE as PUBLIC_SUBJECTS
 
 
@@ -55,17 +55,6 @@ class Halfday:
     room_id: str
     room_name: str
     hours: float
-
-
-def week_range(start: str, end: str) -> List[str]:
-    first = Date.fromisoformat(week_start(start))
-    last = Date.fromisoformat(week_start(end))
-    weeks: List[str] = []
-    current = first
-    while current <= last:
-        weeks.append(current.isoformat())
-        current += timedelta(days=7)
-    return weeks
 
 
 def comparable_weeks(active_weeks: Sequence[str], start: str, end: str) -> List[str]:

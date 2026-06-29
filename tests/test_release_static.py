@@ -810,7 +810,28 @@ class ReleaseStaticTest(unittest.TestCase):
 
         self.assertEqual([], offenders)
 
-    def test_schedule_display_owns_shared_calendar_helpers_for_repair_outputs(self) -> None:
+    def test_calendar_helpers_live_in_shared_calendar_utils(self) -> None:
+        calendar_utils_source = (ROOT / "scripts" / "calendar_utils.py").read_text(encoding="utf-8")
+        schedule_display_source = (ROOT / "scripts" / "schedule_display.py").read_text(encoding="utf-8")
+        schedule_data_source = (ROOT / "scripts" / "schedule_data.py").read_text(encoding="utf-8")
+        schedule_week_balance_source = (ROOT / "scripts" / "schedule_week_balance.py").read_text(encoding="utf-8")
+        audit_quality_source = (ROOT / "scripts" / "audit_schedule_quality.py").read_text(encoding="utf-8")
+        public_gap_source = (ROOT / "scripts" / "repair_public_coverage_gaps.py").read_text(encoding="utf-8")
+        camp_maintenance_source = (ROOT / "scripts" / "build_camp_maintenance_schedule.py").read_text(encoding="utf-8")
+
+        self.assertIn("def week_start_date", calendar_utils_source)
+        self.assertIn("def week_range", calendar_utils_source)
+        self.assertIn("def iso_week_key", calendar_utils_source)
+        self.assertIn("from scripts.calendar_utils import", schedule_display_source)
+        self.assertIn("date_range_values as shared_date_range_values", schedule_data_source)
+        self.assertIn("from scripts.calendar_utils import iso_week_key", schedule_week_balance_source)
+        self.assertIn("from scripts.calendar_utils import week_dates, week_range, week_start", audit_quality_source)
+        self.assertIn("from scripts.calendar_utils import date_range", public_gap_source)
+        self.assertIn("from scripts.calendar_utils import (", camp_maintenance_source)
+        self.assertNotIn("def iter_dates", public_gap_source)
+        self.assertNotIn("current += timedelta(days=7)", audit_quality_source)
+
+    def test_schedule_display_exports_calendar_helpers_for_repair_outputs(self) -> None:
         modules = [
             ROOT / "scripts" / "build_failed_erp_class_schedule_review.py",
             ROOT / "scripts" / "repair_2726_summer_week_balance.py",

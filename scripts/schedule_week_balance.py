@@ -5,6 +5,7 @@ from datetime import date as Date
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 import scheduler
+from scripts.calendar_utils import iso_week_key
 from scripts.subject_utils import PUBLIC_SUBJECT_SORT_ORDER as SUBJECT_ORDER
 
 
@@ -16,8 +17,7 @@ def slot_block_key(slot_block: Tuple[scheduler.TimeSlot, ...]) -> Tuple[str, int
 
 
 def week_key(slot_block: Tuple[scheduler.TimeSlot, ...]) -> Tuple[int, int]:
-    year, week, _ = Date.fromisoformat(slot_block[0].date).isocalendar()
-    return year, week
+    return iso_week_key(slot_block[0].date)
 
 
 def balanced_week_quotas(

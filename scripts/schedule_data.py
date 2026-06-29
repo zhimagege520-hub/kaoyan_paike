@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
-from datetime import date as Date, timedelta
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 import scheduler
+from scripts.calendar_utils import date_range_values as shared_date_range_values
 from scripts.csv_utils import clean_cell, read_csv_rows
 from scripts.field_utils import row_value
 from scripts.subject_utils import CORE_PUBLIC_SUBJECTS
@@ -187,13 +187,7 @@ def date_range_values(start: str, end: str = "") -> Set[str]:
     end = clean_cell(end) or start
     if not start:
         return set()
-    current = Date.fromisoformat(start)
-    last = Date.fromisoformat(end)
-    values: Set[str] = set()
-    while current <= last:
-        values.add(current.isoformat())
-        current += timedelta(days=1)
-    return values
+    return shared_date_range_values(start, end)
 
 
 def blackout_row_is_active(value: object) -> bool:

@@ -8,7 +8,7 @@ import sys
 from collections import Counter, defaultdict
 from datetime import date as Date, datetime, timedelta
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Set, Tuple
+from typing import Dict, List, Sequence, Set, Tuple
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
 
 import scheduler
 from scripts import build_camp_maintenance_schedule as maintenance
+from scripts.calendar_utils import date_range
 from scripts.csv_utils import read_csv_rows, read_csv_with_fieldnames, write_csv_rows as write_csv_rows_with_fields
 from scripts.field_utils import normalize_text as clean, split_delimited_values
 from scripts.period_utils import PERIOD_ORDER
@@ -40,14 +41,6 @@ DEFAULT_TARGET_CLASSES = {
 PERIOD_SLOTS = period_slot_specs(("AM", "PM"))
 SLOT_ORDER = lesson_slot_order()
 SUBJECT_ORDER = {"数学": 0, "政治": 1, "英语": 2}
-
-
-def iter_dates(start: str, end: str) -> Iterable[str]:
-    current = Date.fromisoformat(start)
-    last = Date.fromisoformat(end)
-    while current <= last:
-        yield current.isoformat()
-        current += timedelta(days=1)
 
 
 def load_csv_rows(path: Path) -> Tuple[List[str], List[dict]]:
@@ -395,7 +388,7 @@ class PlacementContext:
         candidates: List[Tuple[float, str, str]] = []
         seen: Set[Tuple[str, str]] = set()
         for start, end, weekdays, periods in candidate_windows(task, self.class_rows, relax_deadline):
-            for date_text in iter_dates(start, end):
+            for date_text in date_range(start, end):
                 day = Date.fromisoformat(date_text)
                 if day.weekday() not in weekdays or date_text in self.blackouts:
                     continue

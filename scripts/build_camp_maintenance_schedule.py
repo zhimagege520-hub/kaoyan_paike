@@ -20,6 +20,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import scheduler
+from scripts.calendar_utils import (
+    iso_week_key,
+    iter_week_start_dates,
+    week_display_label as shared_week_display_label,
+    week_start_date,
+)
 from scripts.csv_utils import read_csv_rows
 from scripts.field_utils import (
     normalize_blank_marker,
@@ -5674,13 +5680,7 @@ def rebuild_2727_no_math_sequence_schedule(
         )
 
     def iter_week_starts(start: str, end: str) -> List[Date]:
-        weeks: List[Date] = []
-        current = week_monday(start)
-        last = week_monday(end)
-        while current <= last:
-            weeks.append(current)
-            current += timedelta(days=7)
-        return weeks
+        return list(iter_week_start_dates(start, end))
 
     long_camp_only_rest_dates = {
         (Date.fromisoformat("2026-08-29") + timedelta(days=offset)).isoformat()
@@ -8792,10 +8792,8 @@ def long_camp_subject_active_weeks(
         start_values = [min(assignment.candidate.slots[0].date for assignment in assignments)]
         end_values = [max(assignment.candidate.slots[0].date for assignment in assignments)]
 
-    current = week_monday(min(start_values))
-    last_week = week_monday(max(end_values))
     weeks: List[Date] = []
-    while current <= last_week:
+    for current in iter_week_start_dates(min(start_values), max(end_values)):
         if not blackout_heavy_week(current, blackout_dates) and long_camp_week_allowed(
             current,
             class_ids,
@@ -8803,7 +8801,6 @@ def long_camp_subject_active_weeks(
             blackout_dates,
         ):
             weeks.append(current)
-        current += timedelta(days=7)
     return weeks
 
 
@@ -8876,8 +8873,7 @@ def repair_long_camp_subject_week_balance(
         ]
 
     def week_key_from_date(date_text: str) -> Tuple[int, int]:
-        iso = Date.fromisoformat(date_text).isocalendar()
-        return iso.year, iso.week
+        return iso_week_key(date_text)
 
     def group_state() -> List[Tuple[str, str, Dict[Tuple[int, int], int], Dict[Tuple[int, int], int]]]:
         grouped: Dict[Tuple[str, str], List[scheduler.Assignment]] = defaultdict(list)
@@ -10443,20 +10439,15 @@ def summer_distribution_warning_lines(assignments: Sequence[scheduler.Assignment
 
 
 def week_monday(date_text_value: str) -> Date:
-    value = Date.fromisoformat(date_text_value)
-    return value - timedelta(days=value.weekday())
+    return week_start_date(date_text_value)
 
 
 def iter_week_mondays(start: Date, end: Date) -> Iterable[Date]:
-    current = start
-    while current <= end:
-        yield current
-        current += timedelta(days=7)
+    yield from iter_week_start_dates(start, end)
 
 
 def week_display_label(monday: Date) -> str:
-    iso = monday.isocalendar()
-    return f"{iso.year}年第{iso.week}周({monday.isoformat()}起)"
+    return shared_week_display_label(monday)
 
 
 def evenly_spaced_items(items: Sequence[Any], count: int) -> List[Any]:

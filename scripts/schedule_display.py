@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date as Date, timedelta
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 import scheduler
+from scripts.calendar_utils import date_range as shared_date_range
+from scripts.calendar_utils import week_dates as shared_week_dates
+from scripts.calendar_utils import week_start as shared_week_start
 from scripts.period_utils import PERIOD_LABELS
 from scripts.time_slot_templates import display_lesson_slot_rows
 from scripts.weekday_utils import WEEKDAY_LABELS, weekday_label_for_date
@@ -29,24 +31,15 @@ def weekday_label(date_text: str) -> str:
 
 
 def date_range(start: str, end: str) -> List[str]:
-    start_date = Date.fromisoformat(start)
-    end_date = Date.fromisoformat(end)
-    dates: List[str] = []
-    current = start_date
-    while current <= end_date:
-        dates.append(current.isoformat())
-        current += timedelta(days=1)
-    return dates
+    return shared_date_range(start, end)
 
 
 def week_start(date_text: str) -> str:
-    day = Date.fromisoformat(date_text)
-    return (day - timedelta(days=day.weekday())).isoformat()
+    return shared_week_start(date_text)
 
 
 def week_dates(week: str) -> List[str]:
-    start = Date.fromisoformat(week)
-    return [(start + timedelta(days=offset)).isoformat() for offset in range(7)]
+    return shared_week_dates(week)
 
 
 def subject_colors(subjects: Iterable[str]) -> Dict[str, str]:

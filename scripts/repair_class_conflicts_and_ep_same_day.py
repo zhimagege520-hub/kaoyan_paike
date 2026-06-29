@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts.calendar_utils import week_start_date  # noqa: E402
 from scripts.repair_schedule_quality_hotspots import (  # noqa: E402
     PERIOD_ORDER,
     PUBLIC_SUBJECTS,
@@ -265,7 +266,7 @@ def repair_target_group_conflicts(
             weeks = sorted(
                 weeks,
                 key=lambda week: (
-                    abs((Date.fromisoformat(week) - Date.fromisoformat(week_start(block.date))).days),
+                    abs((Date.fromisoformat(week) - week_start_date(block.date)).days),
                     week,
                 ),
             )
