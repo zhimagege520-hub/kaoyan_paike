@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 import scheduler
 from scripts.csv_utils import clean_cell, read_csv_rows
+from scripts.field_utils import row_value
 
 
 def _data_file(path: Path, file_name: str) -> Path:
@@ -85,6 +86,7 @@ def load_class_metadata(path: Path) -> Dict[str, Dict[str, str]]:
         if not class_id:
             continue
         subject = infer_class_subject(row)
+        lock_value = row_value(row, "is_manual_schedule_locked", "is_schedule_locked")
         result[class_id] = {
             "id": row.get("id", ""),
             "name": row.get("name", ""),
@@ -106,7 +108,8 @@ def load_class_metadata(path: Path) -> Dict[str, Dict[str, str]]:
             "end_period": row.get("end_period", ""),
             "preferred_room_ids": row.get("preferred_room_ids", ""),
             "preferred_room_is_required": row.get("preferred_room_is_required", ""),
-            "is_schedule_locked": row.get("is_schedule_locked", ""),
+            "is_manual_schedule_locked": lock_value,
+            "is_schedule_locked": lock_value,
         }
     return result
 

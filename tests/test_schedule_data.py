@@ -49,6 +49,38 @@ class ScheduleDataTest(unittest.TestCase):
         self.assertEqual(from_csv["CLASS_A"]["suite_code"], "2726")
         self.assertEqual(from_csv["CLASS_A"]["product_line"], "考研无忧")
 
+    def test_load_class_metadata_prefers_current_manual_lock_field(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = Path(tmp)
+            classes_path = data_dir / "classes.csv"
+            with classes_path.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=["id", "is_manual_schedule_locked", "is_schedule_locked"],
+                )
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "id": "CLASS_UNLOCKED_CURRENT",
+                        "is_manual_schedule_locked": "否",
+                        "is_schedule_locked": "是",
+                    }
+                )
+                writer.writerow(
+                    {
+                        "id": "CLASS_LOCKED_LEGACY",
+                        "is_manual_schedule_locked": "",
+                        "is_schedule_locked": "是",
+                    }
+                )
+
+            metadata = load_class_metadata(data_dir)
+
+        self.assertEqual(metadata["CLASS_UNLOCKED_CURRENT"]["is_manual_schedule_locked"], "否")
+        self.assertEqual(metadata["CLASS_UNLOCKED_CURRENT"]["is_schedule_locked"], "否")
+        self.assertEqual(metadata["CLASS_LOCKED_LEGACY"]["is_manual_schedule_locked"], "是")
+        self.assertEqual(metadata["CLASS_LOCKED_LEGACY"]["is_schedule_locked"], "是")
+
     def test_load_class_metadata_infers_subject_for_compact_class_rows(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             data_dir = Path(tmp)

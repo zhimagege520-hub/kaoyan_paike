@@ -510,6 +510,14 @@ def clean(value: object) -> str:
     return normalize_blank_marker(value)
 
 
+def class_lock_value(row: Dict[str, object]) -> str:
+    return row_value(row, "is_manual_schedule_locked", "is_schedule_locked")
+
+
+def class_is_locked(row: Dict[str, object]) -> bool:
+    return parse_bool(class_lock_value(row))
+
+
 def parse_dt(value: object) -> datetime:
     return parse_datetime_value(value, "历史课表时间")
 
@@ -756,7 +764,7 @@ def wuyou_spring_autumn_class_ids(data_dir: Path) -> Set[str]:
             continue
         if clean(row.get("sub_product")) not in WYQC_PRODUCTS:
             continue
-        if clean(row.get("is_schedule_locked")) in {"是", "1", "true", "True", "yes", "Y", "y"}:
+        if class_is_locked(row):
             continue
         class_id = clean(row.get("id"))
         if class_id:
@@ -774,7 +782,7 @@ def full_year_public_class_ids(data_dir: Path) -> Set[str]:
             continue
         if clean(row.get("sub_product")) != "全年营":
             continue
-        if clean(row.get("is_schedule_locked")) in {"是", "1", "true", "True", "yes", "Y", "y"}:
+        if class_is_locked(row):
             continue
         class_id = clean(row.get("id"))
         if class_id:
@@ -2633,7 +2641,7 @@ def suite_public_class_groups(
             continue
         if meta.get("sub_product") != sub_product:
             continue
-        if meta.get("is_schedule_locked") in {"是", "1", "true", "True", "yes", "Y", "y"}:
+        if class_is_locked(meta):
             continue
         suite_code = meta.get("suite_code") or class_id
         grouped[suite_code].append(class_id)
@@ -8154,7 +8162,7 @@ def repair_student_experience_week_balance(
         meta = class_metadata.get(assignment.task.class_id, {})
         if meta.get("subject_category") and meta.get("subject_category") != "公共课":
             return False
-        if meta.get("is_schedule_locked") == "是":
+        if class_is_locked(meta):
             return False
         sub_product = assignment_sub_product(assignment, class_metadata)
         if sub_product not in PUBLIC_PRODUCT_ORDER:
@@ -10331,7 +10339,7 @@ def schedule_conflict_lines(
 
 
 def class_is_locked_for_coverage(class_meta: Dict[str, str]) -> bool:
-    return parse_bool(class_meta.get("is_schedule_locked"))
+    return class_is_locked(class_meta)
 
 
 def public_coverage_gap_rows_from_totals(
@@ -11028,12 +11036,8 @@ def normalize_suite_code(value: str) -> str:
     return match.group(1) if match else cleaned
 
 
-def truthy_text(value: object) -> bool:
-    return clean(value) in {"是", "1", "true", "True", "yes", "Y", "y"}
-
-
 def is_public_schedulable_meta(meta: Dict[str, str]) -> bool:
-    return meta.get("subject_category") == "公共课" and not truthy_text(meta.get("is_schedule_locked"))
+    return meta.get("subject_category") == "公共课" and not class_is_locked(meta)
 
 
 def suite_code_for_class(class_id: str, class_metadata: Dict[str, Dict[str, str]]) -> str:

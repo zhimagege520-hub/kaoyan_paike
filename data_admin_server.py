@@ -29,6 +29,7 @@ from scripts.field_utils import (
     normalize_text,
     normalize_time_text,
     parse_bool as normalize_bool,
+    row_value,
     split_delimited_values,
     split_pipe_values as split_id_list,
 )
@@ -985,23 +986,18 @@ def normalized_class_resource_fields(cls: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def normalized_class_lock_fields(cls: Dict[str, Any]) -> Dict[str, bool]:
-    manual_lock_value = (
-        cls.get("is_manual_schedule_locked")
-        or cls.get("is_schedule_locked")
-        or cls.get("schedule_locked")
-        or cls.get("课表已定")
-        or cls.get("不自动排课")
+    lock_value = row_value(
+        cls,
+        "is_manual_schedule_locked",
+        "is_schedule_locked",
+        "schedule_locked",
+        "课表已定",
+        "不自动排课",
     )
-    schedule_lock_value = (
-        cls.get("is_schedule_locked")
-        or cls.get("is_manual_schedule_locked")
-        or cls.get("schedule_locked")
-        or cls.get("课表已定")
-        or cls.get("不自动排课")
-    )
+    is_locked = normalize_bool(lock_value)
     return {
-        "is_manual_schedule_locked": normalize_bool(manual_lock_value),
-        "is_schedule_locked": normalize_bool(schedule_lock_value),
+        "is_manual_schedule_locked": is_locked,
+        "is_schedule_locked": is_locked,
     }
 
 

@@ -2787,6 +2787,19 @@ class SchedulingPipelineTest(unittest.TestCase):
         self.assertEqual(normalized["teacher_assignments"][0]["actual_scheduled_class_id"], "C1")
         self.assertEqual(normalized["teacher_assignments"][0]["teacher_id"], "000001")
 
+    def test_normalize_class_prefers_current_manual_lock_field(self) -> None:
+        normalized = data_admin_server.normalize_class(
+            {
+                "id": "C1",
+                "name": "班级1",
+                "is_manual_schedule_locked": "否",
+                "is_schedule_locked": "是",
+            }
+        )
+
+        self.assertFalse(normalized["is_manual_schedule_locked"])
+        self.assertFalse(normalized["is_schedule_locked"])
+
     def test_preferred_room_can_expand_to_same_teaching_area_unless_required(self) -> None:
         state = data_admin_server.normalize_payload(
             {

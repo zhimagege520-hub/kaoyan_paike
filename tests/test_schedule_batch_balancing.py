@@ -26,10 +26,13 @@ from scripts.build_camp_maintenance_schedule import (
     relaxed_candidates_on_date,
     student_experience_warning_lines,
     class_window_venue_rebuild_suite_codes,
+    full_year_public_class_ids,
+    is_public_schedulable_meta,
     run_summer_rebuild_attempts,
     split_arg_values,
     summer_schedule_input_for_suites,
     teacher_same_day_campus_warning_lines,
+    wuyou_spring_autumn_class_ids,
 )
 from scripts.repair_2726_summer_week_balance import clean as repair_2726_clean
 from scripts.repair_2757_halfday_blocks import clean as repair_2757_clean
@@ -1396,6 +1399,123 @@ class ScheduleBatchBalancingTest(unittest.TestCase):
                 ["KYSX2701", "KYYY2701", "KYZZ2701"],
             )
             self.assertEqual(class_ids_for_suite_codes(path, ["2701"], {"政治"}), ["KYZZ2701"])
+
+    def test_class_ids_for_suite_codes_prefers_current_manual_lock_field(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir)
+            with (path / "classes.csv").open("w", newline="", encoding="utf-8-sig") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=[
+                        "id",
+                        "suite_code",
+                        "subject",
+                        "subject_category",
+                        "is_manual_schedule_locked",
+                        "is_schedule_locked",
+                    ],
+                )
+                writer.writeheader()
+                writer.writerows(
+                    [
+                        {
+                            "id": "KYSX2703",
+                            "suite_code": "2703",
+                            "subject": "数学",
+                            "subject_category": "公共课",
+                            "is_manual_schedule_locked": "否",
+                            "is_schedule_locked": "是",
+                        },
+                        {
+                            "id": "KYYY2703",
+                            "suite_code": "2703",
+                            "subject": "英语",
+                            "subject_category": "公共课",
+                            "is_manual_schedule_locked": "是",
+                            "is_schedule_locked": "否",
+                        },
+                        {
+                            "id": "KYZZ2703",
+                            "suite_code": "2703",
+                            "subject": "政治",
+                            "subject_category": "公共课",
+                            "is_manual_schedule_locked": "",
+                            "is_schedule_locked": "是",
+                        },
+                    ]
+                )
+
+            self.assertEqual(class_ids_for_suite_codes(path, ["2703"], None), ["KYSX2703"])
+
+    def test_public_class_helpers_prefer_current_manual_lock_field(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir)
+            with (path / "classes.csv").open("w", newline="", encoding="utf-8-sig") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=[
+                        "id",
+                        "subject_category",
+                        "sub_product",
+                        "is_manual_schedule_locked",
+                        "is_schedule_locked",
+                    ],
+                )
+                writer.writeheader()
+                writer.writerows(
+                    [
+                        {
+                            "id": "WY_UNLOCKED_CURRENT",
+                            "subject_category": "公共课",
+                            "sub_product": "无忧秋",
+                            "is_manual_schedule_locked": "否",
+                            "is_schedule_locked": "是",
+                        },
+                        {
+                            "id": "WY_LOCKED_CURRENT",
+                            "subject_category": "公共课",
+                            "sub_product": "无忧秋",
+                            "is_manual_schedule_locked": "是",
+                            "is_schedule_locked": "否",
+                        },
+                        {
+                            "id": "FULL_UNLOCKED_CURRENT",
+                            "subject_category": "公共课",
+                            "sub_product": "全年营",
+                            "is_manual_schedule_locked": "否",
+                            "is_schedule_locked": "是",
+                        },
+                        {
+                            "id": "FULL_LOCKED_CURRENT",
+                            "subject_category": "公共课",
+                            "sub_product": "全年营",
+                            "is_manual_schedule_locked": "是",
+                            "is_schedule_locked": "否",
+                        },
+                    ]
+                )
+
+            self.assertEqual(wuyou_spring_autumn_class_ids(path), {"WY_UNLOCKED_CURRENT"})
+            self.assertEqual(full_year_public_class_ids(path), {"FULL_UNLOCKED_CURRENT"})
+
+        self.assertTrue(
+            is_public_schedulable_meta(
+                {
+                    "subject_category": "公共课",
+                    "is_manual_schedule_locked": "否",
+                    "is_schedule_locked": "是",
+                }
+            )
+        )
+        self.assertFalse(
+            is_public_schedulable_meta(
+                {
+                    "subject_category": "公共课",
+                    "is_manual_schedule_locked": "是",
+                    "is_schedule_locked": "否",
+                }
+            )
+        )
 
     def test_class_ids_for_suite_codes_infers_subjects_from_compact_product_ids(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

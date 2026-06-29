@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 import scheduler
 from scripts.csv_utils import read_csv_rows
+from scripts.field_utils import normalize_text, parse_bool_default, row_value
 from scripts.schedule_data import infer_class_subject, infer_class_subject_category
 
 
@@ -172,9 +173,9 @@ def class_ids_for_suite_codes(
         raise ValueError(f"未找到班级数据: {classes_path}")
     rows_by_suite: Dict[str, List[Dict[str, str]]] = {suite_code: [] for suite_code in suite_codes}
     for row in read_csv_rows(classes_path):
-        if (row.get("is_schedule_locked") or "").strip() in {"是", "1", "true", "True", "yes", "Y", "y"}:
+        if parse_bool_default(row_value(row, "is_manual_schedule_locked", "is_schedule_locked"), False):
             continue
-        suite_code = (row.get("suite_code") or "").strip()
+        suite_code = normalize_text(row.get("suite_code"))
         if suite_code not in rows_by_suite:
             continue
         subject = infer_class_subject(row)
@@ -187,8 +188,8 @@ def class_ids_for_suite_codes(
     class_ids: List[str] = []
     for suite_code in suite_codes:
         rows = rows_by_suite.get(suite_code, [])
-        rows.sort(key=lambda row: (SUBJECT_ORDER.get(infer_class_subject(row), 99), row.get("id") or ""))
-        class_ids.extend(row["id"] for row in rows if row.get("id"))
+        rows.sort(key=lambda row: (SUBJECT_ORDER.get(infer_class_subject(row), 99), normalize_text(row.get("id"))))
+        class_ids.extend(normalize_text(row.get("id")) for row in rows if normalize_text(row.get("id")))
     if not class_ids:
         raise ValueError(f"套班 {', '.join(suite_codes)} 没有匹配到公共课班级")
     return class_ids
